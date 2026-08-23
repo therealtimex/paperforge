@@ -1,0 +1,38 @@
+# Fixture project: the only one that actually publishes.
+#
+# Every other fixture is publish = false, which left the whole publish stage -
+# the lint re-run, the allowlist, the both-editions loop and the directory
+# target - at zero branch coverage. `target = "directory"` needs no RealTimeX
+# host, so CI can run it; the hard-link target still cannot be exercised here
+# and is covered by tests/unit_publish.py instead.
+[defaults]
+profile = "en"
+organisation = "Paperforge"
+publisher = "Paperforge Research"
+paper = "A4"
+target = "directory"
+directory = "published"
+
+[[collection]]
+slug = "publishing"
+root = "."
+profile = "en"
+
+  [[collection.document]]
+  source = "report.md"
+  output = "report.html"
+  contents_heading = "CONTENTS"
+  page_numbers = true
+  pdf = "typst"          # so both editions go through the publish loop
+  publish = true
+
+  # the "skipped (not publishable)" path, which is what every other fixture
+  # exercises and what most real documents sit in for most of their life
+  [[collection.document]]
+  source = "draft.md"
+  output = "draft.html"
+  publish = false
+
+[internal]
+files = ["REVIEW_NOTES.md"]
+reason = "process record: must never be publishable"

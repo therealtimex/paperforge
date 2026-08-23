@@ -81,14 +81,29 @@ jobs:
       - name: Plugin bundle, references and version
         run: bin/paperforge plugin --check
 
+      # The hard-link publish path cannot be reached from a fixture: there is no
+      # RealtimeX host on a runner. This drives it against a temporary storage
+      # root, including the detached-link case that silently serves stale content.
+      - name: Publishing unit checks
+        run: python3 tests/unit_publish.py
+
   documents:
-    name: Documents (${{ matrix.fixture }})
+    name: Documents (${{ matrix.name }})
     needs: plan
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        fixture: [en-sample, zh-sample, id-sample, bilingual, citations]
+        include:
+          - { name: en, project: tests/fixtures/en-sample }
+          - { name: zh, project: tests/fixtures/zh-sample }
+          - { name: id, project: tests/fixtures/id-sample }
+          - { name: bilingual, project: tests/fixtures/bilingual }
+          - { name: citations, project: tests/fixtures/citations }
+          # the only fixture that publishes; target = "directory" needs no host
+          - { name: publishing, project: tests/fixtures/publishing }
+          # report + brief + deck in two languages: the only deck CI builds
+          - { name: backtest, project: tests/backtest }
     steps:
       - uses: actions/checkout@v5
 
@@ -97,7 +112,7 @@ jobs:
           typst-version: ${{ env.TYPST_VERSION }}
 
       - name: Build and verify
-        run: bin/paperforge all --config "$PWD/tests/fixtures/${{ matrix.fixture }}/documents.toml"
+        run: bin/paperforge all --config "$PWD/${{ matrix.project }}/documents.toml"
 
   package:
     name: Plugin bundle

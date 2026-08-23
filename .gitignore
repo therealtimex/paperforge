@@ -7,3 +7,4 @@ __pycache__/
 tests/**/*.html
 tests/**/*.pdf
 dist/
+tests/**/published/

@@ -40,6 +40,19 @@ jobs:
       - name: Compile every module
         run: python3 -m compileall -q paperforge
 
+      # Node 22.16.0 is what RealtimeX ships, pinned in .nvmrc. The manifest is
+      # a contract with that host, so it is parsed and checked on the host's own
+      # runtime rather than on whatever the runner defaults to.
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Verify the Node runtime
+        run: node scripts/node-runtime-contract.mjs
+
+      - name: Verify the plugin manifest contract
+        run: node scripts/check-plugin-manifest.mjs
+
       # Bundle drift, reference-link integrity and one version across the
       # manifest and the skill. All three have already gone wrong once.
       - name: Plugin bundle, references and version

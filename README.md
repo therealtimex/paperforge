@@ -102,7 +102,12 @@ pip install pdfplumber
 ```bash
 bin/paperforge selftest         # builds the English fixture end to end
 bin/paperforge plugin --check   # bundle drift, reference links, one version
+node scripts/check-plugin-manifest.mjs   # the RealtimeX manifest contract
 ```
+
+The Node scripts run on the version in `.nvmrc` — 22.16.0, the one RealtimeX
+ships — so the manifest is parsed by the runtime that will parse it in
+production.
 
 `tests/fixtures/` also holds Chinese, Indonesian, bilingual and
 citation-bearing projects; `tests/backtest/` holds a scaffolded multi-language

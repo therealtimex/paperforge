@@ -1,0 +1,157 @@
+# Gated plugin packaging and publication. Never runs for pull requests.
+#
+# The gates are re-run here rather than trusted from the pull request: a tag can
+# be cut from any commit, and the artifact this publishes is what people install.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  # Never cancel a release part-way through packaging or publication.
+  cancel-in-progress: false
+
+env:
+  TYPST_VERSION: "0.15.1"
+  PAPERFORGE_CHROME_NO_SANDBOX: "1"
+
+jobs:
+  # Refuse early and cheaply if the tag does not name the version being shipped.
+  # The manifest and the skill frontmatter had already drifted apart before
+  # anything was released; a tag is the third place the same fact is written.
+  plan:
+    name: Release plan
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - id: plan
+        name: Assert the tag matches the plugin version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            bin/paperforge plugin --check --tag "${{ github.ref_name }}"
+          else
+            bin/paperforge plugin --check
+          fi
+          version=$(python3 -c "import json;print(json.load(open('plugin/realtimex.plugin.json'))['version'])")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "releasing ${version}"
+
+  contract:
+    name: Contract
+    needs: plan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile every module
+        run: python3 -m compileall -q paperforge
+
+      - name: Plugin bundle, references and version
+        run: bin/paperforge plugin --check
+
+  documents:
+    name: Documents (${{ matrix.fixture }})
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [en-sample, zh-sample, id-sample, bilingual, citations]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          typst-version: ${{ env.TYPST_VERSION }}
+
+      - name: Build and verify
+        run: bin/paperforge all --config "$PWD/tests/fixtures/${{ matrix.fixture }}/documents.toml"
+
+  package:
+    name: Plugin bundle
+    needs: [plan, contract, documents]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          typst-version: ${{ env.TYPST_VERSION }}
+
+      # Refuses on a stale bundle, a dead reference link or a version mismatch,
+      # so the zip cannot be built from a tree that would fail the gate.
+      - name: Package
+        run: bin/paperforge plugin --package dist --tag "${{ github.ref_name }}"
+
+      # Unpack the zip the way a user would and build a document *from the
+      # unpacked copy*. A zip that unpacks is not a plugin that works: the
+      # bundle carries its own pipeline and its own fixture, and either could be
+      # incomplete in a way that only running them reveals.
+      - name: Smoke-test the packaged bundle
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/installed && mkdir -p /tmp/installed
+          unzip -q "dist/paperforge-plugin-${{ needs.plan.outputs.version }}.zip" -d /tmp/installed
+          test -f /tmp/installed/realtimex.plugin.json
+          test -f /tmp/installed/skills/paperforge/SKILL.md
+          cd /tmp/installed && skills/paperforge/pipeline/bin/paperforge selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: paperforge-plugin-${{ needs.plan.outputs.version }}
+          path: dist/paperforge-plugin-*.zip
+          # a missing artifact is a failure, not silence
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub Release
+    needs: [plan, contract, documents, package]
+    # always() lets this job evaluate the results explicitly. Without it a
+    # skipped gate is indistinguishable from a passed one.
+    if: >-
+      always() &&
+      github.ref_type == 'tag' &&
+      needs.contract.result == 'success' &&
+      needs.documents.result == 'success' &&
+      needs.package.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: paperforge-plugin-${{ needs.plan.outputs.version }}
+          path: dist
+
+      - name: Checksum
+        run: |
+          set -euo pipefail
+          cd dist && sha256sum paperforge-plugin-*.zip | tee SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            dist/paperforge-plugin-*.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true

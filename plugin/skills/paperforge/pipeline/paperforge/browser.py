@@ -26,8 +26,16 @@ def chrome():
     raise RuntimeError('headless Chrome not found; needed to render diagrams and measure pages')
 
 
+# CI runners have no usable user namespace for Chrome's sandbox, and the failure
+# is a silent blank render rather than an error - every diagram would come out
+# empty with a green build. Opt in explicitly rather than always disabling it.
+CI_FLAGS = ['--no-sandbox', '--disable-dev-shm-usage']
+
+
 def run(args, timeout=180):
-    cmd = [chrome(), '--headless=new', '--disable-gpu', '--no-first-run'] + args
+    import os
+    extra = CI_FLAGS if os.environ.get('PAPERFORGE_CHROME_NO_SANDBOX') else []
+    cmd = [chrome(), '--headless=new', '--disable-gpu', '--no-first-run'] + extra + args
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
 

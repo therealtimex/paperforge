@@ -100,13 +100,29 @@ pip install pdfplumber
 ## Tests
 
 ```bash
-bin/paperforge selftest    # builds the English fixture end to end
+bin/paperforge selftest         # builds the English fixture end to end
+bin/paperforge plugin --check   # bundle drift, reference links, one version
 ```
 
 `tests/fixtures/` also holds Chinese, Indonesian, bilingual and
-citation-bearing projects; `tests/backtest/` holds a real multi-language
-Vietnamese corpus. The English fixture is the check that no Vietnamese
-assumption has crept back in — a second language is the only real proof.
+citation-bearing projects; `tests/backtest/` holds a scaffolded multi-language
+project. The English fixture is the check that no Vietnamese assumption has
+crept back in — a second language is the only real proof.
+
+CI runs every fixture as its own matrix job, so a failure names the language
+that broke. See `.github/workflows/`.
+
+## Releasing
+
+Tag `vX.Y.Z`. The release workflow refuses the tag unless it matches the version
+in `plugin/realtimex.plugin.json` and in the skill frontmatter, re-runs every
+gate rather than trusting the pull request, packages the plugin, builds a
+document *from the unpacked zip*, and only then publishes the GitHub Release
+with a checksum.
+
+```bash
+bin/paperforge plugin --package dist   # the same zip, locally
+```
 
 ## Licence
 

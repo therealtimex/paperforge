@@ -1,0 +1,62 @@
+# The build toolchain, in one place. Both workflows need exactly this, and a
+# gate that runs against a different toolchain than the release proves nothing.
+
+name: Set up the Paperforge toolchain
+description: Python, pdfplumber, a pinned Typst, headless Chrome and the fonts the fixtures need.
+
+inputs:
+  typst-version:
+    description: Typst release to install, without the leading v
+    required: true
+  fonts:
+    description: Install the Noto fonts the non-Latin fixtures need
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+
+    - name: Install Python dependencies
+      shell: bash
+      run: python3 -m pip install --disable-pip-version-check "pdfplumber==0.11.10"
+
+    - name: Install Typst ${{ inputs.typst-version }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        url="https://github.com/typst/typst/releases/download/v${{ inputs.typst-version }}/typst-x86_64-unknown-linux-musl.tar.xz"
+        curl -fsSL --retry 3 --retry-delay 5 "$url" -o /tmp/typst.tar.xz
+        tar -xJf /tmp/typst.tar.xz -C /tmp
+        sudo install -m 0755 /tmp/typst-x86_64-unknown-linux-musl/typst /usr/local/bin/typst
+        # pinned, so assert we got the pin rather than whatever redirected
+        typst --version | grep -q "${{ inputs.typst-version }}"
+        typst --version
+
+    # The runner image ships Chrome. Assert it rather than assume it: without a
+    # browser every diagram renders empty and the build still reports success,
+    # which is the one failure mode this pipeline must never produce silently.
+    - name: Verify headless Chrome
+      shell: bash
+      run: |
+        set -euo pipefail
+        command -v google-chrome >/dev/null \
+          || command -v chromium >/dev/null \
+          || command -v chromium-browser >/dev/null \
+          || { echo "::error::no Chrome on PATH; diagrams and page measurement need one"; exit 1; }
+        google-chrome --version || chromium --version || chromium-browser --version
+
+    # Georgia does not exist on Linux, so the profiles fall through to Noto.
+    # Without these the Chinese fixture renders tofu and the Vietnamese tone
+    # marks fall back to whatever DejaVu offers.
+    - name: Install fonts
+      if: inputs.fonts == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq --no-install-recommends fonts-noto-core fonts-noto-cjk
+        fc-cache -f >/dev/null

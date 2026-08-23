@@ -1,0 +1,78 @@
+# Fast feedback on a change. Release packaging is isolated in release.yml so
+# ordinary development never waits on it.
+#
+# This also runs on pushes to main: work here has historically landed straight
+# on main, and a gate that only fires on pull requests would never fire at all.
+
+name: PR quality
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-quality-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  TYPST_VERSION: "0.15.1"
+  # CI runners have no usable user namespace for Chrome's sandbox
+  PAPERFORGE_CHROME_NO_SANDBOX: "1"
+
+jobs:
+  # Everything that needs no browser and no typesetter, so a stale bundle or a
+  # dead documentation link is reported in seconds rather than after a build.
+  contract:
+    name: Contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile every module
+        run: python3 -m compileall -q paperforge
+
+      # Bundle drift, reference-link integrity and one version across the
+      # manifest and the skill. All three have already gone wrong once.
+      - name: Plugin bundle, references and version
+        run: bin/paperforge plugin --check
+
+  # The real gate. Each fixture is a language, and the whole point of having
+  # more than one is that a single language cannot prove the pipeline carries no
+  # assumptions - so a failure has to name which language broke.
+  documents:
+    name: Documents (${{ matrix.fixture }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        fixture: [en-sample, zh-sample, id-sample, bilingual, citations]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          typst-version: ${{ env.TYPST_VERSION }}
+
+      # figures -> lint -> build -> verify -> publish. Nothing in the fixtures is
+      # publishable, so publish reports "skipped" and the chain still proves the
+      # gate ran.
+      - name: Build and verify
+        run: bin/paperforge all --config "$PWD/tests/fixtures/${{ matrix.fixture }}/documents.toml"
+
+      # A fixture that builds nothing would pass every check above. Assert the
+      # artifact exists rather than inferring it from a green step.
+      - name: Assert an artifact was produced
+        run: |
+          set -euo pipefail
+          found=$(find "tests/fixtures/${{ matrix.fixture }}" -name '*.html' | wc -l)
+          [ "$found" -gt 0 ] || { echo "::error::no HTML produced for ${{ matrix.fixture }}"; exit 1; }
+          echo "$found document(s) built"

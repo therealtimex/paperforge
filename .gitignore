@@ -6,3 +6,4 @@ __pycache__/
 # fixtures build in place; the outputs are regenerable and must not be tracked
 tests/**/*.html
 tests/**/*.pdf
+dist/

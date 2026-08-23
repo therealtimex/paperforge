@@ -4,7 +4,7 @@ description: Prepare, render, check and publish research documents — reports, 
 allowed-tools: Read, Write, Edit, Bash
 license: UNLICENSED
 metadata:
-  version: "2.0"
+  version: "2.0.0"
 ---
 
 # Paperforge documents

@@ -446,7 +446,7 @@ def do_publish(cfg, docs, expires=None):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog='pf', description='Paperforge document pipeline')
+    ap = argparse.ArgumentParser(prog='paperforge', description='Paperforge document pipeline')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
                                         'status', 'selftest', 'plugin', 'figures', 'init'])
     ap.add_argument('--only', help='limit to one document or collection')
@@ -465,6 +465,9 @@ def main(argv=None):
     ap.add_argument('--workspace', help='init: RealTimeX workspace for publishing')
     ap.add_argument('--no-git', action='store_true', help='init: skip git init')
     ap.add_argument('--check', action='store_true', help='report drift instead of syncing')
+    ap.add_argument('--package', metavar='DIR',
+                    help='plugin: write the installable zip into DIR')
+    ap.add_argument('--tag', help='plugin: assert this release tag matches the version')
     ap.add_argument('--quiet', action='store_true')
     a = ap.parse_args(argv)
     if a.command == 'init':
@@ -495,9 +498,21 @@ def main(argv=None):
         from . import package_plugin
         # a reference that points nowhere still reads like prose, so the link
         # check runs on both paths rather than only on --check
-        broken = package_plugin.check_references()
+        broken = ['reference: %s' % r for r in package_plugin.check_references()]
+        broken += package_plugin.version_problems(a.tag)
         for problem in broken:
-            print('  reference: %s' % problem)
+            print('  %s' % problem)
+        if a.package:
+            drift = package_plugin.check()
+            if drift or broken:
+                print('plugin package: REFUSED (%s)'
+                      % ('stale bundle: ' + ', '.join(drift) if drift else 'see above'))
+                return 1
+            out = package_plugin.zip_bundle(a.package)
+            print('  packaged %s' % out['path'])
+            print('  %d files, %d bytes, sha256 %s'
+                  % (out['files'], out['bytes'], out['sha256']))
+            return 0
         if a.check:
             drift = package_plugin.check()
             print('plugin package: %s' % ('in sync' if not drift else 'STALE: ' + ', '.join(drift)))

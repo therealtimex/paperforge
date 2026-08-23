@@ -1,15 +1,15 @@
-RealTimeX — Proprietary and Confidential
+RealTimeX — Source Available
 
 Copyright (c) RealTimeX. All rights reserved.
 
-This software and its source code are the proprietary and confidential
-property of RealTimeX. No license, right, or interest is granted in or to
-this software, whether by implication, estoppel, or otherwise, except under
-the terms of a separate written agreement signed by RealTimeX.
+This source code is published for reference. It is not open source. No license,
+right, or interest in or to this software is granted, whether by implication,
+estoppel, or otherwise, except under the terms of a separate written agreement
+signed by RealTimeX.
 
 Without such an agreement you may not use, copy, modify, merge, publish,
-distribute, sublicense, or sell any portion of this software, and you may not
-disclose it to any third party.
+distribute, sublicense, or sell any portion of this software.
 
-Third-party components incorporated into this repository remain under their
-original licenses. See the NOTICE file for those components and their terms.
+Third-party components incorporated into this repository remain under their own
+licenses and are unaffected by the terms above. See the NOTICE file for those
+components and their terms.

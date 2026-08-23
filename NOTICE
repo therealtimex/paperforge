@@ -1,9 +1,10 @@
 Third-party components
 ======================
 
-Paperforge itself is proprietary — see LICENSE. The components below are
-incorporated under their own terms, which are unaffected by that licence and
-must travel with any copy of this software or its output.
+Paperforge itself is source-available with all rights reserved — see LICENSE.
+The components below are incorporated under their own terms, which are
+unaffected by that licence and must travel with any copy of this software or
+its output.
 
 reveal.js 5.2.0
 ---------------

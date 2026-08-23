@@ -20,9 +20,13 @@ runs:
       with:
         python-version: "3.11"
 
+    # coverage travels with the toolchain: every job that runs the pipeline also
+    # measures it, and the gate combines what they upload.
     - name: Install Python dependencies
       shell: bash
-      run: python3 -m pip install --disable-pip-version-check "pdfplumber==0.11.10"
+      run: |
+        python3 -m pip install --disable-pip-version-check \
+          "pdfplumber==0.11.10" "coverage==7.15.4"
 
     - name: Install Typst ${{ inputs.typst-version }}
       shell: bash

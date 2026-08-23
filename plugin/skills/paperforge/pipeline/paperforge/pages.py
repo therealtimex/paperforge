@@ -17,9 +17,16 @@ import warnings
 
 from . import profile
 
-warnings.filterwarnings('ignore')
-logging.getLogger('pdfminer').setLevel(logging.ERROR)   # noisy FontBBox complaints
-import pdfplumber
+
+
+def _pdfplumber():
+    """Imported on use, not on import: the cheap checks must run on a machine
+    with no PDF tooling, and a module-level import made the whole CLI unusable
+    without it - which is how the CI contract job first failed."""
+    warnings.filterwarnings('ignore')
+    logging.getLogger('pdfminer').setLevel(logging.ERROR)   # noisy FontBBox complaints
+    import pdfplumber
+    return pdfplumber
 
 
 
@@ -37,7 +44,7 @@ def extractable(pdf_path, source_chars, floor=0.45):
     fixture returned 16% of its source. Detect that and decline, rather than
     silently reporting no page numbers and a document full of "empty" pages.
     """
-    with pdfplumber.open(pdf_path) as pdf:
+    with _pdfplumber().open(pdf_path) as pdf:
         got = sum(len((page.extract_text() or '').strip()) for page in pdf.pages)
     ratio = got / max(1, source_chars)
     return {'ratio': ratio, 'usable': ratio >= floor, 'extracted': got,
@@ -99,7 +106,7 @@ def measure(html_path, pdf_path, contents_anchor):
             breaks = 2 if 'part' in attrs else (1 if 'annex-title' in attrs else 0)
             heads.append((hid.group(1), text, breaks))
 
-    with pdfplumber.open(pdf_path) as pdf:
+    with _pdfplumber().open(pdf_path) as pdf:
         pages = [norm(p.extract_text() or '') for p in pdf.pages]
     total = len(pages)
     skip = contents_pages(pages, doc, contents_anchor)
@@ -169,7 +176,7 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
     if not entries:
         return {'entries': 0, 'confirmed': 0, 'untestable': 0, 'wrong': []}
 
-    with pdfplumber.open(pdf_path) as pdf:
+    with _pdfplumber().open(pdf_path) as pdf:
         pages = [norm(p.extract_text() or '') for p in pdf.pages]
     toc = _contents_pages(pages, [l for l, _ in entries])
 

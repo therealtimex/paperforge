@@ -14,11 +14,17 @@ import logging
 import re
 import warnings
 
-warnings.filterwarnings('ignore')
-logging.getLogger('pdfminer').setLevel(logging.ERROR)
-import pdfplumber
-
 from . import profile
+
+
+def _pdfplumber():
+    """Imported on use, not on import: the cheap checks - bundle drift,
+    reference links, version alignment - must run with no PDF tooling present,
+    and a module-level import made the whole CLI unusable without it."""
+    warnings.filterwarnings('ignore')
+    logging.getLogger('pdfminer').setLevel(logging.ERROR)
+    import pdfplumber
+    return pdfplumber
 
 
 def _norm(text, fold=True):
@@ -44,7 +50,7 @@ def page_openers_pdf(pdf_path, candidates, words=6):
     A heading is resolved first against page tops, in document order and never
     backwards; only if that fails is it looked for anywhere.
     """
-    with pdfplumber.open(pdf_path) as pdf:
+    with _pdfplumber().open(pdf_path) as pdf:
         pages = [_norm(p.extract_text() or '') for p in pdf.pages]
     probes = {h: ' '.join(h.split()[:words]) for h in candidates if len(h.split()) >= 1}
     skip = {i for i, pg in enumerate(pages)
@@ -85,7 +91,7 @@ def compare(html_path, pdf_path, fold=True):
     missing = [h for h in expected if h not in actual]
 
     html_figs = html.count('<figcaption>')
-    with pdfplumber.open(pdf_path) as pdf:
+    with _pdfplumber().open(pdf_path) as pdf:
         pdf_figs = sum(len(p.images) for p in pdf.pages)
 
     return {'expected_openers': len(expected), 'mid_page': mid_page, 'unlocated': missing,

@@ -381,7 +381,8 @@ def do_verify(docs, cache):
                 if ('<h2 id="%s"' % anchor) in html:
                     # contents_pages is 0-based; pagination reports 1-based
                     exempt = {i + 1 for i in pages.contents_pages(texts, html, anchor)}
-            pg = verify.pagination(pdf, exempt=exempt)
+            pg = verify.pagination(pdf, exempt=exempt,
+                                  script=d['prof'].get('script', 'latin'))
             if pg['thin']:
                 problems.append('%d near-empty printed page(s): %s'
                                 % (len(pg['thin']), [t['page'] for t in pg['thin']]))

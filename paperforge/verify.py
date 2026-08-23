@@ -126,17 +126,28 @@ def layout(html_path, widths=(1440, 1024, 768, 390)):
     return results
 
 
-def pagination(pdf_path, floor=80, exempt=()):
+# A character is not the same amount of writing in every script. 80 Latin
+# characters is roughly thirteen words; the same thirteen words in Chinese or
+# Japanese occupy about a third of that, because the script has no word spaces
+# and one character carries a morpheme. Counting characters and comparing every
+# script to a Latin floor is the fourth fixed threshold in this pipeline that a
+# perfectly good document could never clear.
+SCRIPT_FLOOR = {'cjk': 30}
+
+
+def pagination(pdf_path, floor=80, exempt=(), script='latin'):
     """Pages carrying almost nothing: a stranded heading or an orphaned frame.
 
     Added after a two-line part banner was found split across two pages, each
     holding one line and nothing else. Visually busy pages (a diagram) are
     exempt - they are sparse in text but not empty.
 
-    The floor is a heuristic. Observed stranded headings ran 22-74 characters,
-    while a genuinely short but complete section ran 91+; the default sits
-    between the two so that brevity is not reported as a defect.
+    The floor is a heuristic. In Latin script, observed stranded headings ran
+    22-74 characters while a genuinely short but complete section ran 91+, so
+    the default sits between the two and brevity is not reported as a defect.
+    `script` rescales it; see SCRIPT_FLOOR.
     """
+    floor = SCRIPT_FLOOR.get(script, floor)
     import logging
     import warnings
     warnings.filterwarnings('ignore')

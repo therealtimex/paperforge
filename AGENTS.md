@@ -42,12 +42,28 @@ them automatically.
 ## Before committing
 
 ```bash
-bin/paperforge selftest
 bin/paperforge plugin --check
 node scripts/node-runtime-contract.mjs      # Node matches the RealtimeX host
 node scripts/check-plugin-manifest.mjs      # manifest matches the host contract
-for f in tests/fixtures/*/; do bin/paperforge all --config "$f/documents.toml"; done
+python3 tests/unit_publish.py               # the hard-link path CI cannot reach
+
+# the whole suite under coverage, then the gate CI enforces
+rm -f .coverage .coverage.json
+python3 -m coverage run bin/paperforge plugin --check
+python3 -m coverage run tests/unit_publish.py
+for f in tests/fixtures/*/ tests/backtest/; do
+  python3 -m coverage run bin/paperforge all --config "$PWD/$f/documents.toml"
+done
+python3 scripts/check-coverage.py
 ```
+
+The coverage floors live in `scripts/check-coverage.py` and sit just under what
+the suite achieves, so they ratchet against regression rather than describing an
+ambition. Line and branch are held separately: a single combined figure lets
+branch coverage rot while line coverage carries the average, and the defects
+here have been branch-shaped - a threshold no short heading could clear, an
+emitter that handled the explicit case and not the inferred one. Raise a floor
+when the suite improves; lowering one should be visible in a diff.
 
 The two Node scripts are the only JavaScript here. Nothing Paperforge ships
 runs on Node — the plugin is declarative — but the manifest is parsed by the

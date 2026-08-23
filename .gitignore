@@ -8,3 +8,5 @@ tests/**/*.html
 tests/**/*.pdf
 dist/
 tests/**/published/
+.coverage
+.coverage.*

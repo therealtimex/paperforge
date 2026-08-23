@@ -62,6 +62,9 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Install coverage
+        run: python3 -m pip install --disable-pip-version-check "coverage==7.15.4"
+
       - name: Compile every module
         run: python3 -m compileall -q paperforge
 
@@ -79,13 +82,22 @@ jobs:
         run: node scripts/check-plugin-manifest.mjs
 
       - name: Plugin bundle, references and version
-        run: bin/paperforge plugin --check
+        run: python3 -m coverage run bin/paperforge plugin --check
 
       # The hard-link publish path cannot be reached from a fixture: there is no
       # RealtimeX host on a runner. This drives it against a temporary storage
       # root, including the detached-link case that silently serves stale content.
       - name: Publishing unit checks
-        run: python3 tests/unit_publish.py
+        run: python3 -m coverage run tests/unit_publish.py
+
+      # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-contract
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
 
   documents:
     name: Documents (${{ matrix.name }})
@@ -112,7 +124,15 @@ jobs:
           typst-version: ${{ env.TYPST_VERSION }}
 
       - name: Build and verify
-        run: bin/paperforge all --config "$PWD/${{ matrix.project }}/documents.toml"
+        run: python3 -m coverage run bin/paperforge all --config "$PWD/${{ matrix.project }}/documents.toml"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.name }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
 
   package:
     name: Plugin bundle
@@ -161,7 +181,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    needs: [plan, contract, documents, package]
+    needs: [plan, contract, documents, coverage, package]
     # always() lets this job evaluate the results explicitly. Without it a
     # skipped gate is indistinguishable from a passed one.
     if: >-
@@ -169,6 +189,7 @@ jobs:
       github.ref_type == 'tag' &&
       needs.contract.result == 'success' &&
       needs.documents.result == 'success' &&
+      needs.coverage.result == 'success' &&
       needs.package.result == 'success'
     runs-on: ubuntu-latest
     permissions:
@@ -191,3 +212,30 @@ jobs:
             dist/paperforge-plugin-*.zip
             dist/SHA256SUMS.txt
           generate_release_notes: true
+
+  # The overall quality gate. The fixtures run as parallel jobs, so no single
+  # job sees the whole picture; this combines their data and holds line and
+  # branch coverage to a floor. Two numbers rather than one, because a combined
+  # figure lets branch coverage rot while line coverage carries the average -
+  # and the defects here have been branch-shaped.
+  coverage:
+    name: Quality gate
+    needs: [contract, documents]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install coverage
+        run: python3 -m pip install --disable-pip-version-check "coverage==7.15.4"
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+
+      - name: Combine and enforce the floors
+        run: python3 scripts/check-coverage.py

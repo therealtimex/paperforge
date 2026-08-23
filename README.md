@@ -115,7 +115,8 @@ project. The English fixture is the check that no Vietnamese assumption has
 crept back in — a second language is the only real proof.
 
 CI runs every fixture as its own matrix job, so a failure names the language
-that broke. See `.github/workflows/`.
+that broke, then combines their coverage into one gate that holds line and
+branch coverage to a floor. See `.github/workflows/`.
 
 ## Releasing
 

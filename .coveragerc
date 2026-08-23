@@ -1,0 +1,15 @@
+# Coverage is measured over the whole CI suite, not one job: the fixtures run
+# as parallel matrix jobs, each writes its own data file, and the gate combines
+# them. `parallel` is what makes that safe.
+[run]
+branch = True
+source = paperforge
+parallel = True
+omit =
+    */vendor/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError

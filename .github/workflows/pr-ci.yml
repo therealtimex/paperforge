@@ -132,7 +132,7 @@ jobs:
   # and the defects here have been branch-shaped.
   coverage:
     name: Quality gate
-    needs: [contract, documents]
+    needs: [contract, documents, scaffold]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -151,3 +151,36 @@ jobs:
 
       - name: Combine and enforce the floors
         run: python3 scripts/check-coverage.py
+
+  # `init` is the first thing a new user runs, and the README states an
+  # acceptance criterion for it - "a freshly scaffolded project passes
+  # `paperforge all` clean" - that nothing checked. A documented promise no
+  # test makes is the kind of claim this repo gates against everywhere else.
+  scaffold:
+    name: Scaffold acceptance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          typst-version: ${{ env.TYPST_VERSION }}
+
+      - name: Scaffold a project in two languages and four publications
+        run: |
+          python3 -m coverage run bin/paperforge init \
+            --into "$RUNNER_TEMP/scaffolded" --slug ci-check \
+            --title "Scaffold acceptance check" --languages en,vi \
+            --publications report,annex,brief,deck \
+            --organisation "Paperforge" --publisher "Paperforge Research" --no-git
+
+      - name: A fresh project must pass the whole chain clean
+        run: python3 -m coverage run bin/paperforge all --config "$RUNNER_TEMP/scaffolded/documents.toml"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-scaffold
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1

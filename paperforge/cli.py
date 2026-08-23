@@ -492,7 +492,7 @@ def main(argv=None):
         print('prepared %s' % target)
         for w in written:
             print('  %s' % w)
-        print('\nnext: cd %s && pf all' % target)
+        print('\nnext: paperforge all --config %s/documents.toml' % target)
         return 0
 
     if a.command == 'plugin':

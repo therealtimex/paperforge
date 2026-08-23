@@ -9,7 +9,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from . import browser
+from . import browser, citations as cite_mod, maths as maths_mod
 
 VOID = {'br', 'hr', 'meta', 'img', 'link', 'input', 'source', 'col', 'area', 'base',
         'wbr', 'embed', 'path', 'circle', 'line', 'rect', 'polygon', 'polyline',
@@ -52,18 +52,33 @@ def coverage(html, *sources):
     for path in sources:
         if not path:
             continue
-        fenced = False
+        fenced = display = False
         for n, line in enumerate(Path(path).read_text(encoding='utf-8').split('\n'), 1):
             s = line.strip()
             if s.startswith('```'):
                 fenced = not fenced
                 continue
-            if fenced or not s or set(s) <= set('-*_|: '):
+            # a display block writes its $$ fences on their own lines, so the
+            # expression between them is never seen as maths by a line-at-a-time
+            # substitution - it has to be tracked like a code fence
+            if s == '$$':
+                display = not display
+                continue
+            if fenced or display or not s or set(s) <= set('-*_|: '):
                 continue
             t = re.sub(r'^\s*(#{1,6}|[-*+]|\d+\.|>)\s*', '', s)
             t = re.sub(r'\s*\{[^{}]*\}\s*$', '', t)   # explicit heading attributes
             t = re.sub(r'\[!\w+\]', '', t)
             t = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', t)
+            # Maths renders as an SVG image and a citation renders as the
+            # formatted marker the bibliography produces, so neither survives
+            # as source text. Probing for them reported every maths-bearing
+            # line as missing content - which is what happened the first time
+            # any fixture used maths, because until then no document exercised
+            # this check and that feature together.
+            t = maths_mod.DISPLAY_RE.sub(' ', t)
+            t = maths_mod.INLINE_RE.sub(' ', t)
+            t = cite_mod.CITE_RE.sub(' ', t)
             t = re.sub(r'<br\s*/?>', ' ', t)
             t = t.replace('**', '').replace('*', '').replace('`', '').replace('|', ' ')
             t = re.sub(r'\s+', ' ', ihtml.unescape(t)).strip()

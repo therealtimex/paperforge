@@ -14,24 +14,33 @@ import subprocess
 import sys
 from pathlib import Path
 
-FLOORS = {'line': 75.0, 'branch': 60.0}
+FLOORS = {'line': 80.0, 'branch': 65.0}
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
+    # combine sweeps every .coverage.* file, so anything else named that way -
+    # including this script's own JSON output, once - is fed to it as a database
+    (ROOT / 'coverage-report.json').unlink(missing_ok=True)
     combine = subprocess.run([sys.executable, '-m', 'coverage', 'combine'],
                              cwd=ROOT, capture_output=True, text=True)
-    if combine.returncode != 0 and 'No data to combine' not in combine.stderr:
-        print(combine.stderr.strip())
+    combined = (ROOT / '.coverage').exists()
+    # combine deletes the parallel files it consumes, so a second run finds
+    # nothing to combine and exits non-zero with the message on stdout. That is
+    # only a failure if there is no combined data either - which CI would never
+    # have shown, because there it runs exactly once.
+    output = (combine.stderr + combine.stdout).strip()
+    if combine.returncode != 0 and not combined:
+        print(output or 'coverage combine failed')
         return 1
-    if not (ROOT / '.coverage').exists():
+    if not combined:
         print('no coverage data; run the suite under `coverage run` first')
         return 1
 
-    subprocess.run([sys.executable, '-m', 'coverage', 'json', '-o', '.coverage.json', '-q'],
+    subprocess.run([sys.executable, '-m', 'coverage', 'json', '-o', 'coverage-report.json', '-q'],
                    cwd=ROOT, check=True)
     import json
-    data = json.loads((ROOT / '.coverage.json').read_text(encoding='utf-8'))
+    data = json.loads((ROOT / 'coverage-report.json').read_text(encoding='utf-8'))
     totals = data['totals']
     actual = {
         'line': 100.0 * totals['covered_lines'] / totals['num_statements'],

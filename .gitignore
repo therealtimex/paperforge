@@ -10,3 +10,4 @@ dist/
 tests/**/published/
 .coverage
 .coverage.*
+coverage-report.json

@@ -99,8 +99,16 @@ jobs:
 
       # Refuses on a stale bundle, a dead reference link or a version mismatch,
       # so the zip cannot be built from a tree that would fail the gate.
+      # workflow_dispatch runs this whole pipeline as a rehearsal from a branch,
+      # where there is no tag to match; only a tag run asserts the name.
       - name: Package
-        run: bin/paperforge plugin --package dist --tag "${{ github.ref_name }}"
+        run: |
+          set -euo pipefail
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            bin/paperforge plugin --package dist --tag "${{ github.ref_name }}"
+          else
+            bin/paperforge plugin --package dist
+          fi
 
       # Unpack the zip the way a user would and build a document *from the
       # unpacked copy*. A zip that unpacks is not a plugin that works: the

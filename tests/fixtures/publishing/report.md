@@ -10,7 +10,8 @@
 ## CONTENTS
 
 1. **Context**
-2. **Conclusion**
+2. **Markup**
+3. **Conclusion**
 
 ---
 
@@ -23,6 +24,43 @@ the manifest says what may ship, and lint says whether it is fit to.
 The directory target copies the built artefact into a plain folder, which is
 what a static host needs and what continuous integration can verify without a
 RealTimeX workspace to serve from.
+
+## Markup {.part}
+
+This section exists so the Typst emitter renders the whole markdown grammar,
+not just paragraphs. Only two fixtures declare a print edition, and both were
+plain prose, so lists, tables, code blocks and callouts had never been set in
+type at all — which is the exact shape of the defect that once put an
+unrendered line-break tag on a printed page.
+
+An ordered list:
+
+1. The manifest says what may ship.
+2. Lint says whether it is fit to.
+3. The gate refuses anything blocking.
+
+A bulleted list with a nested level:
+
+- Reading edition
+  - self-contained HTML
+  - no network at view time
+- Print edition
+  - Typst, footnotes at the foot of the page
+
+> [!NOTE]
+> A callout must not split across a page, and must render in both editions.
+
+| Stage | Refuses on |
+|:---|:---|
+| figures | a number disagreeing between documents |
+| lint | internal machinery reaching a reader |
+| verify | markup that never rendered |
+
+A fenced block is set as a code sample, never executed:
+
+```bash
+paperforge all --config documents.toml
+```
 
 ## Conclusion {.part}
 

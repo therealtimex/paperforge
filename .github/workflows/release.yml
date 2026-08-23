@@ -90,6 +90,11 @@ jobs:
       - name: Publishing unit checks
         run: python3 -m coverage run tests/unit_publish.py
 
+      # manifest resolution and the errors it is documented to raise; no fixture
+      # reaches them, because CI always passes --config and never mistypes a type
+      - name: Manifest resolution unit checks
+        run: python3 -m coverage run tests/unit_cli.py
+
       # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
       - uses: actions/upload-artifact@v4
         with:

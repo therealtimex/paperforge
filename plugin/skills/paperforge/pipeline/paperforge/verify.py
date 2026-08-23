@@ -40,9 +40,14 @@ class _Balance(HTMLParser):
             self.stack.pop()
 
 
-def _visible(html):
+def _visible(html, keep_code=True):
     text = re.sub(r'<(style|script)[^>]*>.*?</\1>', ' ', html, flags=re.S)
     text = re.sub(r'<svg.*?</svg>', ' ', text, flags=re.S)
+    if not keep_code:
+        # a code span holds text the author deliberately wrote as literal
+        # markup; reading it back as an unrendered tag is the checker failing
+        # to tell "this rendered correctly" from "this did not render"
+        text = re.sub(r'<pre>.*?</pre>|<code>.*?</code>', ' ', text, flags=re.S)
     return re.sub(r'\s+', ' ', ihtml.unescape(re.sub(r'<[^>]+>', ' ', text)))
 
 
@@ -109,7 +114,7 @@ def check(html_path, *sources):
         'broken_anchors': [l for l in links if l not in ids],
         'anchors': len(links),
         'external_refs': sorted(set(re.findall(r'(?:src|href)="(https?://[^"]+)"', html))),
-        'leaks': leaks(_visible(html), Path(html_path).name),
+        'leaks': leaks(_visible(html, keep_code=False), Path(html_path).name),
         'diagrams': html.count('class="dgm"'), 'tables': html.count('<table>'),
     }
 

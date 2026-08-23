@@ -9,12 +9,18 @@ nothing, an emitter that handled the explicit case and not the inferred one.
 The floors sit just under what the suite actually achieves, so they ratchet
 against regression rather than describing an ambition. Raise them when the
 suite improves; lowering one is a decision that should be visible in a diff.
+
+They are deliberately not the same number. Branch coverage is harder to earn
+honestly: past a point the remaining exits are error paths that need a
+contrived input to reach, and a floor that forces those into existence buys
+tests written to move a number rather than to catch anything. Signals sets
+branches at 48 against lines at 80 for the same reason.
 """
 import subprocess
 import sys
 from pathlib import Path
 
-FLOORS = {'line': 80.0, 'branch': 65.0}
+FLOORS = {'line': 84.0, 'branch': 70.0}
 ROOT = Path(__file__).resolve().parents[1]
 
 

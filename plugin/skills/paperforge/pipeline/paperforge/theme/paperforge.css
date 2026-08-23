@@ -297,6 +297,10 @@ body.doc-brief figure.diagram { margin:18px 0 22px; padding:16px 12px 8px; }
   figure.diagram .dgm, figure.diagram .dgm-in, figure.diagram svg { break-inside:avoid; }
   .table-frame { break-inside:avoid; }
   table, figure.diagram, .callout { break-inside:avoid; }
+  /* a code sample stranded alone on a page, cut off from the sentence that
+     introduces it: keep it whole, and keep it with what precedes it */
+  pre { break-inside:avoid; break-before:avoid; }
+  main p, main li { orphans:2; widows:2; }
   /* on paper there is nothing to scroll: scale wide diagrams down so they are not clipped */
   figure.diagram, figure.diagram .dgm { overflow:visible; }
   figure.diagram .dgm-in { min-width:0 !important; }

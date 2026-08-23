@@ -1,0 +1,34 @@
+# Indonesian conventions, declared by the research team.
+# No shipped profile exists for Indonesian; this file is the whole declaration.
+lang = "id"
+script = "latin"
+direction = "ltr"
+fold_diacritics = true
+
+[labels]
+figure = "Gambar %d"
+annex_figure = "Gambar A%d"
+annex_badge = "Lampiran"
+annex_divider = "LAMPIRAN"
+annex_entry = "Lampiran"
+short_document = "Dokumen ringkas"
+document = "DOKUMEN"
+deck = "PRESENTASI"
+
+[ui]
+contents_button = "Daftar Isi"
+print_button = "Cetak / Simpan PDF"
+nav_title = "Daftar Isi"
+scroll_hint = "Geser untuk melihat seluruh tabel"
+footer_note = "Untuk keperluan riset dan perencanaan kebijakan."
+
+[structure]
+contents_heading = "DAFTAR ISI"
+part_banner = "^(BAGIAN|KESIMPULAN|DAFTAR ISI|RINGKASAN)"
+part_pattern = '^bagian\s+([ivx]+)\s*[:.]?\s*(.*)$'
+section_pattern = '^bagian\s+(\d+)[.:]'
+part_word = "bagian"
+section_word = "bagian"
+annex_word = "lampiran"
+annex_anchor = "lampiran"
+annex_reference = "Lampiran Bagian"

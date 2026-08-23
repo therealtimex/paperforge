@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="{{LANG}}" dir="{{DIR}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{SHORT}} — Báo cáo nghiên cứu chính sách</title>
+<meta name="description" content="{{TITLE}}">
+<style>
+{{CSS}}
+</style>
+<style>{{THEME_OVERRIDE}}</style>
+</head>
+<body class="{{BODYCLASS}}">
+
+<div class="topbar">
+  <span class="brand">{{ORGANISATION}}</span>
+  <span class="doc">{{SHORT}}</span>
+  <button class="menu-toggle" id="menu-toggle" aria-expanded="false" aria-controls="toc">{{UI_CONTENTS}}</button>
+  <button onclick="window.print()">{{UI_PRINT}}</button>
+</div>
+<div id="progress"></div>
+
+<header class="cover">
+  {{KIND}}
+  <h1>{{HEADING}}</h1>
+  <div class="rule"></div>
+  {{LEDE}}
+{{META}}
+</header>
+
+<div class="shell">
+  <nav class="toc" id="toc">
+    <h2>{{UI_NAV_TITLE}}</h2>
+{{NAV}}
+  </nav>
+  <main>
+{{BODY}}
+  </main>
+</div>
+
+<footer>
+  <p>© 2026 {{PUBLISHER}}<br>
+  {{UI_FOOTER}}</p>
+</footer>
+
+<script>
+  // reading progress
+  const bar = document.getElementById('progress');
+  const onScroll = () => {
+    const h = document.documentElement.scrollHeight - window.innerHeight;
+    bar.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+  };
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  // mobile drawer: toggle, close on choosing a destination, close on Escape
+  const nav = document.getElementById('toc');
+  const toggle = document.getElementById('menu-toggle');
+  const setOpen = on => {
+    nav.classList.toggle('open', on);
+    toggle.setAttribute('aria-expanded', on ? 'true' : 'false');
+  };
+  toggle.addEventListener('click', () => setOpen(!nav.classList.contains('open')));
+  nav.addEventListener('click', e => { if (e.target.closest('a')) setOpen(false); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') setOpen(false); });
+  document.addEventListener('click', e => {
+    if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== toggle) setOpen(false);
+  });
+
+  // a wide table or diagram scrolls sideways; say so, but only where it is true
+  const scrollers = [...document.querySelectorAll('.table-wrap, figure.diagram .dgm')];
+  const markScrollers = () => {
+    scrollers.forEach(el => {
+      const frame = el.closest('.table-frame, figure.diagram');
+      const wide = el.scrollWidth > el.clientWidth + 4;
+      frame.classList.toggle('is-scrollable', wide);
+      let hint = frame.previousElementSibling;
+      if (wide && !(hint && hint.classList.contains('scroll-hint'))) {
+        hint = document.createElement('p');
+        hint.className = 'scroll-hint';
+        hint.textContent = '{{UI_SCROLL_HINT}}';
+        frame.parentNode.insertBefore(hint, frame);
+      } else if (!wide && hint && hint.classList.contains('scroll-hint')) {
+        hint.remove();
+      }
+    });
+  };
+  markScrollers();
+  addEventListener('resize', markScrollers, { passive: true });
+  scrollers.forEach(el => el.addEventListener('scroll', () => {
+    const frame = el.closest('.table-frame, figure.diagram');
+    frame.classList.toggle('scrolled-end', el.scrollLeft + el.clientWidth >= el.scrollWidth - 4);
+  }, { passive: true }));
+
+  // scroll-spy on the sidebar
+  const links = new Map();
+  document.querySelectorAll('nav.toc a').forEach(a => links.set(a.getAttribute('href').slice(1), a));
+  const heads = [...document.querySelectorAll('main h2[id], main h3[id]')].filter(h => links.has(h.id));
+  const spy = () => {
+    let current = heads[0];
+    for (const h of heads) {
+      if (h.getBoundingClientRect().top <= 96) current = h; else break;
+    }
+    links.forEach(a => a.classList.remove('active'));
+    if (current) {
+      const a = links.get(current.id);
+      if (a) { a.classList.add('active'); }
+    }
+  };
+  document.addEventListener('scroll', spy, { passive: true });
+  spy();
+</script>
+</body>
+</html>

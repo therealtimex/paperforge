@@ -1,0 +1,30 @@
+# One work, two editions. Language is a property of the edition, not a
+# separate collection, so shared settings are declared once and every check
+# knows which language it is reading.
+[defaults]
+organisation = "Paperforge"
+publisher = "Paperforge Research"
+paper = "A4"
+
+[[collection]]
+slug = "bilingual"
+root = "."
+figures = "figures.toml"
+
+  [[collection.document]]
+  id = "main-report"
+  type = "report"
+  page_numbers = true
+  # contents_heading is not repeated here: each profile already declares it
+
+    [collection.document.vi]
+    source = "bao-cao.md"
+    publish = false
+
+    [collection.document.en]
+    source = "report.md"
+    publish = false
+
+[internal]
+files = []
+reason = "fixture"

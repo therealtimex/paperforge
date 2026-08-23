@@ -1,0 +1,62 @@
+# Publication manifest for Phát triển các công nghệ chiến lược đến năm 2030.
+#
+# A document ships only if it appears here with publish = true.
+# Process records belong under [internal] and can never be published.
+
+[defaults]
+organisation = "Paperforge"
+publisher = "Paperforge — Nhóm Nghiên cứu"
+paper = "A4"
+# footer_note = "..."     # overrides the profile default on every document
+
+[[collection]]
+slug = "vn-strategic-tech-2030"
+root = "."
+figures = "figures.toml"
+
+  [[collection.document]]
+  id = "report"
+  type = "report"
+  page_numbers = true
+  # contents_heading comes from the profile; override only if it differs
+
+    [collection.document.vi]
+    source = "vn-strategic-tech-2030-report.vi.md"
+    annex = "vn-strategic-tech-2030-annex.vi.md"      # embedded inline, not published alone
+    publish = false        # flip to true when this edition is ready
+
+    [collection.document.en]
+    source = "vn-strategic-tech-2030-report.en.md"
+    annex = "vn-strategic-tech-2030-annex.en.md"      # embedded inline, not published alone
+    publish = false        # flip to true when this edition is ready
+
+  [[collection.document]]
+  id = "brief"
+  type = "brief"
+  page_numbers = false
+
+    [collection.document.vi]
+    source = "vn-strategic-tech-2030-brief.vi.md"
+    publish = false        # flip to true when this edition is ready
+
+    [collection.document.en]
+    source = "vn-strategic-tech-2030-brief.en.md"
+    publish = false        # flip to true when this edition is ready
+
+  [[collection.document]]
+  id = "deck"
+  type = "deck"
+  page_numbers = false
+
+    [collection.document.vi]
+    source = "vn-strategic-tech-2030-deck.vi.md"
+    publish = false        # flip to true when this edition is ready
+
+    [collection.document.en]
+    source = "vn-strategic-tech-2030-deck.en.md"
+    publish = false        # flip to true when this edition is ready
+
+[internal]
+# Never publishable. Add process records here as they appear.
+files = []
+reason = "process records: review, editorial notes, approvals"

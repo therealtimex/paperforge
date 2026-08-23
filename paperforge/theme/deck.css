@@ -1,0 +1,81 @@
+/* Paperforge deck theme.
+   Same tokens as the document theme; typography sized for a projector rather
+   than a page. Fonts stay in the Vietnamese-safe stack: several common serifs
+   silently drop tone marks on Ơ and Ư (see docs/DESIGN.md). */
+:root {
+  --navy:#0b2545; --navy-2:#13315c; --navy-3:#1c4a80;
+  --amber:#c2761a; --amber-soft:#fdf3e3;
+  --ink:#1b2430; --ink-soft:#44506180; --muted:#6b7789;
+  --paper:#ffffff; --line:#dfe4ec;
+  --sans:"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
+  --serif:Georgia,"Noto Serif","Times New Roman",Times,serif;
+}
+
+.reveal { font-family:var(--sans); font-size:30px; color:var(--ink); }
+.reveal .slides { text-align:left; }
+/* content-box plus padding pushed sections past the 1280px canvas, cutting
+   text off at the right edge */
+.reveal .slides section { box-sizing:border-box; width:100%; height:100%;
+  padding:30px 54px; }
+.reveal .slides section * { box-sizing:border-box; }
+
+.reveal h1, .reveal h2, .reveal h3 { font-family:var(--serif); color:var(--navy);
+  text-transform:none; letter-spacing:-.01em; line-height:1.18; margin:0 0 .5em; }
+.reveal h2 { font-size:1.42em; padding-bottom:.24em; border-bottom:3px solid var(--amber); }
+.reveal h3 { font-size:1.05em; color:var(--navy-3); }
+.reveal h4 { font-size:.9em; color:var(--navy-2); font-family:var(--sans); margin:.6em 0 .3em; }
+.reveal p, .reveal li { line-height:1.45; }
+.reveal strong { color:var(--navy); }
+.reveal em { color:var(--ink); }
+.reveal ul, .reveal ol { margin-left:1.1em; display:block; }
+.reveal li { margin:.34em 0; }
+.reveal ul li::marker { color:var(--amber); }
+.reveal ol li::marker { color:var(--navy-3); font-weight:700; }
+.reveal a { color:var(--navy-3); text-decoration:underline; }
+.reveal code { font-size:.82em; background:#eef2f8; border:1px solid var(--line);
+  border-radius:4px; padding:1px 5px; color:#8a4d09; }
+
+/* title slide */
+.reveal .deck-title { display:flex; flex-direction:column; justify-content:center;
+  background:radial-gradient(1200px 420px at 50% -10%,#1c4a80 0%,transparent 60%),
+             linear-gradient(150deg,#071b36 0%,#0b2545 45%,#13315c 100%);
+  color:#fff; margin:-1px; padding:60px 70px; }
+.reveal .deck-title h1 { color:#fff; font-size:1.55em; max-width:22ch; }
+.reveal .deck-kind { color:#f4c77b; font-size:.5em; font-weight:700; letter-spacing:.2em;
+  text-transform:uppercase; margin:0 0 .8em; }
+/* the title slide is dark: italics must not inherit the ink colour */
+.reveal .deck-title, .reveal .deck-lede, .reveal .deck-lede p,
+.reveal .deck-lede em, .reveal .deck-lede strong { color:#dbe6f5; }
+.reveal .deck-lede { font-size:.56em; max-width:46ch; }
+.reveal .deck-lede p { margin:.2em 0; }
+.reveal .deck-meta { display:grid; grid-template-columns:auto 1fr; gap:4px 16px;
+  font-size:.42em; color:#8fa9cc; margin-top:1.6em; max-width:40ch; }
+.reveal .deck-meta dt { font-weight:700; }
+.reveal .deck-meta dd { color:#e8eef8; margin:0; }
+
+/* tables: readable from a distance or not shown at all */
+.reveal table { font-size:.62em; border-collapse:collapse; width:100%; }
+.reveal thead th { background:var(--navy); color:#fff; padding:8px 10px; text-align:left;
+  font-weight:650; }
+.reveal tbody td { padding:7px 10px; border-top:1px solid var(--line); vertical-align:top; }
+.reveal tbody tr:nth-child(even) { background:#f6f9fd; }
+.reveal .table-frame, .reveal .table-wrap { border:0; margin:.3em 0; overflow:visible; }
+.reveal .scroll-hint { display:none; }
+
+/* diagrams carry over from the report as inline SVG */
+.reveal figure.diagram { background:none; border:0; margin:.2em 0; padding:0; text-align:center; }
+/* fill the slide rather than sitting at the diagram's natural size */
+.reveal figure.diagram svg { width:100%; max-width:100%; max-height:470px; height:auto; }
+.reveal figcaption { font-size:.42em; color:var(--muted); font-style:italic; margin-top:.3em; }
+.reveal .callout { background:var(--amber-soft); border-left:5px solid var(--amber);
+  border-radius:8px; padding:.5em .7em; font-size:.72em; }
+.reveal .anchor { display:none; }
+
+.reveal .progress { color:var(--amber); }
+.reveal .slide-number { background:rgba(11,37,69,.75); font-size:.5em; }
+
+@media print {
+  .reveal .deck-title, .reveal thead th {
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+}

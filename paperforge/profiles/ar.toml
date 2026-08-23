@@ -1,0 +1,51 @@
+# Arabic research-document conventions.
+# Right-to-left: the theme mirrors the sidebar, rules, banners and table
+# alignment. Diacritics are meaningful and must not be folded away.
+lang = "ar"
+script = "arabic"
+direction = "rtl"
+fold_diacritics = false
+
+[fonts]
+serif = '"Noto Naskh Arabic","Amiri","Times New Roman",serif'
+sans  = '"Noto Sans Arabic","Dubai","Segoe UI",Tahoma,sans-serif'
+
+[labels]
+references      = "المراجع"
+figure          = "شكل %d"
+annex_figure    = "شكل أ%d"
+annex_badge     = "ملحق"
+annex_divider   = "الملحق"
+annex_entry     = "ملحق"
+short_document  = "وثيقة قصيرة"
+document        = "وثيقة"
+deck            = "عرض تقديمي"
+
+[ui]
+contents_button = "المحتويات"
+print_button    = "طباعة / حفظ PDF"
+nav_title       = "المحتويات"
+scroll_hint     = "اسحب أفقيًا لعرض الجدول كاملًا"
+footer_note     = "للتداول لأغراض البحث السياساتي والتخطيط."
+
+[structure]
+contents_heading = "المحتويات"
+part_banner      = "^(الجزء|الخاتمة|المحتويات|الملخص التنفيذي)"
+part_pattern     = '^الجزء\s+([^\s:.]+)\s*[:.]?\s*(.*)$'
+section_pattern  = '^القسم\s+(\d+)[.:]?'
+part_word        = "الجزء"
+section_word     = "القسم"
+annex_word       = "ملحق"
+annex_anchor     = "annex"
+annex_reference  = "الملحق القسم"
+
+[scaffold]
+date_format = "%m/%Y"
+prepared_by = "الجهة المعدة"
+completed   = "تاريخ الإنجاز"
+summary     = "الملخص التنفيذي"
+section_one = "السياق"
+section_two = "النتائج"
+conclusion  = "الخاتمة"
+sources     = "المصادر والمنهجية"
+prose       = "استبدل هذه الفقرة بمضمون القسم."

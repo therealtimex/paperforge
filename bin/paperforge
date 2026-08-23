@@ -1,0 +1,11 @@
+#!/usr/bin/env python3
+"""Paperforge pipeline entry point.
+
+Named in full rather than abbreviated: `pf` is the BSD/macOS packet filter, and
+a two-letter command that might reach PATH should not collide with a firewall.
+"""
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from paperforge.cli import main
+sys.exit(main())

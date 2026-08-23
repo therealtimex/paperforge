@@ -1,0 +1,52 @@
+# Vietnamese policy-document conventions.
+# Structural words are matched after diacritics are stripped and case folded,
+# so they are written here in that normalised form.
+lang = "vi"
+script = "latin"
+direction = "ltr"
+fold_diacritics = true   # PHẦN -> phan for structural matching
+
+[fonts]
+# Palatino, Iowan and Charter silently drop tone marks on Ơ and Ư
+serif = 'Georgia,"Noto Serif","Times New Roman",Times,serif'
+sans  = '"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif'
+
+
+[labels]
+references      = "Tài liệu tham khảo"
+figure          = "Sơ đồ %d"
+annex_figure    = "Sơ đồ A%d"
+annex_badge     = "Phụ lục đính kèm"
+annex_divider   = "PHỤ LỤC ĐÍNH KÈM"
+annex_entry     = "Phụ lục"
+short_document  = "Tài liệu ngắn"
+document        = "TÀI LIỆU"
+deck            = "TRÌNH BÀY"
+
+[ui]
+contents_button = "Mục lục"
+print_button    = "In / Lưu PDF"
+nav_title       = "Nội dung tài liệu"
+scroll_hint     = "Vuốt ngang để xem đầy đủ"
+footer_note     = "Văn bản lưu hành phục vụ công tác hoạch định chính sách."
+
+[structure]
+contents_heading = "MỤC LỤC"
+# headings that open a part and get the banner treatment
+part_banner      = "^(PHẦN|KẾT LUẬN|MỤC LỤC|\\d+\\.\\s*TÓM)"
+part_word        = "phan"        # "PHẦN III" -> part III
+section_word     = "muc"         # "Mục 4"    -> annex section 4
+annex_word       = "phu luc"
+annex_anchor     = "phu-luc"
+annex_reference  = "Phụ lục Mục" # inline cross-reference, e.g. *Phụ lục Mục 6.2*
+
+[scaffold]
+date_format = "Tháng %m/%Y"
+prepared_by = "Cơ quan thực hiện"
+completed   = "Thời gian hoàn thành"
+summary     = "Tóm tắt điều hành"
+section_one = "Bối cảnh"
+section_two = "Phát hiện chính"
+conclusion  = "Kết luận"
+sources     = "Nguồn và phương pháp"
+prose       = "Thay đoạn này bằng nội dung của mục."

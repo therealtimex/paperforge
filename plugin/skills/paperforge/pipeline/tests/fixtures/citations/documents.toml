@@ -1,0 +1,23 @@
+[defaults]
+profile = "vi"
+organisation = "Paperforge"
+publisher = "Paperforge"
+
+[[collection]]
+slug = "backtest-cites"
+root = "."
+profile = "vi"
+
+  [[collection.document]]
+  id = "report"
+  type = "report"
+  page_numbers = true
+  bibliography = "references.bib"
+  citation_style = "apa"
+  pdf = "typst"
+  source = "report.md"
+  publish = false
+
+[internal]
+files = []
+reason = "back test"

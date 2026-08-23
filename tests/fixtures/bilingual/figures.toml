@@ -1,0 +1,11 @@
+# One canonical value, written differently in each language.
+[[figure]]
+id      = "engineers"
+label   = "Semiconductor engineers trained by 2030"
+context = "kỹ sư|engineers"
+pattern = '\d{2}[.,]\d{3}'
+accept  = ["50.000"]
+
+  [figure.surface]
+  vi = ["50.000"]
+  en = ["50,000"]

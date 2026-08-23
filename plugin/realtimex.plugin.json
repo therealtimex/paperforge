@@ -1,0 +1,19 @@
+{
+  "id": "ai.realtimex.paperforge",
+  "name": "paperforge",
+  "displayName": "Paperforge Documents",
+  "version": "1.0.0",
+  "description": "Author, render, check and publish research documents — reports, policy briefs, annexes and slide decks — from markdown. Bundles the build pipeline and the conventions that keep published documents self-contained, correctly paginated and free of internal machinery.",
+  "author": "Paperforge",
+  "license": "MIT",
+  "capabilities": {
+    "skills": [
+      {
+        "name": "paperforge",
+        "displayName": "Paperforge Documents",
+        "description": "Produce and publish research documents from markdown: reports, briefs, annexes and presentations.",
+        "directory": "skills/paperforge"
+      }
+    ]
+  }
+}

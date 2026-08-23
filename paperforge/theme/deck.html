@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="{{LANG}}" dir="{{DIR}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>{{TITLE}}</title>
+<style>{{RESET}}</style>
+<style>{{REVEAL_CSS}}</style>
+<style>{{THEME_CSS}}</style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+{{SLIDES}}
+  </div>
+</div>
+<script>{{REVEAL_JS}}</script>
+<script>
+  // Append ?print-pdf to the URL to export; Chrome then prints one slide per page.
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    controls: true,
+    progress: true,
+    center: false,
+    transition: 'fade',
+    width: 1280,
+    height: 720,
+    margin: 0.06,
+    minScale: 0.2,
+    maxScale: 1.6,
+    pdfSeparateFragments: false
+  });
+</script>
+</body>
+</html>

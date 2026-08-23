@@ -1,0 +1,14 @@
+# Canonical figures for this project.
+#
+# The same value gets restated across documents; correcting one leaves the
+# others silently disagreeing. Declare a value here the moment it appears in
+# more than one place, and every document is checked against it.
+#
+# Values are checked, never substituted, so the prose stays natural.
+#
+# [[figure]]
+# id      = "growth-target"
+# label   = "Headline growth target"
+# context = "growth|GDP"                  # a line about this fact matches this
+# pattern = '(?:>=|at least)\s*\d+\s*%'   # what a stated value looks like
+# accept  = [">= 10%", "at least 10%"]    # the forms that are correct

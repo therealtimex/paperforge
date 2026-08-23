@@ -1,0 +1,52 @@
+# Chinese research-document conventions.
+# Two things differ structurally from Latin script: there are no word spaces,
+# and sections are numbered 第三部分 rather than "PART III".
+lang = "zh"
+script = "cjk"
+direction = "ltr"
+fold_diacritics = false      # nothing to fold; folding would not help matching
+word_units = "characters"    # no spaces: count characters, not whitespace runs
+
+[fonts]
+serif = '"Songti SC","Noto Serif CJK SC","Source Han Serif SC",serif'
+sans  = '"PingFang SC","Noto Sans CJK SC","Microsoft YaHei","Hiragino Sans GB",sans-serif'
+
+[labels]
+references      = "参考文献"
+figure          = "图 %d"
+annex_figure    = "图 A%d"
+annex_badge     = "附件"
+annex_divider   = "附件"
+annex_entry     = "附件"
+short_document  = "简短文件"
+document        = "文件"
+deck            = "演示文稿"
+
+[ui]
+contents_button = "目录"
+print_button    = "打印 / 存为 PDF"
+nav_title       = "目录"
+scroll_hint     = "横向滑动以查看完整表格"
+footer_note     = "供政策研究与规划使用。"
+
+[structure]
+contents_heading = "目录"
+part_banner      = "^(第[一二三四五六七八九十百\\d]+部分|结论|目录|执行摘要)"
+part_pattern     = '^第([一二三四五六七八九十百\d]+)部分\s*[:：.]?\s*(.*)$'
+section_pattern  = '^第([一二三四五六七八九十百\d]+)节[:：.]?'
+part_word        = "部分"
+section_word     = "节"
+annex_word       = "附件"
+annex_anchor     = "annex"
+annex_reference  = "附件第"
+
+[scaffold]
+date_format = "%Y年%m月"
+prepared_by = "编制单位"
+completed   = "完成时间"
+summary     = "执行摘要"
+section_one = "背景"
+section_two = "主要发现"
+conclusion  = "结论"
+sources     = "来源与方法"
+prose       = "请用本节的实质内容替换本段。"

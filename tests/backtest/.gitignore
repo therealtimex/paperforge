@@ -1,0 +1,3 @@
+# built artefacts are reproducible from the sources
+.cache/
+*.pdf

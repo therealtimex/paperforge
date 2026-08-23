@@ -3,15 +3,15 @@
   "name": "paperforge",
   "displayName": "Paperforge Documents",
   "version": "1.0.0",
-  "description": "Author, render, check and publish research documents — reports, policy briefs, annexes and slide decks — from markdown. Bundles the build pipeline and the conventions that keep published documents self-contained, correctly paginated and free of internal machinery.",
-  "author": "Paperforge",
+  "description": "Render, check and publish research documents — reports, policy briefs, annexes and slide decks — from markdown. Bundles the build pipeline and the conventions that keep published documents self-contained, correctly paginated and free of internal machinery. It renders and gates; it does not write content and does not decide what a document should say.",
+  "author": "RealTimeX",
   "license": "UNLICENSED",
   "capabilities": {
     "skills": [
       {
         "name": "paperforge",
         "displayName": "Paperforge Documents",
-        "description": "Produce and publish research documents from markdown: reports, briefs, annexes and presentations.",
+        "description": "Render, check and publish research documents from markdown: reports, briefs, annexes and presentations. Does not author them.",
         "directory": "skills/paperforge"
       }
     ]

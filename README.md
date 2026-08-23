@@ -110,4 +110,6 @@ assumption has crept back in — a second language is the only real proof.
 
 ## Licence
 
-MIT. See [LICENSE](LICENSE).
+Proprietary and confidential to RealTimeX — see [LICENSE](LICENSE). Vendored
+reveal.js remains MIT and is inlined into every generated deck; see
+[NOTICE](NOTICE).

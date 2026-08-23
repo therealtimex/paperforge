@@ -2,7 +2,7 @@
 name: paperforge
 description: Prepare, render, check and publish research documents — reports, policy briefs, annexes and presentations — from markdown. Use when starting a research project, authoring or rebuilding a report, brief or deck, or when a publication gate blocks a document. Renders and gates only; it does not write content and does not decide what a document should say.
 allowed-tools: Read, Write, Edit, Bash
-license: MIT
+license: UNLICENSED
 metadata:
   version: "2.0"
 ---

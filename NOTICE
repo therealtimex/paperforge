@@ -1,0 +1,22 @@
+Third-party components
+======================
+
+Paperforge itself is proprietary — see LICENSE. The components below are
+incorporated under their own terms, which are unaffected by that licence and
+must travel with any copy of this software or its output.
+
+reveal.js 5.2.0
+---------------
+Copyright (C) 2011-2024 Hakim El Hattab, https://hakim.se, and reveal.js
+contributors. MIT licensed; full text at paperforge/vendor/revealjs/LICENSE.
+
+Vendored at paperforge/vendor/revealjs and **inlined into every generated
+deck**, so a published presentation carries reveal.js under MIT. The copyright
+header is preserved in the inlined stylesheet and script, which is what the MIT
+licence requires; do not strip it when editing the deck theme.
+
+Build-time tools
+----------------
+Headless Chrome, Typst, Mermaid and pdfplumber are invoked during a build and
+are not redistributed here. Nothing from them is embedded in a published
+document except the SVG and PNG output that Paperforge generates.

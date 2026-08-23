@@ -55,17 +55,30 @@ def contents_pages(pages, doc, contents_anchor):
     block = re.sub(r'<span class="toc-pg">\d+</span>', '', doc[i:doc.find('<h2 ', i + 10)])
     labels = [norm(m.group(1))[:40] for m in
               re.finditer(r'<li>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)', block, re.S)]
-    labels = [l for l in labels if len(l) > 15]
+    # A fixed length floor here is the trap that has now bitten three separate
+    # checks: a legitimately short entry ("2. Sources") can never clear it. With
+    # every label filtered out, the search below scored every page zero and
+    # silently returned the cover - exempting the wrong page entirely. Drop the
+    # short ones only while enough remain to discriminate.
+    discriminating = [l for l in labels if len(l) > 15]
+    labels = discriminating if len(discriminating) >= 3 else [l for l in labels if l]
+    if not labels:
+        return set()
     hits = lambda t: sum(l in t for l in labels)
 
     start = max(range(len(pages)), key=lambda n: (hits(pages[n]), -n))
+    if not hits(pages[start]):          # the contents could not be located
+        return set()
+    # the run threshold scales for the same reason: with two entries, four is
+    # unreachable and the contents could never span a page
+    floor = max(2, min(4, len(labels)))
     run = {start}
     n = start + 1                       # the contents may run onto later pages
-    while n < len(pages) and hits(pages[n]) >= 4:
+    while n < len(pages) and hits(pages[n]) >= floor:
         run.add(n)
         n += 1
     n = start - 1                       # ...and may have begun on earlier ones
-    while n >= 0 and hits(pages[n]) >= 4:
+    while n >= 0 and hits(pages[n]) >= floor:
         run.add(n)
         n -= 1
     return run

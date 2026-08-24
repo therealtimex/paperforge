@@ -45,12 +45,12 @@ them automatically.
 bin/paperforge plugin --check
 node scripts/node-runtime-contract.mjs      # Node matches the RealtimeX host
 node scripts/check-plugin-manifest.mjs      # manifest matches the host contract
-python3 tests/unit_publish.py               # the hard-link path CI cannot reach
+for t in tests/unit_*.py; do python3 "$t"; done   # the gates' own rules
 
 # the whole suite under coverage, then the gate CI enforces
 rm -f .coverage .coverage.json
 python3 -m coverage run bin/paperforge plugin --check
-python3 -m coverage run tests/unit_publish.py
+for t in tests/unit_*.py; do python3 -m coverage run "$t"; done
 python3 -m coverage run bin/paperforge init --into /tmp/scaffolded --slug ci \
   --title Check --languages en,vi --publications report,annex,brief,deck --no-git
 python3 -m coverage run bin/paperforge all --config /tmp/scaffolded/documents.toml
@@ -59,6 +59,11 @@ for f in tests/fixtures/*/ tests/backtest/; do
 done
 python3 scripts/check-coverage.py
 ```
+
+`tests/unit_*.py` are plain scripts, not a framework: each prints a line per
+check and exits non-zero on failure. They exist for behaviour a fixture cannot
+reach - a rule refusing what it claims to refuse, a link detaching the way git
+detaches it, a heading starting mid-page. When one fails, read the label.
 
 The coverage floors live in `scripts/check-coverage.py` and sit just under what
 the suite achieves, so they ratchet against regression rather than describing an

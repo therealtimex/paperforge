@@ -77,6 +77,54 @@ def main():
         except RuntimeError:
             check('an unknown workspace raises', True)
 
+        print('already linked')
+        again, how = pub.link(built, workspace, user='someone')
+        check('re-linking an already-linked file is a no-op, not a copy',
+              again.stat().st_ino == built.stat().st_ino)
+        check('and says so rather than claiming to have done work',
+              'link' in how.lower())
+
+        print('resolving the workspace')
+        (pub.STORAGE / 'newer' / 'storage/working-data' / workspace).mkdir(parents=True)
+        check('two user directories holding the workspace resolve to one',
+              pub.artifacts_dir(workspace).is_absolute())
+        missing = root / 'artifacts' / 'report.html'
+        check('a never-published file is stale by definition',
+              pub.stale(root / 'unpublished.html', workspace, user='someone')
+              if not missing.exists() else True)
+
+        print('the artifact CLI')
+        calls = []
+        real_cli = pub._cli
+        pub._cli = lambda *a: (calls.append(a), {'results': {'artifact': {'publicUrl': 'u'}}})[1]
+        try:
+            pub.publish(workspace, 'report.html')
+            check('a plain publish passes the workspace and the path',
+                  'publish-artifact' in calls[-1] and 'report.html' in calls[-1])
+            pub.publish(workspace, 'report.html', entry_file='index.html')
+            check('an entry file is passed through', '--entry-file' in calls[-1])
+            pub.publish(workspace, 'report.html', expires_at='2027-01-01T00:00:00Z')
+            check('an expiry is passed through', '--expires-at' in calls[-1])
+            pub._cli = lambda *a: {'results': {'artifacts': [
+                {'artifactPath': 'report.html', 'active': True, 'id': 'A'},
+                {'artifactPath': 'old.html', 'active': False, 'id': 'B'}]}}
+            check('find returns the active artifact for a path',
+                  pub.find(workspace, 'report.html')['id'] == 'A')
+            check('an inactive artifact is not returned',
+                  pub.find(workspace, 'old.html') is None)
+            check('an unknown path returns nothing', pub.find(workspace, 'nope.html') is None)
+        finally:
+            pub._cli = real_cli
+
+        print('no RealtimeX storage at all')
+        pub.STORAGE = root / 'absent'
+        try:
+            pub.artifacts_dir(workspace)
+            check('a missing storage root raises', False)
+        except RuntimeError:
+            check('a missing storage root raises', True)
+        pub.STORAGE = root / 'users'
+
         print('directory target')
         out = root / 'dist'
         copied, how = pub.to_directory(built, out)

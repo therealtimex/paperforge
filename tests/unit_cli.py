@@ -134,6 +134,29 @@ def main():
         raises('--only matching nothing is an error, not an empty run',
                lambda: cli.pick(docs, 'no-such-document.md'))
 
+        print('structure warnings')
+        report = {'layout': 'report', 'page_numbers': True, 'profile_name': 'en',
+                  'contents_heading': 'CONTENTS'}
+        silent = {'structure': {'h2': 8}, 'numbered': 4}
+        warned = cli.structure_warnings(report, silent)
+        check('a profile matching no part heading is reported, not ignored',
+              any('part_banner matched nothing' in w for w in warned))
+        check('the report says how many headings it looked at',
+              any('8 top-level headings' in w for w in warned))
+        check('a document that found its parts is quiet',
+              cli.structure_warnings(report, {'structure': {'h2': 8, 'inferred_parts': 5},
+                                              'numbered': 4}) == [])
+        check('an unnumbered contents is reported',
+              any('no contents entry was numbered' in w
+                  for w in cli.structure_warnings(report,
+                                                  {'structure': {'h2': 8, 'inferred_parts': 5},
+                                                   'numbered': 0})))
+        brief = {'layout': 'brief', 'page_numbers': False, 'profile_name': 'en'}
+        check('a brief is continuous by design and is not nagged about parts',
+              cli.structure_warnings(brief, silent) == [])
+        check('a document with too few headings to judge is not nagged',
+              cli.structure_warnings(report, {'structure': {'h2': 2}, 'numbered': 1}) == [])
+
         print('editions')
         check('a sub-table with a source is an edition',
               set(cli.editions_of({'type': 'report', 'en': {'source': 'a.md'}})) == {'en'})

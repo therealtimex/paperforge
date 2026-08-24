@@ -33,12 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      # the unit checks typeset a PDF to prove the cross-edition comparison
+      # fires, so this job needs Typst; it needs no CJK fonts
+      - uses: ./.github/actions/setup
         with:
-          python-version: "3.11"
-
-      - name: Install coverage
-        run: python3 -m pip install --disable-pip-version-check "coverage==7.15.4"
+          typst-version: ${{ env.TYPST_VERSION }}
+          fonts: "false"
 
       - name: Compile every module
         run: python3 -m compileall -q paperforge
@@ -71,6 +71,22 @@ jobs:
       # reaches them, because CI always passes --config and never mistypes a type
       - name: Manifest resolution unit checks
         run: python3 -m coverage run tests/unit_cli.py
+
+      # the gates' own rules: a fixture proves the pipeline runs, not that a
+      # rule refuses what it claims to refuse
+      - name: Gate rule unit checks
+        run: python3 -m coverage run tests/unit_gates.py
+
+      - name: Packager unit checks
+        run: python3 -m coverage run tests/unit_package.py
+
+      - name: Cross-edition unit checks
+        run: python3 -m coverage run tests/unit_editions.py
+
+      # the diagram refusals, with the browser stubbed: what is under test is
+      # this pipeline's reading of the output, not Chrome
+      - name: Diagram unit checks
+        run: python3 -m coverage run tests/unit_diagrams.py
 
       # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
       - uses: actions/upload-artifact@v4

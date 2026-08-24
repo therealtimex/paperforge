@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-FLOORS = {'line': 84.0, 'branch': 70.0}
+FLOORS = {'line': 88.0, 'branch': 78.0}
 ROOT = Path(__file__).resolve().parents[1]
 
 

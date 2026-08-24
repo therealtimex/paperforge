@@ -7,8 +7,8 @@ import sys
 import tomllib
 from pathlib import Path
 
-from . import (deck, diagrams, editions, figures, lint, markdown, pages, profile,
-               publish as pub, runs, scaffold, typst, verify)
+from . import (brief, deck, diagrams, editions, figures, lint, markdown, pages,
+               profile, publish as pub, runs, scaffold, typst, verify)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -535,9 +535,11 @@ def do_publish(cfg, docs, expires=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='paperforge', description='Paperforge document pipeline')
     ap.add_argument('--label', help='name this run in the record')
+    ap.add_argument('--out', help='brief: write to this file instead of stdout')
     ap.add_argument('--diff', help='runs: compare two runs, comma separated')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
-                                        'status', 'selftest', 'plugin', 'figures', 'init', 'runs'])
+                                        'status', 'selftest', 'plugin', 'figures', 'init', 'runs',
+                                     'brief'])
     ap.add_argument('--only', help='limit to one document or collection')
     ap.add_argument('--expires-at', help='ISO timestamp for artifact expiry')
     ap.add_argument('--no-measure', action='store_true', help='skip printed page numbering')
@@ -637,6 +639,18 @@ def main(argv=None):
                     'stale link' if pub.stale(artefact, d['workspace']) else 'linked')
                 art = pub.find(d['workspace'], artefact.name) if d['publish'] else None
                 print('  %-38s %-11s %s' % (artefact.name, state, art['publicUrl'] if art else '-'))
+        return 0
+
+    if a.command == 'brief':
+        # the invocation as it actually happened, not a placeholder: whoever
+        # reads this brief has to be able to paste the command
+        text = brief.render(cfg, docs, sys.argv[0])
+        if a.out:
+            out = Path(a.out)
+            out.write_text(text, encoding='utf-8')
+            print('  wrote %s' % out)
+        else:
+            print(text)
         return 0
 
     if a.command == 'runs':

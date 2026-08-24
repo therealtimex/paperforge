@@ -34,9 +34,10 @@ The pipeline is not on PATH by default. Invoke it by path, or put it on PATH
 once as `paperforge`:
 
 ```bash
-<paperforge>/bin/paperforge status   # what is built, linked, published
-<paperforge>/bin/paperforge all      # figures -> lint -> build -> verify -> publish
-<paperforge>/bin/paperforge all --only <source.md>
+{invocation} status   # what is built, linked, published
+{invocation} all      # figures -> lint -> build -> verify -> publish
+{invocation} all --only <source.md>
+{invocation} brief    # what this project declares, regenerated from the manifest
 ```
 
 - `documents.toml` decides what may be published. Process records — peer review,
@@ -208,7 +209,14 @@ def create(directory, slug, title, languages, profiles, publications,
 
     (root / 'figures.toml').write_text(FIGURES, encoding='utf-8')
     (root / '.gitignore').write_text(GITIGNORE, encoding='utf-8')
-    (root / 'AGENTS.md').write_text(AGENTS.format(title=title), encoding='utf-8')
+    # the real entry point, not a placeholder: a scaffolded project that
+    # tells you to run `<paperforge>/bin/paperforge` tells you nothing
+    import sys
+    # absolute: a relative entry point is only valid from wherever the
+    # scaffolding happened to be run, which is not where the project lives
+    invocation = str(Path(sys.argv[0]).resolve()) if sys.argv and sys.argv[0] else 'paperforge'
+    (root / 'AGENTS.md').write_text(AGENTS.format(title=title, invocation=invocation),
+                                    encoding='utf-8')
     written += ['figures.toml', '.gitignore', 'AGENTS.md']
 
     for language in languages:

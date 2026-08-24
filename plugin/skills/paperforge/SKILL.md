@@ -26,6 +26,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Task | Read |
 |---|---|
 | Start a new research project | [references/starting-a-project.md](references/starting-a-project.md) |
+| Brief a research team on a project's rules | [references/brief.md](references/brief.md) |
 | Run or debug a pipeline stage | [references/commands.md](references/commands.md) |
 | Configure a project, or add a language edition | [references/manifest.md](references/manifest.md) |
 | Choose report vs brief vs deck, or declare a new type | [references/document-types.md](references/document-types.md) |

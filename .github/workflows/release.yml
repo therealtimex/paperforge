@@ -116,6 +116,11 @@ jobs:
       - name: Run record unit checks
         run: python3 -m coverage run tests/unit_runs.py
 
+      # the generated authoring brief: it must state what a project declares
+      # and refuse to invent the parts that are judgement
+      - name: Authoring brief unit checks
+        run: python3 -m coverage run tests/unit_brief.py
+
       # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
       - uses: actions/upload-artifact@v4
         with:

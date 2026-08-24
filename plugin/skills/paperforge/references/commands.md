@@ -9,6 +9,7 @@ paperforge verify      # structural, layout, print and cross-edition checks
 paperforge publish     # hard-link into the artifacts dir and expose
 paperforge all         # the chain above, stopping on failure
 paperforge runs        # what each run produced — see provenance.md
+paperforge brief       # what this project declares — see brief.md
 ```
 
 The entry point is `bin/paperforge` in a Paperforge checkout, and

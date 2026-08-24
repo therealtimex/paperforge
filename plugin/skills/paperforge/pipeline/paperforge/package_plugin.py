@@ -25,7 +25,7 @@ PAYLOAD = [
 SKIP = {'__pycache__', '.cache', '.paperforge'}
 # Built documents are regenerable and must not ship inside the plugin. The theme
 # needs its own .html shells, so this applies to the fixtures only.
-GENERATED = ('.html', '.pdf')
+GENERATED = ('.html', '.pdf', '.docx')
 
 
 def _ignore(_dir, names):

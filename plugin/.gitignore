@@ -3,3 +3,4 @@ skills/paperforge/pipeline/**/*.pyc
 skills/paperforge/pipeline/tests/**/*.html
 skills/paperforge/pipeline/tests/**/*.pdf
 skills/paperforge/pipeline/tests/**/.cache/
+skills/paperforge/pipeline/tests/**/*.docx

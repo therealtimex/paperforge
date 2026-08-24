@@ -6,6 +6,8 @@ __pycache__/
 # fixtures build in place; the outputs are regenerable and must not be tracked
 tests/**/*.html
 tests/**/*.pdf
+# a .docx is a zip: its bytes differ run to run even from identical sources
+tests/**/*.docx
 dist/
 tests/**/published/
 .coverage

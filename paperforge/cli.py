@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 
 from . import (deck, diagrams, editions, figures, lint, markdown, pages, profile,
-               publish as pub, scaffold, typst, verify)
+               publish as pub, runs, scaffold, typst, verify)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -76,7 +76,7 @@ def load(config=None):
     path = find_config(config)
     root = path.parent.parent if path.parent.name == 'tools' else path.parent
     cfg = tomllib.load(open(path, 'rb'))
-    cfg['_root'], cfg['_cache'] = root, path.parent / '.cache'
+    cfg['_root'], cfg['_cache'], cfg['_manifest'] = root, path.parent / '.cache', path
     cache, docs = {}, []
     types = document_types(cfg)
 
@@ -200,6 +200,45 @@ def opts(d):
             'bibliography': (d['root'] / d['bibliography']) if d.get('bibliography') else None,
             'citation_style': d.get('citation_style', 'apa'),
             'layout': d.get('layout', 'report')}
+
+
+def record_run(cfg, docs, stages, label=None):
+    out = runs.write(cfg, docs, stages, label)
+    print('  recorded %s' % out.relative_to(cfg['_root']))
+    return out
+
+
+def do_runs(cfg, pair, only):
+    """List recorded runs, or compare two of them."""
+    root = cfg['_root']
+    if pair:
+        names = [n.strip() for n in pair.split(',') if n.strip()]
+        if len(names) != 2:
+            raise SystemExit('--diff takes two run names, comma separated')
+        (an, a), (bn, b) = runs.load(root, names[0]), runs.load(root, names[1])
+        d = runs.diff(a, b)
+        print('%s -> %s' % (an, bn))
+        for stage, (was, now) in d['stages'].items():
+            print('  %-10s %s -> %s' % (stage, was or '-', now or '-'))
+        for kind in ('added', 'removed', 'rewritten', 'unchanged'):
+            if d[kind]:
+                print('  %-10s %s' % (kind, ', '.join(d[kind])))
+        if d['pdf_only']:
+            # measured pagination differs between machines; see runs.py
+            print('  %-10s %s (print edition only; page numbers are measured)'
+                  % 'repaginated', ', '.join(d['pdf_only']))
+        return 0
+    found = runs.listing(root)
+    if not found:
+        print('  no runs recorded yet')
+        return 0
+    for name, rec in found:
+        if only and only not in name and only not in (rec.get('label') or ''):
+            continue
+        verdict = ', '.join('%s %s' % (k, v) for k, v in rec['stages'].items())
+        print('  %-32s %-28s %d document(s)  %s'
+              % (name, (rec.get('label') or '-')[:28], len(rec['documents']), verdict))
+    return 0
 
 
 def structure_warnings(d, stats):
@@ -370,7 +409,13 @@ def do_verify(docs, cache):
                 print('      print checks skipped: only %.0f%% of the text is readable back '
                       'from the PDF' % (100 * quality['ratio']))
         if pdf.exists() and readable:
-            exempt = set()
+            # The cover is sparse by design - a badge, a title, a metadata grid -
+            # and the near-empty check looks for stranded headings and orphaned
+            # frames, neither of which a cover can be. A scaffolded project with
+            # a short title failed on it, which quietly contradicted the promise
+            # that a fresh project passes clean; the CI scaffold only passed
+            # because its title happened to be long enough.
+            exempt = {1}
             if d.get('contents_heading'):
                 import pdfplumber
                 with pdfplumber.open(pdf) as doc:
@@ -380,7 +425,7 @@ def do_verify(docs, cache):
                                           d['prof'].get('fold_diacritics', True))
                 if ('<h2 id="%s"' % anchor) in html:
                     # contents_pages is 0-based; pagination reports 1-based
-                    exempt = {i + 1 for i in pages.contents_pages(texts, html, anchor)}
+                    exempt |= {i + 1 for i in pages.contents_pages(texts, html, anchor)}
             pg = verify.pagination(pdf, exempt=exempt,
                                   script=d['prof'].get('script', 'latin'))
             if pg['thin']:
@@ -448,8 +493,10 @@ def do_publish(cfg, docs, expires=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='paperforge', description='Paperforge document pipeline')
+    ap.add_argument('--label', help='name this run in the record')
+    ap.add_argument('--diff', help='runs: compare two runs, comma separated')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
-                                        'status', 'selftest', 'plugin', 'figures', 'init'])
+                                        'status', 'selftest', 'plugin', 'figures', 'init', 'runs'])
     ap.add_argument('--only', help='limit to one document or collection')
     ap.add_argument('--expires-at', help='ISO timestamp for artifact expiry')
     ap.add_argument('--no-measure', action='store_true', help='skip printed page numbering')
@@ -542,10 +589,14 @@ def main(argv=None):
                 print('  %-38s %-11s %s' % (artefact.name, state, art['publicUrl'] if art else '-'))
         return 0
 
-    failed = 0
+    if a.command == 'runs':
+        return do_runs(cfg, a.diff, a.only)
+
+    failed, stages = 0, {}
     if a.command in ('figures', 'all'):
         print('figures:')
         disagreements = do_figures(docs, a.quiet)
+        stages['figures'] = 'disagreements' if disagreements else 'ok'
         if a.command == 'figures':
             return 1 if disagreements else 0
         if disagreements:
@@ -554,6 +605,7 @@ def main(argv=None):
     if a.command in ('lint', 'all'):
         print('lint:')
         blocking = do_lint(cfg, docs, a.quiet)
+        stages['lint'] = 'blocked' if any(blocking.values()) else 'ok'
         if a.command == 'lint':
             return 1 if any(blocking.values()) else 0
         # carry on with the documents that passed; a blocked one must not stop the rest
@@ -565,17 +617,28 @@ def main(argv=None):
 
     if a.command in ('build', 'all'):
         print('build:')
-        if do_build(docs, cache, measure=not a.no_measure):
+        built = do_build(docs, cache, measure=not a.no_measure)
+        stages['build'] = 'failed' if built else 'ok'
+        if built:
             failed = 1
 
     if a.command in ('verify', 'all'):
         print('verify:')
-        if do_verify(docs, cache):
+        problems = do_verify(docs, cache)
+        stages['verify'] = 'failed' if problems else 'ok'
+        if problems:
+            record_run(cfg, docs, stages, a.label)
             return 1
 
     if a.command in ('publish', 'all'):
         print('publish:')
         do_publish(cfg, docs, a.expires_at)
+        stages['publish'] = 'ran'
+
+    # written for build and all, pass or fail: a run that went badly is exactly
+    # the one worth being able to look at again
+    if a.command in ('build', 'all'):
+        record_run(cfg, docs, stages, a.label)
     return failed
 
 

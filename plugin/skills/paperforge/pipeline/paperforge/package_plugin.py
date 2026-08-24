@@ -22,7 +22,7 @@ PAYLOAD = [
     # cannot leave the bundle a file behind
     (ROOT / 'docs/reference', PLUGIN_SKILL / 'references'),
 ]
-SKIP = {'__pycache__', '.cache'}
+SKIP = {'__pycache__', '.cache', '.paperforge'}
 # Built documents are regenerable and must not ship inside the plugin. The theme
 # needs its own .html shells, so this applies to the fixtures only.
 GENERATED = ('.html', '.pdf')

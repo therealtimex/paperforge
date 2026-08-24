@@ -17,6 +17,10 @@ from pathlib import Path
 GITIGNORE = """# built artefacts are reproducible from the sources
 .cache/
 *.pdf
+
+# .paperforge/runs is deliberately NOT ignored: it is the record of what each
+# run produced, and the reason it exists is that a previous corpus lost its
+# first draft to a second run that overwrote it in place.
 """
 
 AGENTS = """# {title}

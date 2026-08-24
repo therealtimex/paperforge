@@ -8,6 +8,7 @@ paperforge build       # markdown -> self-contained HTML (+ PDF where declared)
 paperforge verify      # structural, layout, print and cross-edition checks
 paperforge publish     # hard-link into the artifacts dir and expose
 paperforge all         # the chain above, stopping on failure
+paperforge runs        # what each run produced — see provenance.md
 ```
 
 The entry point is `bin/paperforge` in a Paperforge checkout, and
@@ -24,6 +25,8 @@ that *uses* Paperforge carries no pipeline of its own — only its sources, its
 | `--no-measure` | Skip printed page numbering while iterating |
 | `--expires-at <ISO>` | Publish with an expiry |
 | `--quiet` | Findings without surrounding context |
+| `--label <name>` | Name this run in the record |
+| `--diff <a>,<b>` | `runs`: compare two recorded runs |
 
 With no `--config`, `$PAPERFORGE_CONFIG` is used, then the nearest
 `documents.toml` above the working directory.
@@ -52,4 +55,4 @@ scripts or network dependencies from them.
 
 ## Related
 
-`starting-a-project.md` · `manifest.md` · `lint.md` · `verify.md` · `publishing.md`
+`starting-a-project.md` · `manifest.md` · `lint.md` · `verify.md` · `publishing.md` · `provenance.md`

@@ -45,6 +45,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Understand why lint blocked a document | [references/lint.md](references/lint.md) |
 | Understand a verify failure | [references/verify.md](references/verify.md) |
 | Publish, or fix a stale artifact link | [references/publishing.md](references/publishing.md) |
+| Compare two runs, or recover an overwritten draft | [references/provenance.md](references/provenance.md) |
 | A construct printed literally instead of rendering | [references/unsupported-syntax.md](references/unsupported-syntax.md) |
 
 ## Running it

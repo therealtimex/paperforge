@@ -11,3 +11,4 @@ tests/**/published/
 .coverage
 .coverage.*
 coverage-report.json
+tests/**/.paperforge/

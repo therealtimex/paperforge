@@ -164,7 +164,12 @@ def parse_table(lines, pos):
         left, right = c.startswith(':'), c.endswith(':')
         aligns.append('center' if left and right else 'right' if right else 'left')
     ncol = len(rows[0])
-    out = ['<div class="table-frame"><div class="table-wrap"><table>', '<thead><tr>']
+    # Print cannot scroll a wide table; it cuts the right-hand column off the
+    # page, and in an evidence annex that is the column holding the sources.
+    # CSS cannot count columns, so the renderer marks the table and the print
+    # rules give it a face that fits.
+    wide = ' wide' if ncol >= 6 else ''
+    out = ['<div class="table-frame%s"><div class="table-wrap"><table>' % wide, '<thead><tr>']
     for i, c in enumerate(rows[0]):
         a = aligns[i] if i < len(aligns) else 'left'
         out.append('<th style="text-align:%s">%s</th>' % (a, inline(c)))

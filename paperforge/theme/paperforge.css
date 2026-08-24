@@ -310,6 +310,29 @@ body.doc-brief figure.diagram { margin:18px 0 22px; padding:16px 12px 8px; }
   figure.diagram svg { max-width:100% !important; max-height:198mm !important;
     width:auto !important; height:auto !important; }
   .table-frame, .table-wrap { overflow:visible; }
+  /* A table wider than the page is not scrolled on paper - it is cut off, and
+     what disappears is the right-hand column. In an evidence annex that column
+     holds the sources, so a reader of the printed copy could not check a single
+     citation. A source URL is one unbreakable token and sets a floor under its
+     column's width, so it has to be allowed to break. */
+  /* A table's min-content width wins over width:100%, so the only thing that
+     actually holds it inside the page is a fixed layout. Wide tables also get a
+     smaller face: seven columns of Vietnamese prose at body size cannot be both
+     complete and legible on A4 portrait, and complete is the one that matters
+     in an annex. */
+  /* Only wide tables are constrained: a fixed layout gives every column the
+     same width, which is the wrong trade for a three-column table that already
+     fits. Long tokens must break everywhere, though - a source URL sets a floor
+     under its column and is what pushed the last column off the page. */
+  main th, main td { overflow-wrap:anywhere; word-break:break-word; }
+  /* Seven columns of Vietnamese prose plus a source URL do not fit A4 portrait
+     at any legible size. Turning just those tables onto a landscape page is the
+     typographic answer rather than shrinking them until nothing is readable. */
+  @page wide { size:A4 landscape; margin:14mm 15mm 16mm; }
+  main .table-frame.wide { page:wide; }   /* the page change breaks by itself */
+  main .table-frame.wide table { table-layout:fixed; width:100% !important;
+    font-size:8pt; }
+  main .table-frame.wide th, main .table-frame.wide td { padding:4px 6px; }
   .is-scrollable::after, .scroll-hint { display:none !important; }
   thead th { position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   tbody tr:hover { background:none; }

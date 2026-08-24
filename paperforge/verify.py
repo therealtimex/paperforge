@@ -228,3 +228,65 @@ def print_leaks(pdf_path):
         for n, page in enumerate(pdf.pages, 1):
             found += leaks(page.extract_text() or '', 'p%d' % n)
     return found
+
+
+URL_RE = re.compile(r'https?://[^\s)>\]|"<]+')
+
+
+def print_truncation(pdf_path, *sources):
+    """Citations the printed edition lost.
+
+    Print does not scroll a wide table - it cuts the right-hand column off the
+    page. In an evidence annex that is the column holding the sources, so a
+    reader of the printed copy could not check a single one. It happened on a
+    real report: a seven-column source ledger printed with every URL ending
+    mid-token, and every other gate passed, because the reading edition scrolls
+    and nothing compared the two.
+
+    A URL is the right probe. It is unambiguous, it is exactly what gets lost,
+    and losing one is not a formatting nit - it is the difference between an
+    evidence annex and a list of assertions.
+
+    What this cannot see: a table row taller than the page continues on the
+    next one, and no reconstruction here joins a URL split across that break.
+    Those come back as unlocated, which is why the finding is reported and not
+    blocking - on the report that prompted it, three of twenty-six were
+    page-spanning cells that were in fact intact. Treat a report as "look at
+    these pages", not as "the document is broken".
+    """
+    import logging
+    import warnings
+    warnings.filterwarnings('ignore')
+    logging.getLogger('pdfminer').setLevel(logging.ERROR)
+    import pdfplumber
+    wanted = []
+    for path in sources:
+        if not path:
+            continue
+        for url in URL_RE.findall(Path(path).read_text(encoding='utf-8')):
+            if url not in wanted:
+                wanted.append(url.rstrip('.,;'))
+    if not wanted:
+        return {'checked': 0, 'unlocated': []}
+    # A URL wrapped inside a table cell has its fragments on several lines, and
+    # every other column's text sits between them - so a whole-page flatten
+    # cannot see it. Rebuild each cell from the table geometry instead.
+    # Reading order interleaves a wrapped URL with its neighbouring columns, so
+    # a whole-page flatten only finds one whose neighbours happen to be blank.
+    # Rebuilding each column strip in reading order is what survives both
+    # wrapping and a row that continues onto the next page. All three views are
+    # searched and a citation counts as present in any of them: a gate that
+    # cries wolf over a correct annex is worse than no gate.
+    chunks = []
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
+            chunks.append(''.join(c['text'] for c in page.chars))
+            edges = sorted({round(c[0]) for t in page.find_tables()
+                            for row in t.rows for c in row.cells if c})
+            for left, right in zip(edges, edges[1:] + [page.width]):
+                strip = [c for c in page.chars if left - 1 <= c['x0'] < right]
+                strip.sort(key=lambda c: (round(c['top'], 1), c['x0']))
+                chunks.append(''.join(c['text'] for c in strip))
+    flat = re.sub(r'\s+', '', ''.join(chunks))
+    return {'checked': len(wanted),
+            'unlocated': [u for u in wanted if re.sub(r'\s+', '', u) not in flat]}

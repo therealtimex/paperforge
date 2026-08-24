@@ -426,6 +426,19 @@ def do_verify(docs, cache):
                 if ('<h2 id="%s"' % anchor) in html:
                     # contents_pages is 0-based; pagination reports 1-based
                     exempt |= {i + 1 for i in pages.contents_pages(texts, html, anchor)}
+            # a citation that did not survive into print is not a formatting
+            # nit: it is the difference between an annex and a list of claims
+            # Reported, not blocking: a row taller than the page splits a URL
+            # across the break and no reconstruction here rejoins it, so some
+            # of these are intact. It points at pages to look at.
+            cut = verify.print_truncation(pdf, d['source_path'], d['annex_path'])
+            if cut['unlocated']:
+                print('      print: %d of %d source URL(s) not found whole - check whether '
+                      'a table row spans a page break: %s'
+                      % (len(cut['unlocated']), cut['checked'],
+                         ', '.join(u[:38] for u in cut['unlocated'][:2])))
+            elif cut['checked']:
+                print('      print: all %d source URL(s) survive the page' % cut['checked'])
             pg = verify.pagination(pdf, exempt=exempt,
                                   script=d['prof'].get('script', 'latin'))
             if pg['thin']:

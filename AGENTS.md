@@ -83,6 +83,21 @@ The English fixture is the check that no language assumption has crept back in.
 The Chinese fixture is expected to decline the print checks with a stated
 reason, not to pass them silently — see `docs/reference/print.md`.
 
+## Say whose limitation it is
+
+When something cannot be done, write down **which** thing cannot do it. "Typst
+has no landscape page" was recorded here as a limitation of Typst. It was a
+limitation of *this emitter*: Typst has had `#page(flipped: true)` all along,
+and proving it took one file and two minutes. In between, the false version was
+relayed into a routed decision, agreed with, and written into `print.md` as a
+documented caveat, where it stayed until someone opened the PDF and saw
+landscape pages.
+
+A limitation attributed to a dependency ages into folklore, because nobody
+re-tests someone else's tool. A limitation attributed to our own code is a
+to-do. Before writing "X cannot", spend the two minutes finding out whether X
+cannot, or we have not.
+
 ## Conventions
 
 - No dependency the published document can see. Chrome and the Mermaid CDN are

@@ -4,15 +4,39 @@ Two different PDFs exist, for two different jobs.
 
 | | Engine | What it is for |
 |---|---|---|
-| **Reading edition print** | Chrome, from the HTML | The "Print / Save PDF" button; also how page numbers are measured |
-| **Print edition** | Typst, from the markdown | The published PDF artifact, when a document declares `pdf = "typst"` |
+| `pdf = "chrome"` | Chrome, from the built HTML | The reading edition's own layout, printed. Also how page numbers are measured, whether or not you publish it |
+| `pdf = "typst"` | Typst, from the markdown | Typeset independently: footnotes at the foot of the page, running heads, denser setting |
 
-## Why Typst
+## Choosing between them
+
+Measured on the document both were built from — a 56-page policy report whose
+annex carries an eight-column source ledger:
+
+| | Chrome | Typst |
+|---|---:|---:|
+| Pages | 56 | **42** |
+| Source URLs surviving whole | 23 of 26 | **26 of 26** |
+| Wide tables | landscape | landscape |
+| Footnotes at the foot of the page | no | yes |
+| Running heads carrying the chapter | no | yes |
+| Identical to what a reader sees on screen | yes | no |
+
+Typst is the better print edition for a document with wide tables, and the gap
+is not stylistic: a table row taller than a Chrome page splits across the
+break, and a URL cut in half at that break is a citation a reader cannot
+follow. A flipped Typst page keeps each wide table whole, so the question never
+arises — which is also why it is shorter.
+
+Choose `chrome` when what must be published is exactly what a reader sees in
+the browser, or when the document has no wide tables and the reading edition's
+layout is the deliverable.
+
+## Why Typst exists here
 
 Chrome's print engine cannot do footnotes at the foot of a page, chapters
-opening on a new page reliably, chapter titles in running heads, or numbered
-cross-references. Typst does all of it natively, and localises captions from the
-document language, which lines up with the profile model.
+opening on a new page reliably, or chapter titles in running heads. Typst does
+all of it natively, and localises captions from the document language, which
+lines up with the profile model.
 
 Requires `typst` on `PATH` (`brew install typst`).
 

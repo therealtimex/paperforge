@@ -85,7 +85,7 @@ exists to prevent. A stray PDF is now reported and left alone.
 
 Choose `typst` when the document needs real footnotes and running heads;
 `chrome` when what you want published is exactly what a reader sees on screen.
-`chrome` is also the only one that handles wide tables today — see `print.md`.
+Both handle wide tables — see `print.md`.
 
 ## `[internal]`
 

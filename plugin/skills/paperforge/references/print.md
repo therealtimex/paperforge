@@ -35,11 +35,12 @@ fits gives one word per line and *still* loses the right-hand column off the
 page. In an evidence annex that column holds the citations, so the printed copy
 becomes unverifiable while every gate stays green.
 
-> **This applies to the Chrome print path only.** The Typst emitter has no
-> landscape page, so a document with wide tables that declares `pdf = "typst"`
-> will cut the source column again. Landscape has to be added to the Typst
-> emitter before that combination is safe. A real report hit this: its Typst
-> edition was declined for exactly this reason rather than shipped truncated.
+Both print paths do this. Chrome uses a named landscape `@page`; Typst places
+the table on a flipped page and returns to portrait after it. On the report
+this was found on — an eight-column source ledger — the Typst edition carries
+**all 26 source URLs whole**, and does it in 42 pages against Chrome's 56,
+because a flipped page keeps each wide table intact instead of splitting it
+across a break.
 
 `verify` reports source URLs it cannot find whole in the print edition. It is a
 finding, not a failure — a table row taller than the page continues onto the

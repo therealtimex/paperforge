@@ -40,6 +40,8 @@ profile = "en"
   source = "note.md"
   output = "note.html"
   pdf = "chrome"
+  docx = true            # both together: the chrome branch was once chained to
+                         # docx and a document declaring both got no PDF at all
   publish = true
 
 [internal]

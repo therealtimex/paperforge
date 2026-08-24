@@ -41,7 +41,7 @@ landscape page.
 Six columns on A4 leave roughly 25mm each, too narrow to justify — tables set
 ragged right for that reason while body text stays justified. From six columns
 up, print turns the table onto a landscape page rather than squeezing it; see
-`print.md`, including the Typst caveat.
+`print.md`.
 
 ## Density
 

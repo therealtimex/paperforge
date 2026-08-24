@@ -371,7 +371,12 @@ def do_build(docs, cache, measure=True):
         # named deliverable, so a print edition from the reading edition's own
         # layout is something the manifest asks for rather than something a
         # person links out of .cache by hand.
-        elif d.get('pdf') == 'chrome':
+        # `if`, not `elif`: this used to be chained to the Typst branch, and
+        # inserting the Word branch between them silently re-chained it to
+        # `docx`. A document declaring both `docx = true` and `pdf = "chrome"`
+        # then got no PDF at all, and nothing said so - the stale one from the
+        # previous build was still sitting beside the HTML.
+        if d.get('pdf') == 'chrome':
             pdf_out = d['output_path'].with_suffix('.pdf')
             measured = cache / (d['output'] + '.pdf')
             if not measured.exists():

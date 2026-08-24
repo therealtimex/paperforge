@@ -118,20 +118,25 @@ def cell(text, notes):
     return MARKER_RE.sub(lambda m: '\\' + m.group(1), inline(text, notes))
 
 
+WIDE = 6        # columns from which a table needs a page of its own, turned
+
+
 def emit_table(lines, pos, notes, out):
+    """Returns the table's markup and the new position, rather than appending,
+    so a wide one can be placed on a flipped page together with its caption."""
     rows = []
     while pos < len(lines) and lines[pos].lstrip().startswith('|'):
         rows.append([c.strip() for c in lines[pos].strip().strip('|').split('|')])
         pos += 1
     if len(rows) < 2:
-        return pos
+        return '', pos
     cols = len(rows[0])
     cells = ['[*%s*]' % cell(c, notes) for c in rows[0]]
     for row in rows[2:]:
         cells += ['[%s]' % cell(row[i] if i < len(row) else '', notes) for i in range(cols)]
-    out.append('#table(columns: %d, stroke: 0.4pt + rgb("#dfe4ec"), inset: 6pt,\n  %s\n)'
-               % (cols, ',\n  '.join(cells)))
-    return pos
+    inset = 5 if cols >= WIDE else 6
+    return ('#table(columns: %d, stroke: 0.4pt + rgb("#dfe4ec"), inset: %dpt,\n  %s\n)'
+            % (cols, inset, ',\n  '.join(cells))), pos
 
 
 def take_caption(lines, pos):
@@ -217,11 +222,24 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
             continue
 
         if stripped.startswith('|') and pos + 1 < n and re.match(r'^\|[\s:|-]+\|?$', lines[pos + 1].strip()):
-            pos = emit_table(lines, pos, notes, out)
+            block, pos = emit_table(lines, pos, notes, out)
             entry, pos = take_caption(lines, pos)
-            if entry:
-                out.append('#align(center)[#text(size: 9pt, fill: rgb("#4a5568"))[%s]]'
-                           % inline(xref.caption_of(entry), notes))
+            caption = ('\n#align(center)[#text(size: 9pt, fill: rgb("#4a5568"))[%s]]'
+                       % inline(xref.caption_of(entry), notes)) if entry else ''
+            if block:
+                wide = block.startswith('#table(columns: ') and \
+                    int(block[len('#table(columns: '):].split(',')[0]) >= WIDE
+                if wide:
+                    # A6+ column table is wider than A4 portrait, and print does
+                    # not scroll - it cuts the right-hand column off the page,
+                    # which in an evidence annex is where the sources are. Typst
+                    # takes a flipped page for one block and returns to portrait
+                    # after it, the same treatment the reading edition's print
+                    # rules give a wide table.
+                    out.append('#page(flipped: true, margin: 16mm)[\n'
+                               '#text(size: 8pt)[\n%s%s\n]\n]' % (block, caption))
+                else:
+                    out.append(block + caption)
             continue
 
         if LIST_RE.match(line):

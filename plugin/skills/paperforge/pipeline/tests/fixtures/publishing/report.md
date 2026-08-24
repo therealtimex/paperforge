@@ -56,6 +56,16 @@ A bulleted list with a nested level:
 | lint | internal machinery reaching a reader |
 | verify | markup that never rendered |
 
+The pipeline is drawn in @fig-stages, and what each gate refuses is set out in
+@tbl-gates.
+
+```mermaid
+graph LR
+  A[Markdown] --> B[Gates] --> C[Editions]
+```
+
+: How a document reaches a reader {#fig-stages}
+
 A wide table — six columns or more — turns onto a landscape page in both the
 print and Word editions, because the right-hand column is where sources live:
 
@@ -64,6 +74,8 @@ print and Word editions, because the right-hand column is where sources live:
 | figures | `figures.toml` | a number disagreeing | yes | v1 | per-language forms |
 | lint | the markdown | internal machinery | yes | v1 | packs are opt-in |
 | verify | the built output | markup that never rendered | yes | v1 | and the editions |
+
+: What each stage refuses {#tbl-gates}
 
 A fenced block is set as a code sample, never executed:
 

@@ -26,13 +26,15 @@ CORE = [
      'unfinished marker'),
     ('lorem', 'block', r'(?i)lorem ipsum', 'placeholder text'),
     # Constructs the renderer does not interpret. They do not fail loudly: the
-    # syntax is printed literally, and a footnote or caption definition becomes
-    # a stray paragraph in the published document. Coverage checks cannot catch
-    # this because the text is present - it is simply not rendered.
+    # syntax is printed literally, and a footnote definition becomes a stray
+    # paragraph in the published document. Coverage checks cannot catch this
+    # because the text is present - it is simply not rendered.
+    #
+    # `: Caption {#fig-x}` used to be here. It is a supported construct now, so
+    # the rule that blocked it is gone and check_references guards the two ways
+    # it can go wrong instead.
     ('unsupported-footnote', 'block', r'^\[\^[^\]]+\]:|\[\^[^\]]+\](?!:)',
      'footnotes are not rendered; the definition would print as body text'),
-    ('unsupported-caption', 'block', r'^:\s+\S.*\{#(?:tbl|fig|eq)-',
-     'table and figure captions are not rendered; the line would print as text'),
 ]
 
 # Opt-in packs for a particular authoring system. These four exist because that
@@ -126,3 +128,31 @@ def summarise(findings):
     blocking = [f for f in findings if f['severity'] == 'block']
     return {'total': len(findings), 'blocking': len(blocking),
             'rules': sorted({f['rule'] for f in findings})}
+
+
+def check_references(source, annex=None, prof=None):
+    """Cross-references that point nowhere, and labels declared twice.
+
+    Neither is visible in the output: an unresolved reference prints as its own
+    source - "see @fig-density" - and a repeated label makes every reference to
+    it silently mean the first one. Both are the sort of thing a reader finds
+    and an author does not.
+    """
+    from . import xref
+    body = Path(source).read_text(encoding='utf-8').split('\n')
+    annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
+    table = xref.resolve(prof or {}, body, annex_lines)
+    findings = []
+    for path, lines in ((source, body), (annex, annex_lines)):
+        if not path:
+            continue
+        for line_no, ident in xref.dangling(lines, table):
+            findings.append({'rule': 'dangling-reference', 'severity': 'block',
+                             'line': line_no, 'match': '@' + ident,
+                             'why': 'reference to a label that does not exist',
+                             'context': lines[line_no - 1].strip()[:80]})
+    for ident in xref.duplicates(body, annex_lines):
+        findings.append({'rule': 'duplicate-label', 'severity': 'block', 'line': 0,
+                         'match': ident, 'why': 'label declared more than once; every '
+                         'reference would mean the first', 'context': ''})
+    return findings

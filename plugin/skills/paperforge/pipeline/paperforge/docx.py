@@ -25,7 +25,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Mm, Pt, RGBColor
 
-from . import markdown as md, typst
+from . import markdown as md, typst, xref
 
 HEAD_RE = md.HEAD_RE
 ATTR_RE = md.ATTR_RE
@@ -104,8 +104,20 @@ def _table(doc, rows, wide):
     return table
 
 
+def take_caption(lines, pos, table):
+    """Consume a `: text {#fig-x}` line after a block, as the other emitters do."""
+    look = pos
+    while look < len(lines) and not lines[look].strip():
+        look += 1
+    if look < len(lines):
+        m = xref.CAPTION_RE.match(lines[look].strip())
+        if m:
+            return table.get(m.group(2)), look + 1
+    return None, pos
+
+
 def convert(doc, lines, figures, label, images, brand, part_banner=None,
-            force_parts=False):
+            force_parts=False, table=None):
     """Block pass. Mirrors the HTML emitter's structure decisions."""
     pos, n = 0, len(lines)
     landscape = False
@@ -130,7 +142,9 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 if image and Path(image).exists():
                     doc.add_picture(str(image), width=Mm(160))
                     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
-                cap = doc.add_paragraph(label % (idx + 1))
+                entry, pos = take_caption(lines, pos, table or {})
+                cap = doc.add_paragraph(xref.caption_of(entry) if entry
+                                        else label % (idx + 1))
                 cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 for run in cap.runs:
                     run.italic = True
@@ -194,6 +208,13 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                     _landscape(doc, False)
                     landscape = False
                 _table(doc, rows, wide)
+                entry, pos = take_caption(lines, pos, table or {})
+                if entry:
+                    cap = doc.add_paragraph(xref.caption_of(entry))
+                    cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in cap.runs:
+                        run.italic = True
+                        run.font.size = Pt(9)
                 doc.add_paragraph()
             continue
 
@@ -215,7 +236,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 not LIST_RE.match(lines[pos]):
             buf.append(lines[pos].strip())
             pos += 1
-        _runs(doc.add_paragraph(), ' '.join(buf))
+        _runs(doc.add_paragraph(), xref.substitute(' '.join(buf), table or {}))
     if landscape:
         _landscape(doc, False)
 
@@ -318,7 +339,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     figures = []
     label = prof['labels'].get('figure', 'Figure %d')
     part_banner = prof['structure'].get('part_banner')
-    convert(doc, body, figures, label, images, brand, part_banner)
+    refs = xref.resolve(prof, body, annex_lines)
+    convert(doc, body, figures, label, images, brand, part_banner, table=refs)
     if annex_lines:
         doc.add_page_break()
         if annex_title:
@@ -327,7 +349,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
             for run in heading.runs:
                 run.font.color.rgb = _navy(brand)
         convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
-                images, brand, part_banner, force_parts=True)
+                images, brand, part_banner, force_parts=True, table=refs)
 
     doc.save(str(output))
     return {'figures': len(figures), 'tables': len(doc.tables),

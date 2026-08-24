@@ -19,7 +19,8 @@ filename shown to a reader is wrong regardless of who wrote it:
 | `todo` | `TODO`, `TBD`, `FIXME`, `XXX`, `PLACEHOLDER` |
 | `lorem` | placeholder text |
 | `unsupported-footnote` | `[^1]` — see `unsupported-syntax.md` |
-| `unsupported-caption` | `: Caption {#fig-1}` |
+| `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
+| `duplicate-label` | the same id declared twice |
 | `length-spec` (warn) | an authoring length specification left in the text |
 
 **Packs** — opt-in, for a particular authoring system. `realtimex-loops` catches

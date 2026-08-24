@@ -57,8 +57,8 @@ def main():
           'filename-label' in rules_fired('See [`REPORT.md`](./REPORT.md)'))
     check('an unrendered footnote is caught',
           'unsupported-footnote' in rules_fired('A claim.[^1]'))
-    check('an unrendered caption is caught',
-          'unsupported-caption' in rules_fired(': A caption {#fig-1}'))
+    check('a caption is a supported construct now, not a blocked one',
+          'unsupported-caption' not in rules_fired(': A caption {#fig-1}'))
     check('a project rule fires',
           'codename' in rules_fired('Regarding PROJECT BLUEBIRD.', rules=project))
 
@@ -68,6 +68,28 @@ def main():
           'todo' in rules_fired(fenced, skip_code=False))
     check('a finding reports its line',
           lint.check_text('ok\nok\nTODO here')[0]['line'] == 3)
+
+    print('cross-references')
+    with tempfile.TemporaryDirectory() as tmp:
+        doc = Path(tmp) / 'r.md'
+        doc.write_text('Drawn in @fig-flow.\n\n```mermaid\ngraph LR\nA-->B\n```\n\n'
+                       ': How it flows {#fig-flow}\n\nAnd @fig-absent is nothing.\n',
+                       encoding='utf-8')
+        found = lint.check_references(doc, None, profile.load('en'))
+        check('a reference to a label that does not exist is blocked',
+              any(f['rule'] == 'dangling-reference' and f['match'] == '@fig-absent'
+                  for f in found))
+        check('a reference that resolves is not reported',
+              not any(f['match'] == '@fig-flow' for f in found))
+        check('the finding carries the line it is on',
+              all(f['line'] > 0 for f in found if f['rule'] == 'dangling-reference'))
+
+        twice = Path(tmp) / 'twice.md'
+        twice.write_text(': One {#fig-a}\n\n: Two {#fig-a}\n', encoding='utf-8')
+        found = lint.check_references(twice, None, profile.load('en'))
+        check('a label declared twice is blocked, because every reference '
+              'would mean the first',
+              any(f['rule'] == 'duplicate-label' for f in found))
 
     print('the publication allowlist')
     declared, blocked, embedded = {'report.md'}, {'REVIEW.md'}, {'annex.md'}

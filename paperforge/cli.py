@@ -188,6 +188,7 @@ def do_lint(cfg, docs, quiet=False):
     for d in docs:
         findings = lint.check_document(d['source_path'], rules)
         findings += lint.check_publishable(d['source_path'], allowed, blocked, embedded)
+        findings += lint.check_references(d['source_path'], d['annex_path'], d['prof'])
         if d['annex_path']:
             findings += lint.check_document(d['annex_path'], rules)
         s = lint.summarise(findings)

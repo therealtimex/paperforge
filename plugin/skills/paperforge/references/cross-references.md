@@ -34,16 +34,62 @@ Fix an id when a reference must survive an edit to the heading text. Otherwise
 the id is generated from the heading, with diacritics folded when the profile
 allows.
 
-## Not supported: numbered cross-references
+## Numbered cross-references
 
-There is **no `@fig-1`, `@tbl-2`, `@eq-3`**. Figure numbers are generated from
-position (see `diagrams.md`) and cannot be referred to symbolically; a `{#fig-x}`
-attribute on a caption line is blocked by lint because the line would print as
-body text.
+Label a figure, table or equation with a caption line, then refer to it by id:
 
-To point at a figure today, name it in prose ("the flow in Figure 3") and accept
-that renumbering is a manual check. This is the largest known gap in the
-authoring surface.
+````markdown
+```mermaid
+graph LR
+  A[Markdown] --> B[Gates] --> C[Editions]
+```
+
+: How a document reaches a reader {#fig-stages}
+
+| Stage | Refuses on |
+|:---|:---|
+| lint | internal machinery |
+
+: What each stage refuses {#tbl-gates}
+
+$$
+a^2 + b^2 = c^2
+$$ {#eq-pythagoras}
+
+The pipeline is drawn in @fig-stages and the gates are set out in @tbl-gates.
+````
+
+`@fig-stages` renders as the localised label and number — **Figure 1**, *Sơ đồ 1*,
+**图 1** — in prose, in a table cell, in another caption. Reorder the figures and
+the numbers follow; that is the whole point.
+
+Ids are prefixed by kind: `fig-`, `tbl-`, `eq-`. Figures and tables number
+independently, and numbering restarts in the annex, which is what its label
+says — *Figure A1* is the annex's first, not the document's fourteenth.
+
+A label is **optional**. An unlabelled figure keeps the positional caption it
+has always had, so nothing already written needs changing.
+
+## Numbering happens once, not four times
+
+Four emitters render the same source, and each could number its own figures.
+Each would be right on its own — and that is exactly how this pipeline's
+editions have disagreed before, every time an emitter was added. So the
+numbering is resolved once, in `xref.py`, and every emitter is handed text that
+is already resolved. An emitter that counts is an emitter that will eventually
+count differently.
+
+## Two ways it can go wrong, both blocked
+
+| Rule | Catches |
+|---|---|
+| `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
+| `duplicate-label` | the same id declared twice |
+
+Neither is visible in the output. An unresolved reference prints as its own
+source — *"see @fig-density"* — and a repeated label makes every reference to it
+silently mean the first. Both are the sort of thing a reader finds and an author
+does not, so lint blocks them.
 
 ## Related
 

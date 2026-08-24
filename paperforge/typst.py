@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import browser, citations as cite_mod, profile
+from . import browser, citations as cite_mod, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -25,6 +25,7 @@ ATTR_RE = re.compile(r'\s*\{([^{}]*)\}\s*$')
 FOOTNOTE_DEF = re.compile(r'^\[\^([^\]]+)\]:\s*(.*)$')
 
 SPECIAL = '\\#$*_`<>@'
+XREF = {}   # resolved once in xref.py; this emitter never counts for itself
 
 
 def esc(text):
@@ -36,6 +37,8 @@ def esc(text):
 
 def inline(text, footnotes):
     """Markdown inline -> Typst inline. Order matters: stash code, then links."""
+    if XREF:
+        text = xref.substitute(text, XREF)
     stash = []
 
     def keep(s):
@@ -131,6 +134,18 @@ def emit_table(lines, pos, notes, out):
     return pos
 
 
+def take_caption(lines, pos):
+    """Consume a `: text {#fig-x}` line after a block, as the HTML path does."""
+    look = pos
+    while look < len(lines) and not lines[look].strip():
+        look += 1
+    if look < len(lines):
+        m = xref.CAPTION_RE.match(lines[look].strip())
+        if m:
+            return XREF.get(m.group(2)), look + 1
+    return None, pos
+
+
 def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
     """Block pass. `figures` receives (index, caption) for each diagram."""
     out, pos, n = [], 0, len(lines)
@@ -154,9 +169,11 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
                 # the emitter numbers figures, matching the HTML edition, so
                 # Typst's own supplement is suppressed - otherwise the caption
                 # reads "Hình 1: Sơ đồ 1", its label and ours doubled up
+                entry, pos = take_caption(lines, pos)
+                cap = xref.caption_of(entry) if entry else label % (idx + 1)
                 out.append('#figure(image("fig-%d.png", width: 92%%), caption: [%s],'
                            ' supplement: none, numbering: none)'
-                           % (idx, esc(label % (idx + 1))))
+                           % (idx, inline(cap, notes)))
             else:
                 out.append('#raw("%s", block: true)' % '\\n'.join(
                     l.replace('\\', '\\\\').replace('"', '\\"') for l in buf))
@@ -201,6 +218,10 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
 
         if stripped.startswith('|') and pos + 1 < n and re.match(r'^\|[\s:|-]+\|?$', lines[pos + 1].strip()):
             pos = emit_table(lines, pos, notes, out)
+            entry, pos = take_caption(lines, pos)
+            if entry:
+                out.append('#align(center)[#text(size: 9pt, fill: rgb("#4a5568"))[%s]]'
+                           % inline(xref.caption_of(entry), notes))
             continue
 
         if LIST_RE.match(line):
@@ -297,6 +318,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     meta = [(m.group(1), m.group(2)) for m in
             (META_RE.match(l.strip()) for l in head) if m and m.group(2).strip()]
 
+    XREF.clear()
+    XREF.update(xref.resolve(prof, body, annex_lines))
     figures = []
     label = prof['labels'].get('figure', 'Figure %d').replace('%d', '%d')
     part_banner = prof['structure'].get('part_banner')

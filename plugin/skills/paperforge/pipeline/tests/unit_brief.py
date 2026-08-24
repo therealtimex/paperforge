@@ -92,8 +92,9 @@ def main():
               '## What was asked' not in text)
 
         print('what the gates refuse')
-        check('unsupported constructs are called out',
-              'footnotes `[^1]`' in text and 'caption lines' in text)
+        check('unsupported constructs are called out', 'footnotes `[^1]`' in text)
+        check('a construct that became supported is no longer listed',
+              'caption lines' not in text)
         check('core rules are listed', '`todo`' in text and '`lorem`' in text)
         check('a warn-level rule is not presented as blocking',
               'Reported but not blocking' in text and '`length-spec`' in text)

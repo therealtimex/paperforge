@@ -8,7 +8,9 @@ blocks them at the gate instead.
 | Construct | Lint rule | Instead |
 |---|---|---|
 | `[^1]` and `[^1]: note text` | `unsupported-footnote` | Put the aside in a callout, or in the sentence |
-| `: Caption {#fig-1}` / `{#tbl-2}` | `unsupported-caption` | See `diagrams.md`; captions are generated |
+
+`: Caption {#fig-1}` used to be on this list. It is supported now — see
+`cross-references.md`.
 | `TODO`, `TBD`, `FIXME`, `XXX`, `PLACEHOLDER` | `todo` | Finish the line |
 | `lorem ipsum` | `lorem` | Write the text |
 | `(SOME_FILE.md)` in prose | `source-filename` | Name the document, not the file |

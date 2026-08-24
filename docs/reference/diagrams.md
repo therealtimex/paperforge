@@ -10,17 +10,22 @@ flowchart LR
 ```
 ````
 
-## Captions are generated, not written
+## Captions
 
-The caption is the profile's `figure` label with the figure's position:
-`Figure 1`, `Sơ đồ 1`. Inside an annex it uses `annex_figure` — `Figure A1` —
-and the counter is shared across the report and its annex so numbers never
-collide.
+Without a caption line the caption is the profile's `figure` label with the
+figure's position: `Figure 1`, `Sơ đồ 1`. Inside an annex it uses
+`annex_figure` — `Figure A1`.
 
-**There is no way to write caption text today.** The Pandoc/Quarto form
-(`: My caption {#fig-x}`) is not interpreted and would print as a stray
-paragraph, so lint blocks it. If a diagram needs explanation, put it in the
-paragraph before or after. See `unsupported-syntax.md`.
+To write the caption yourself, and to be able to refer to the figure by number,
+put a caption line after the block:
+
+```markdown
+: Robot density by country, 2025 {#fig-density}
+```
+
+which renders as *Figure 3. Robot density by country, 2025* and makes
+`@fig-density` resolve to **Figure 3** anywhere in the document. See
+`cross-references.md`.
 
 ## Rendering
 

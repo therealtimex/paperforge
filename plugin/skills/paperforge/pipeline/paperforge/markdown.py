@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import citations as cite_mod
 from . import maths as maths_mod
-from . import profile
+from . import profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -24,6 +24,8 @@ SVGS = []  # pre-rendered Mermaid diagrams, injected inline so the file is self-
 STATS = {}  # what structure was detected, so a profile that matches nothing is reported
 MATHS = {}  # expressions pre-rendered by Typst, shared with the PDF edition
 CITES = {}  # in-text citation markers, formatted by Typst from the .bib
+XREF = {}   # labelled captions, numbered once in xref.py for every edition
+XREF_MISSING = []  # references pointing at no label
 BIB_WARNINGS = []  # bibliography entries that will render oddly
 FIG = {'n': 0, 'base': 0, 'label': '%d'}   # figure counter shared across report + annex
 PROF = profile.load('vi')                  # replaced per build; never assume a language
@@ -57,6 +59,8 @@ def slugify(text, fold_diacritics=True):
 
 def inline(text):
     """Escape then apply inline markdown: code, links, bold, italic."""
+    if XREF:
+        text = xref.substitute(text, XREF, XREF_MISSING)
     codes = []
     # pre-rendered HTML (maths, citations) is inserted verbatim; the code stash
     # wraps its contents in <code>, which put citations in a monospace box
@@ -110,6 +114,22 @@ def inline(text):
 
 
 # ----------------------------------------------------------------- block pass
+
+
+def take_caption(lines, pos):
+    """Consume a `: text {#fig-x}` line following a block, if there is one.
+
+    Returns (entry or None, new position). A caption that labels nothing is
+    left where it is; lint reports it rather than the renderer printing it as
+    a stray paragraph, which is what it used to do."""
+    look = pos
+    while look < len(lines) and not lines[look].strip():
+        look += 1
+    if look < len(lines):
+        m = xref.CAPTION_RE.match(lines[look].strip())
+        if m:
+            return XREF.get(m.group(2)), look + 1
+    return None, pos
 
 
 def parse_list(lines, pos, level):
@@ -222,9 +242,11 @@ def convert(lines, toc):
                     inner = '<div class="dgm"><div class="dgm-in"%s>%s</div></div>' % (style, svg)
                 else:
                     inner = '<div class="mermaid">%s</div>' % body
-                cap = FIG['label'] % (fig - FIG['base'])
-                out.append('<figure class="diagram">\n%s\n'
-                           '<figcaption>%s</figcaption>\n</figure>' % (inner, cap))
+                entry, pos = take_caption(lines, pos)
+                cap = xref.caption_of(entry) if entry else FIG['label'] % (fig - FIG['base'])
+                anchor = ' id="%s"' % entry['id'] if entry else ''
+                out.append('<figure class="diagram"%s>\n%s\n'
+                           '<figcaption>%s</figcaption>\n</figure>' % (anchor, inner, inline(cap)))
             else:
                 out.append('<pre><code>%s</code></pre>' % body)
             continue
@@ -290,6 +312,11 @@ def convert(lines, toc):
         # table -----------------------------------------------------------
         if stripped.startswith('|') and pos + 1 < n and re.match(r'^\|[\s:*|-]+\|?$', lines[pos + 1].strip()):
             block, pos = parse_table(lines, pos)
+            entry, pos = take_caption(lines, pos)
+            if entry:
+                block = block.replace('<div class="table-frame',
+                                      '<div id="%s" class="table-frame' % entry['id'], 1)
+                block += ('\n<p class="table-caption">%s</p>' % inline(xref.caption_of(entry)))
             out.append(block)
             continue
 
@@ -646,6 +673,11 @@ def build(source, output, svgs=None, annex=None, pages=None,
 
     MATHS.clear()
     CITES.clear()
+    XREF.clear()
+    XREF_MISSING[:] = []
+    # numbered once, for every edition: see xref.py
+    annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
+    XREF.update(xref.resolve(PROF, raw.split('\n'), annex_lines))
     source_text = raw + ('\n' + Path(annex).read_text(encoding='utf-8') if annex else '')
     found = maths_mod.find(source_text)
     if found:

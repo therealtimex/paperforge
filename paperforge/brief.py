@@ -19,7 +19,6 @@ from . import figures as fig_mod, lint, runs
 
 UNSUPPORTED = {
     'unsupported-footnote': 'footnotes `[^1]` and their definitions',
-    'unsupported-caption': 'caption lines `: Caption {#fig-1}`',
 }
 
 

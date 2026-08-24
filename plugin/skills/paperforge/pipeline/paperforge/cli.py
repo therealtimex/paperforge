@@ -7,8 +7,9 @@ import sys
 import tomllib
 from pathlib import Path
 
-from . import (brief, deck, diagrams, editions, figures, lint, markdown, pages,
-               profile, publish as pub, runs, scaffold, typst, verify)
+from . import (brief, deck, diagrams, docx as docx_mod, editions, figures, lint,
+               markdown, pages, profile, publish as pub, runs, scaffold, typst,
+               verify)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -342,6 +343,21 @@ def do_build(docs, cache, measure=True):
                 print('  %-38s typst FAILED: %s' % (pdf_out.name, str(err).splitlines()[0][:90]))
                 failures.append(pdf_out.name)
 
+        # Word, for the reader who has to work on the document rather than read
+        # it: lift a section into a submission, comment, track changes.
+        if d.get('docx'):
+            docx_out = d['output_path'].with_suffix('.docx')
+            try:
+                info = docx_mod.build(d['source_path'], docx_out, d['prof'], svgs=svgs,
+                                      annex=d['annex_path'], title_kind=d.get('title_kind'),
+                                      organisation=d.get('organisation', ''),
+                                      brand=d.get('brand'), cache=cache,
+                                      contents_heading=d.get('contents_heading'))
+                print('  %-38s %s' % (docx_out.name, json.dumps(info, ensure_ascii=False)))
+            except Exception as err:
+                print('  %-38s docx FAILED: %s' % (docx_out.name, str(err).splitlines()[0][:90]))
+                failures.append(docx_out.name)
+
         # The browser already prints the document to measure its pagination, but
         # that copy is a cache by-product. `pdf = "chrome"` promotes it to a
         # named deliverable, so a print edition from the reading edition's own
@@ -403,6 +419,23 @@ def do_verify(docs, cache):
                 problems.append('%d raw markup leak(s) in the PDF: %s'
                                 % (len(pl), ['%s %s' % (l['where'], l['match'])
                                              for l in pl[:3]]))
+        word_edition = d['output_path'].with_suffix('.docx')
+        if word_edition.exists() and d.get('docx'):
+            wd = editions.compare_docx(d['output_path'], word_edition)
+            for kind, label in (('missing', 'in the reading edition but not the .docx'),
+                                ('extra', 'in the .docx but not the reading edition')):
+                if wd[kind]:
+                    problems.append('%d heading(s) %s: %s'
+                                    % (len(wd[kind]), label, [h[:34] for h in wd[kind]][:2]))
+            for what in ('figures', 'tables'):
+                if wd['%s_html' % what] != wd['%s_docx' % what]:
+                    problems.append('%s differ: html %d, docx %d'
+                                    % (what, wd['%s_html' % what], wd['%s_docx' % what]))
+            if not any(wd[k] for k in ('missing', 'extra')):
+                print('      docx: %d headings, %d figures, %d tables agree with the '
+                      'reading edition'
+                      % (wd['headings_docx'], wd['figures_docx'], wd['tables_docx']))
+
         if pdf_edition.exists() and d.get('pdf') == 'typst':
             ed = editions.compare(d['output_path'], pdf_edition)
             if ed['mid_page']:
@@ -524,6 +557,9 @@ def do_publish(cfg, docs, expires=None):
         pdf = d['output_path'].with_suffix('.pdf')
         if d.get('pdf') and pdf.exists():
             editions.append(pdf)
+        word = d['output_path'].with_suffix('.docx')
+        if d.get('docx') and word.exists():
+            editions.append(word)
         elif pdf.exists():
             print('  %-38s not published: no `pdf =` in the manifest' % pdf.name)
 

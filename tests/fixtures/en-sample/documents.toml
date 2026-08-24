@@ -16,6 +16,7 @@ profile = "en"
   annex = "annex.md"
   contents_heading = "CONTENTS"
   page_numbers = true
+  docx = true          # covers the annex and diagram paths of the Word emitter
   publish = false
 
 [internal]

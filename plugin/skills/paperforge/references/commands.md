@@ -52,8 +52,8 @@ documents ship beside it in `tests/fixtures`.
 ## Requirements
 
 Headless Chrome (diagram rendering, page measurement, layout checks) ·
-`pdfplumber` (reading pagination back) · `typst` (print editions, maths,
-citations) · `realtimex-pp-cli` (publication).
+`pdfplumber` (reading pagination back) · `python-docx` (Word editions) ·
+`typst` (print editions, maths, citations) · `realtimex-pp-cli` (publication).
 
 Chrome and the Mermaid CDN are **build-time only**; published documents carry no
 scripts or network dependencies from them.

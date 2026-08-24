@@ -56,6 +56,15 @@ A bulleted list with a nested level:
 | lint | internal machinery reaching a reader |
 | verify | markup that never rendered |
 
+A wide table — six columns or more — turns onto a landscape page in both the
+print and Word editions, because the right-hand column is where sources live:
+
+| Stage | Reads | Refuses on | Blocking | Since | Notes |
+|:---|:---|:---|:---:|:---|:---|
+| figures | `figures.toml` | a number disagreeing | yes | v1 | per-language forms |
+| lint | the markdown | internal machinery | yes | v1 | packs are opt-in |
+| verify | the built output | markup that never rendered | yes | v1 | and the editions |
+
 A fenced block is set as a code sample, never executed:
 
 ```bash

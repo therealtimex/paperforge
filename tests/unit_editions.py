@@ -91,6 +91,51 @@ def main():
         check('a heading absent from the PDF is reported as unlocated',
               any('gamma' in h for h in result['unlocated']))
 
+    print('the Word edition against the reading edition')
+    from paperforge import docx as docx_mod, profile
+    with tempfile.TemporaryDirectory() as tmp:
+        work = Path(tmp)
+        src = work / 'r.md'
+        src.write_text('# KIND\n## Title\n\n---\n\n## CONTENTS\n\n'
+                       '## Alpha Section One {.part}\n\nBody text here.\n\n'
+                       '| A | B |\n|---|---|\n| 1 | 2 |\n\n'
+                       '## Beta Section Two {.part}\n\nMore body text.\n',
+                       encoding='utf-8')
+        prof = profile.load('en')
+        out = work / 'r.docx'
+        info = docx_mod.build(src, out, prof, contents_heading='CONTENTS')
+        check('the Word file is written', out.exists() and info['bytes'] > 0)
+        check('its tables come across', info['tables'] == 1)
+        built = docx_mod.structure(out)
+        check('both parts are headings in Word',
+              any(h.startswith('Alpha') for h in built['headings'])
+              and any(h.startswith('Beta') for h in built['headings']))
+
+        (work / 'r.html').write_text(
+            '<html><body><main>'
+            '<h2 id="c">CONTENTS<a class="anchor" href="#c"></a></h2>'
+            '<h2 class="part" id="a">Alpha Section One<a class="anchor" href="#a"></a></h2>'
+            '<table><tr><td>1</td></tr></table>'
+            '<h2 class="part" id="b">Beta Section Two<a class="anchor" href="#b"></a></h2>'
+            '</main></body></html>', encoding='utf-8')
+        cmp = editions.compare_docx(work / 'r.html', out)
+        check('a document built from the same source agrees',
+              not cmp['missing'] and not cmp['extra'])
+        check('tables are counted on both sides',
+              cmp['tables_html'] == cmp['tables_docx'] == 1)
+
+        (work / 'drifted.html').write_text(
+            '<html><body><main>'
+            '<h2 id="c">CONTENTS<a class="anchor" href="#c"></a></h2>'
+            '<h2 class="part" id="a">Alpha Section One<a class="anchor" href="#a"></a></h2>'
+            '<h2 class="part" id="g">Gamma Section Missing<a class="anchor" href="#g"></a></h2>'
+            '</main></body></html>', encoding='utf-8')
+        drift = editions.compare_docx(work / 'drifted.html', out)
+        check('a heading the Word file never received is reported',
+              any('Gamma' in h for h in drift['missing']))
+        check('a heading only Word carries is reported too',
+              any('Beta' in h for h in drift['extra']))
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

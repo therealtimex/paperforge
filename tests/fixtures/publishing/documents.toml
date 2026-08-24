@@ -24,6 +24,7 @@ profile = "en"
   contents_heading = "CONTENTS"
   page_numbers = true
   pdf = "typst"          # so both editions go through the publish loop
+  docx = true            # the working document an editor can actually edit
   publish = true
 
   # the "skipped (not publishable)" path, which is what every other fixture

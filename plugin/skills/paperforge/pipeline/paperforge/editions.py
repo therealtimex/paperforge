@@ -97,3 +97,42 @@ def compare(html_path, pdf_path, fold=True):
     return {'expected_openers': len(expected), 'mid_page': mid_page, 'unlocated': missing,
             'figures_html': html_figs, 'figures_pdf': pdf_figs,
             'figures_agree': html_figs == pdf_figs}
+
+
+def _html_headings(html):
+    """Every heading the reading edition renders, in order."""
+    body = html[html.index('<main>'):html.index('</main>')]
+    found = []
+    for m in re.finditer(r'<h[1-4][^>]*>(.*?)</h[1-4]>', body, re.S):
+        text = re.sub(r'\s+', ' ', ihtml.unescape(re.sub(r'<[^>]+>', '', m.group(1)))).strip()
+        text = text.rstrip('#').strip()      # the anchor glyph the HTML appends
+        if text:
+            found.append(text)
+    return found
+
+
+def compare_docx(html_path, docx_path):
+    """Word against the reading edition.
+
+    The third emitter. The first two drifted within a day of the second
+    existing, and this one drifted on its first build: it carried the embedded
+    annex's own title, subtitle and contents, which the reading edition drops
+    because the annex is folded into its parent. Counts alone would have hidden
+    it - the totals were close - so the headings are compared as sets.
+
+    Pages are not compared. Word paginates the document when it opens it, so
+    there is nothing here to hold against a measured page number.
+    """
+    from . import docx as docx_mod
+    web = _html_headings(open(html_path, encoding='utf-8').read())
+    built = docx_mod.structure(docx_path)
+    doc_heads = [h.rstrip('#').strip() for h in built['headings']]
+    html_figs = open(html_path, encoding='utf-8').read().count('<figcaption>')
+    html_tables = open(html_path, encoding='utf-8').read().count('<table>')
+    return {
+        'missing': [h for h in web if h not in doc_heads],
+        'extra': [h for h in doc_heads if h not in web],
+        'headings_html': len(web), 'headings_docx': len(doc_heads),
+        'figures_html': html_figs, 'figures_docx': built['figures'],
+        'tables_html': html_tables, 'tables_docx': built['tables'],
+    }

@@ -42,6 +42,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Change the palette, fonts or page furniture | [references/branding.md](references/branding.md) |
 | Fix responsiveness or the contents sidebar | [references/layout.md](references/layout.md) |
 | Fix page breaks, page numbers or the PDF | [references/print.md](references/print.md) |
+| Deliver something the reader can edit | [references/docx.md](references/docx.md) |
 | Keep a number consistent across documents | [references/figures.md](references/figures.md) |
 | Understand why lint blocked a document | [references/lint.md](references/lint.md) |
 | Understand a verify failure | [references/verify.md](references/verify.md) |

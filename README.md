@@ -88,13 +88,14 @@ realtimex-pp-cli install-plugin --path "$PWD/plugin" --agent
 ## Requirements
 
 `python3`, headless Chrome (diagrams, page measurement, layout checks),
-`pdfplumber`, `typst` (print editions, maths, citations), and `realtimex-pp-cli`
+`pdfplumber`, `python-docx` (Word editions), `typst` (print editions, maths,
+citations), and `realtimex-pp-cli`
 for the default publish target. Chrome and the Mermaid CDN are **build-time
 only** — published documents carry no scripts or network dependencies.
 
 ```bash
 brew install typst
-pip install pdfplumber
+pip install pdfplumber python-docx
 ```
 
 ## Tests

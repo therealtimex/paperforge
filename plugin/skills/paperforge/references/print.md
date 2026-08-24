@@ -77,4 +77,4 @@ the same headings must open a page and both must carry the same figures. See
 
 ## Related
 
-`diagrams.md` · `maths.md` · `citations.md` · `verify.md` · `layout.md`
+`diagrams.md` · `maths.md` · `citations.md` · `verify.md` · `layout.md` · `docx.md`

@@ -33,6 +33,14 @@ profile = "en"
   output = "draft.html"
   publish = false
 
+  # the other print edition: the reading edition's own layout, promoted from
+  # the copy the browser already prints to measure pagination
+  [[collection.document]]
+  source = "note.md"
+  output = "note.html"
+  pdf = "chrome"
+  publish = true
+
 [internal]
 files = ["REVIEW_NOTES.md"]
 reason = "process record: must never be publishable"

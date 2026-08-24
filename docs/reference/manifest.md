@@ -70,9 +70,19 @@ writes `50.000` where English writes `50,000`. See `figures.md`.
 | `title_kind` | Badge text when the source has no `# ` line |
 | `contents_heading` | Usually from the profile; enables sidebar and page numbers |
 | `page_numbers` | Measured printed page numbers on the contents |
-| `pdf = "typst"` | Build a print edition alongside the reading edition |
+| `pdf = "typst"` | Print edition typeset by Typst — footnotes at the foot of the page, running heads |
+| `pdf = "chrome"` | Print edition from the reading edition's own layout, including landscape wide tables |
 | `bibliography`, `citation_style` | See `citations.md` |
 | `publish` | The allowlist flag |
+
+A print edition **publishes only if it is declared**. Before that was true, any
+`.pdf` sitting beside the HTML was shipped, so a file appearing on disk could
+reach a public URL without anyone deciding — which is the one thing the manifest
+exists to prevent. A stray PDF is now reported and left alone.
+
+Choose `typst` when the document needs real footnotes and running heads;
+`chrome` when what you want published is exactly what a reader sees on screen.
+`chrome` is also the only one that handles wide tables today — see `print.md`.
 
 ## `[internal]`
 

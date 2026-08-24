@@ -2,6 +2,7 @@
 import argparse
 import json
 import re
+import shutil
 import sys
 import tomllib
 from pathlib import Path
@@ -333,6 +334,24 @@ def do_build(docs, cache, measure=True):
             except (RuntimeError, FileNotFoundError) as err:
                 print('  %-38s typst FAILED: %s' % (pdf_out.name, str(err).splitlines()[0][:90]))
                 failures.append(pdf_out.name)
+
+        # The browser already prints the document to measure its pagination, but
+        # that copy is a cache by-product. `pdf = "chrome"` promotes it to a
+        # named deliverable, so a print edition from the reading edition's own
+        # layout is something the manifest asks for rather than something a
+        # person links out of .cache by hand.
+        elif d.get('pdf') == 'chrome':
+            pdf_out = d['output_path'].with_suffix('.pdf')
+            measured = cache / (d['output'] + '.pdf')
+            if not measured.exists():
+                browser.print_pdf(d['output_path'], measured)
+            if measured.exists():
+                shutil.copyfile(measured, pdf_out)
+                print('  %-38s {"bytes": %d, "from": "chrome"}'
+                      % (pdf_out.name, pdf_out.stat().st_size))
+            else:
+                print('  %-38s chrome print FAILED' % pdf_out.name)
+                failures.append(pdf_out.name)
     return failures
 
 
@@ -366,8 +385,10 @@ def do_verify(docs, cache):
         if r['leaks']:
             problems.append('%d raw markup leak(s): %s'
                             % (len(r['leaks']), [l['match'] for l in r['leaks'][:3]]))
-        # the two editions render the same source through independent emitters;
-        # nothing else checks they agree, and they have drifted before
+        # The comparison is only meaningful against a second, independent
+        # emitter. `pdf = "chrome"` prints the reading edition's own layout, so
+        # there is nothing to disagree with - and its diagrams stay vector,
+        # which the figure count reads as zero.
         pdf_edition = d['output_path'].with_suffix('.pdf')
         if pdf_edition.exists():
             pl = verify.print_leaks(pdf_edition)
@@ -375,6 +396,7 @@ def do_verify(docs, cache):
                 problems.append('%d raw markup leak(s) in the PDF: %s'
                                 % (len(pl), ['%s %s' % (l['where'], l['match'])
                                              for l in pl[:3]]))
+        if pdf_edition.exists() and d.get('pdf') == 'typst':
             ed = editions.compare(d['output_path'], pdf_edition)
             if ed['mid_page']:
                 problems.append('%d heading(s) open a page in HTML but not in the PDF: %s'
@@ -488,9 +510,15 @@ def do_publish(cfg, docs, expires=None):
             print('  %-38s REFUSED: not built' % d['output']); continue
         # the reading edition and the print edition are both deliverables
         editions = [d['output_path']]
+        # Only a declared print edition ships. Publishing whatever .pdf happened
+        # to be lying beside the HTML let a file appear on disk and reach a
+        # public URL without anyone deciding - which is the one thing the
+        # manifest exists to prevent.
         pdf = d['output_path'].with_suffix('.pdf')
-        if pdf.exists():
+        if d.get('pdf') and pdf.exists():
             editions.append(pdf)
+        elif pdf.exists():
+            print('  %-38s not published: no `pdf =` in the manifest' % pdf.name)
 
         target = d.get('target', 'realtimex')
         for artefact in editions:

@@ -3,8 +3,12 @@
    than a page. Fonts stay in the Vietnamese-safe stack: several common serifs
    silently drop tone marks on Ơ and Ư (see docs/DESIGN.md). */
 :root {
-  --navy:#0b2545; --navy-2:#13315c; --navy-3:#1c4a80;
-  --amber:#c2761a; --amber-soft:#fdf3e3;
+  /* Neutral defaults, matching paperforge.css. This block used to carry one
+     project's brand colours, so every other project's slides came out in them
+     and nothing said so - the report stylesheet was neutralised and the deck
+     was missed. */
+  --navy:#243b53; --navy-2:#334e68; --navy-3:#486581;
+  --amber:#8a6d1f; --amber-soft:#faf6ec;
   --ink:#1b2430; --ink-soft:#44506180; --muted:#6b7789;
   --paper:#ffffff; --line:#dfe4ec;
   --sans:"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
@@ -79,3 +83,6 @@
     -webkit-print-color-adjust:exact; print-color-adjust:exact;
   }
 }
+
+.reveal .logo { display:flex; justify-content:center; margin:0 0 18px; }
+.reveal .logo svg, .reveal .logo img { height:var(--logo-h,64px); width:auto; }

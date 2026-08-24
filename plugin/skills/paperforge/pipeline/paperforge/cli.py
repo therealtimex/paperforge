@@ -124,6 +124,9 @@ def load(config=None):
                        # request is thin the interpretation becomes the real
                        # spec, and an interpretation nobody can re-read is not
                        # one anybody can check the delivery against
+                       'logo_path': (base / doc_logo).resolve()
+                       if (doc_logo := {**cfg['defaults'], **shared, **ed}.get('logo'))
+                       else None,
                        'request_path': (base / doc_request).resolve()
                        if (doc_request := {**cfg['defaults'], **shared, **ed}.get('request'))
                        else None}
@@ -205,7 +208,7 @@ def opts(d):
             'kind_fallback': d.get('title_kind'), 'prof': d['prof'],
             'organisation': d.get('organisation'), 'publisher': d.get('publisher'),
             'footer_note': d.get('footer_note'), 'annex_label': d.get('annex_label'),
-            'brand': d.get('brand'),
+            'brand': d.get('brand'), 'logo': d.get('logo_path'),
             'bibliography': (d['root'] / d['bibliography']) if d.get('bibliography') else None,
             'citation_style': d.get('citation_style', 'apa'),
             'layout': d.get('layout', 'report')}
@@ -280,6 +283,7 @@ def do_build(docs, cache, measure=True):
         svgs = diagrams.render(srcs, cache=cache / ('%s.diagrams.json' % d['source']))
         if d.get('format') == 'deck':
             stats = deck.build(d['source_path'], d['output_path'], svgs=svgs,
+                               brand=d.get('brand'), logo=d.get('logo_path'),
                                kind_fallback=d.get('title_kind'), prof=d['prof'])
             warnings = stats.pop('warnings', [])
             print('  %-38s %s' % (d['output'], json.dumps(stats, ensure_ascii=False)))
@@ -333,7 +337,7 @@ def do_build(docs, cache, measure=True):
                 info = typst.build(d['source_path'], pdf_out, d['prof'], svgs=svgs,
                                    annex=d['annex_path'], title_kind=d.get('title_kind'),
                                    organisation=d.get('organisation', ''),
-                                   brand=d.get('brand'), cache=cache,
+                                   brand=d.get('brand'), cache=cache, logo=d.get('logo_path'),
                                    contents_heading=d.get('contents_heading'),
                                    bibliography=(d['root'] / d['bibliography'])
                                    if d.get('bibliography') else None,
@@ -351,7 +355,7 @@ def do_build(docs, cache, measure=True):
                 info = docx_mod.build(d['source_path'], docx_out, d['prof'], svgs=svgs,
                                       annex=d['annex_path'], title_kind=d.get('title_kind'),
                                       organisation=d.get('organisation', ''),
-                                      brand=d.get('brand'), cache=cache,
+                                      brand=d.get('brand'), cache=cache, logo=d.get('logo_path'),
                                       contents_heading=d.get('contents_heading'))
                 print('  %-38s %s' % (docx_out.name, json.dumps(info, ensure_ascii=False)))
             except Exception as err:

@@ -198,6 +198,35 @@ def main():
     check('"<10%" and ">55" are prose, not tags', verify.leaks('Nhóm 2: <10% and >55–60%') == [])
     check('unrendered emphasis is a leak', any(l['kind'] == 'emphasis' for l in verify.leaks('a **b**')))
 
+    print('branding')
+    from paperforge import markdown as md
+    prof = profile.load('en')
+    plain = md.theme_override(prof, None)
+    check('an unbranded project gets the profile fonts and no palette',
+          '--serif' in plain and '--navy' not in plain)
+    branded = md.theme_override(prof, {'navy': '#5b2333', 'bg': '#f7f4ef'})
+    check('a declared palette is emitted as tokens',
+          '--navy: #5b2333' in branded and '--bg: #f7f4ef' in branded)
+    housed = md.theme_override(prof, {'serif': 'Palatino, serif'})
+    check('a project may name its own face, overriding the profile',
+          '--serif: Palatino, serif' in housed)
+    check('and the profile still supplies the one it did not name',
+          '--sans' in housed)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        mark = Path(tmp) / 'mark.svg'
+        mark.write_text('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10">'
+                        '<rect width="10" height="10"/></svg>', encoding='utf-8')
+        tag = md.logo_tag(mark)
+        check('an SVG mark is inlined as markup, not linked',
+              '<svg' in tag and 'src=' not in tag)
+        raster = Path(tmp) / 'mark.png'
+        raster.write_bytes(b'\x89PNG\r\n\x1a\n' + b'\0' * 40)
+        check('any other format is inlined as a data URI',
+              'data:image/png;base64,' in md.logo_tag(raster))
+        check('a mark that is not there is not a broken image',
+              md.logo_tag(Path(tmp) / 'absent.svg') == '')
+
     print('locating the contents in a printed PDF')
     # These two guards were added after a real defect: with every contents entry
     # shorter than the length filter, the search scored every page zero and

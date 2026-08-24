@@ -37,9 +37,17 @@ LINK = re.compile(r'\[([^\]]+)\]\(([^)\s]+)\)')
 WIDE = 6                      # columns from which a table gets a landscape section
 
 
-def _navy(brand):
-    value = (brand or {}).get('navy', '#243b53').lstrip('#')
+DEFAULTS = {'navy': '#243b53', 'amber': '#8a6d1f', 'ink': '#1b2430',
+            'muted': '#6b7789'}
+
+
+def _colour(brand, token):
+    value = (brand or {}).get(token, DEFAULTS[token]).lstrip('#')
     return RGBColor(int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16))
+
+
+def _navy(brand):
+    return _colour(brand, 'navy')
 
 
 def _runs(paragraph, text):
@@ -213,7 +221,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
 
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
-          organisation='', brand=None, cache=None, contents_heading=None):
+          organisation='', brand=None, cache=None, contents_heading=None, logo=None):
     """Render one document to .docx. Returns build facts."""
     src = Path(source)
     work = Path(cache or src.parent) / ('.docx-%s' % src.stem)
@@ -258,9 +266,32 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                 images[i] = png
 
     doc = Document()
+    if logo and Path(logo).exists():
+        # Word cannot place an SVG, so one is rasterised the same way the
+        # diagrams are - a project should not have to keep a second copy of its
+        # own mark just because one of four editions is fussy
+        mark = Path(logo)
+        if mark.suffix.lower() == '.svg':
+            typst.rasterise([mark.read_text(encoding='utf-8')], work, scale=4)
+            raster = work / 'fig-0.png'
+            mark = raster if raster.exists() else None
+        if mark:
+            doc.add_picture(str(mark), height=Mm(14))
+            doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
     normal = doc.styles['Normal']
-    normal.font.name = 'Calibri'
+    # a project's own sans, if it names one: the first family in the stack, since
+    # Word takes a single face rather than a fallback list
+    # `-apple-system` and friends are CSS keywords, not typefaces: naming one in
+    # a .docx gives Word a font it cannot find and a document that renders
+    # differently on every machine
+    SYSTEM_UI = {'-apple-system', 'blinkmacsystemfont', 'system-ui', 'ui-sans-serif',
+                 'ui-serif', 'segoe ui'}
+    stack = (brand or {}).get('sans') or (prof.get('fonts') or {}).get('sans') or ''
+    families = [f.strip().strip('"\'') for f in stack.split(',')]
+    normal.font.name = next((f for f in families
+                             if f and f.lower() not in SYSTEM_UI), 'Calibri')
     normal.font.size = Pt(11)
+    normal.font.color.rgb = _colour(brand, 'ink')
 
     for text, size, bold in ((kind or title_kind or '', 12, False),
                              (title or src.stem, 20, True)):

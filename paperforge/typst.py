@@ -249,7 +249,7 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 #show table: set par(justify: false)
 #set table(fill: (_, y) => if y == 0 {{ rgb("{navy}") }})
 
-#align(center)[
+{logo}#align(center)[
   #block(inset: (y: 18pt))[
     #text(size: 9pt, fill: rgb("{amber}"), weight: "bold", tracking: 1.5pt)[{kind}]
     #v(6pt)
@@ -265,7 +265,7 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None,
-          bibliography=None, citation_style='apa'):
+          bibliography=None, citation_style='apa', logo=None):
     """Render one document to PDF through Typst. Returns build facts."""
     brand = brand or {}
     src = Path(source)
@@ -309,6 +309,12 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     if svgs:
         rasterise(svgs[:len(figures)], work)
 
+    logo_block = ''
+    if logo and Path(logo).exists():
+        shutil.copy2(logo, work / Path(logo).name)
+        logo_block = ('#align(center)[#image("%s", height: 14mm)]\n#v(6pt)\n'
+                      % Path(logo).name)
+
     meta_block = ''
     if meta:
         rows = ',\n    '.join('[#text(fill: rgb("#6b7789"))[%s]], [%s]'
@@ -318,7 +324,10 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         meta_block = ('#align(center)[#block(width: 80%%)[\n  #grid(columns: 2,'
                       ' align: (right, left), inset: 3pt,\n    %s\n  )]]' % rows)
 
-    fonts = prof.get('fonts', {})
+    # a project's own faces override the profile's, same order as the reading
+    # edition, so the two do not disagree about type
+    fonts = dict(prof.get('fonts') or {})
+    fonts.update({k: v for k, v in brand.items() if k in ('serif', 'sans')})
     def quoted(stack, fallback):
         names = [n.strip().strip('"\'') for n in (stack or fallback).split(',')]
         return ', '.join('"%s"' % n for n in names if n)
@@ -331,7 +340,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         display_font=quoted(fonts.get('serif'), 'Georgia'),
         navy=brand.get('navy', '#243b53'), navy2=brand.get('navy-2', '#334e68'),
         navy3=brand.get('navy-3', '#486581'), amber=brand.get('amber', '#8a6d1f'),
-        kind=esc(kind), meta=meta_block)
+        kind=esc(kind), meta=meta_block, logo=logo_block)
 
     if bibliography and cite_mod.find('\n'.join(lines + annex_lines)):
         bib = Path(bibliography)

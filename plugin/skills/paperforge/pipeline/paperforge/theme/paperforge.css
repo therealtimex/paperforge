@@ -114,6 +114,10 @@ tbody tr:hover { background:var(--amber-soft); }
 tbody td.empty { border-top-color:transparent; }
 table strong { color:var(--navy); }
 
+/* ---------- project mark ---------- */
+.logo { display:flex; justify-content:center; margin:0 0 18px; }
+.logo svg, .logo img { height:var(--logo-h,46px); width:auto; max-width:70%; }
+
 /* ---------- callout ---------- */
 .callout { margin:24px 0 28px; padding:18px 22px; border-radius:10px; font-size:.93rem;
   background:var(--amber-soft); border:1px solid #f0dcbb; border-left:5px solid var(--amber); }

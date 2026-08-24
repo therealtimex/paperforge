@@ -18,6 +18,7 @@ import re
 from pathlib import Path
 
 from . import profile
+from . import markdown as md
 from .markdown import FIG, SVGS, convert, inline, parse_head
 
 THEME = Path(__file__).parent / 'theme'
@@ -90,7 +91,8 @@ def audit(html, units='spaces'):
     return warnings
 
 
-def build(source, output, svgs=None, kind_fallback=None, prof=None):
+def build(source, output, svgs=None, kind_fallback=None, prof=None, brand=None,
+          logo=None):
     prof = prof or profile.load('vi')
     import paperforge.markdown as _md
     _md.PROF = prof
@@ -104,8 +106,11 @@ def build(source, output, svgs=None, kind_fallback=None, prof=None):
     title = subtitle or h1 or kind_fallback
     kind = h1 if subtitle else kind_fallback
 
-    cover = ['<section class="deck-title">',
-             '<p class="deck-kind">%s</p>' % inline(kind),
+    cover = ['<section class="deck-title">']
+    if logo:
+        # the mark belongs on the title slide, not on all of them
+        cover.append(md.logo_tag(logo, height=64))
+    cover += ['<p class="deck-kind">%s</p>' % inline(kind),
              '<h1>%s</h1>' % inline(title)]
     if lede:
         cover.append('<div class="deck-lede">%s</div>' % convert(lede, []))
@@ -129,7 +134,10 @@ def build(source, output, svgs=None, kind_fallback=None, prof=None):
         'TITLE': ihtml.escape(re.sub(r'\s+', ' ', title)),
         'RESET': (VENDOR / 'reset.css').read_text(encoding='utf-8'),
         'REVEAL_CSS': (VENDOR / 'reveal.css').read_text(encoding='utf-8'),
-        'THEME_CSS': (THEME / 'deck.css').read_text(encoding='utf-8'),
+        # the project's palette, appended after the theme so it wins - without
+        # this a branded project's slides silently used the shipped defaults
+        'THEME_CSS': ((THEME / 'deck.css').read_text(encoding='utf-8')
+                      + '\n' + md.theme_override(prof, brand)),
         'REVEAL_JS': (VENDOR / 'reveal.js').read_text(encoding='utf-8'),
         'SLIDES': '\n'.join(out),
     }

@@ -7,22 +7,78 @@ applies across the corpus.
 This is a **document** design system — typography, print and page furniture for
 long-form research documents. It is deliberately not a component library.
 
-## The whole brand surface is seven tokens
+## The palette
 
-The stylesheet ships neutral defaults; a project declares its own palette in the
-manifest. The other ~290 lines of the stylesheet are structure and print
-behaviour, not brand.
+The stylesheet ships neutral defaults; a project declares its own in the
+manifest, and the build emits them *after* the theme so they win. Every token
+the stylesheet consumes is overridable — not a fixed subset:
 
 ```toml
 [defaults.brand]
-navy = "#0b2545"        # carries structure
-"navy-2" = "#13315c"
-"navy-3" = "#1c4a80"
-amber = "#c2761a"       # emphasis and annex material
-"amber-soft" = "#fdf3e3"
+navy   = "#5b2333"      # carries structure: parts, table headers, links
+"navy-2" = "#7a3145"
+"navy-3" = "#9a4058"
+amber  = "#2f6d5b"      # emphasis and annex material
+"amber-soft" = "#eaf3f0"
+ink    = "#231f20"      # body text
+"ink-soft" = "#4a5568"
+muted  = "#7a736b"
+bg     = "#f7f4ef"      # page behind the sheet
+paper  = "#fffdf9"      # the sheet
+line   = "#e3ddd4"
+"line-soft" = "#eef1f6"
+red    = "#8c2f39"      # reserved for warnings
+shadow = "0 1px 3px rgba(0,0,0,.06)"
 ```
 
-`--red` is reserved for warnings; body text is `--ink` on `--paper`, page `--bg`.
+Report parts (`h2.part`) take navy; annex sections (`h2.annex-part`) take amber,
+so a reader can tell at a glance whether they are in the report or the annex.
+
+## Type
+
+A profile supplies `serif` and `sans` because glyph coverage is a correctness
+constraint — Georgia carries no CJK or Arabic, and three common serifs drop
+Vietnamese tone marks. A project may override either from the manifest:
+
+```toml
+[defaults.brand]
+serif = "Palatino, Georgia, serif"
+```
+
+**Naming your own face makes coverage your problem.** Render the test string in
+`languages.md` before shipping one.
+
+## A project mark
+
+```toml
+[defaults]
+logo = "brand/mark.svg"
+```
+
+Placed on the cover of the reading and print editions, on the deck's title
+slide, and at the head of the Word file. An SVG is inlined as markup and any
+other format as a data URI, so the document still opens offline — a mark
+fetched from a URL would be the one network dependency in a document whose
+whole claim is that it has none. Word cannot place an SVG, so one is rasterised
+the same way diagrams are; a project keeps one copy of its own mark.
+
+## What reaches which edition
+
+| | Reading | Print (Typst) | Deck | Word |
+|---|---|---|---|---|
+| Palette | every token | navy ×3, amber | every token | navy, amber, ink, muted |
+| Type | yes | yes | yes | first real family in the stack |
+| Logo | yes | yes | title slide | yes, rasterised |
+
+Word takes a single face rather than a fallback list, and CSS system keywords —
+`-apple-system`, `system-ui` — are skipped, because naming one in a `.docx`
+gives Word a font it cannot find and a document that renders differently on
+every machine.
+
+> The deck used to receive **none** of this. `deck.css` shipped one project's
+> brand colours in its own `:root`, so every other project's slides came out
+> wearing them and nothing said so — the report stylesheet was neutralised
+> during the extraction and the deck was missed.
 
 Report parts (`h2.part`) get a navy banner; annex sections (`h2.annex-part`) get
 amber, so a reader can tell at a glance whether they are in the report or the

@@ -553,6 +553,28 @@ thead th, tbody td { text-align: right; }
 """
 
 
+def logo_tag(path, height=46):
+    """A project mark, inlined so the document stays self-contained.
+
+    An SVG goes in as markup, anything else as a data URI. A logo that loads
+    from a URL would be the one network dependency in a document whose whole
+    claim is that it opens offline.
+    """
+    import base64
+    import mimetypes
+    path = Path(path)
+    if not path.exists():
+        return ''
+    if path.suffix.lower() == '.svg':
+        svg = path.read_text(encoding='utf-8')
+        svg = re.sub(r'<\?xml.*?\?>|<!DOCTYPE.*?>', '', svg, flags=re.S).strip()
+        return '<div class="logo" style="--logo-h:%dpx">%s</div>' % (height, svg)
+    mime = mimetypes.guess_type(str(path))[0] or 'image/png'
+    data = base64.b64encode(path.read_bytes()).decode('ascii')
+    return ('<div class="logo" style="--logo-h:%dpx">'
+            '<img src="data:%s;base64,%s" alt=""></div>' % (height, mime, data))
+
+
 def theme_override(prof, brand=None):
     """Per-project CSS: brand colours, script-appropriate fonts, RTL mirroring.
 
@@ -561,8 +583,11 @@ def theme_override(prof, brand=None):
     wearing someone else's colours.
     """
     parts = []
-    tokens = dict(brand or {})
-    tokens.update(prof.get('fonts') or {})
+    # profile first, brand second: the profile knows which faces carry the
+    # script's glyphs, the project knows its own house type, and a project that
+    # names one has taken responsibility for the coverage - see languages.md
+    tokens = dict(prof.get('fonts') or {})
+    tokens.update(brand or {})
     if tokens:
         decl = ''.join('  --%s: %s;\n' % (k, v) for k, v in sorted(tokens.items()))
         parts.append(':root {\n%s}' % decl)
@@ -588,7 +613,7 @@ def render(name, mapping):
 def build(source, output, svgs=None, annex=None, pages=None,
           contents_heading=None, kind_fallback=None, layout='report', prof=None,
           organisation=None, publisher=None, footer_note=None, annex_label=None,
-          brand=None, bibliography=None, citation_style='apa'):
+          brand=None, bibliography=None, citation_style='apa', logo=None):
     """Render one markdown document. Contents section and annex are optional."""
     global PROF
     PROF = prof or profile.load('vi')
@@ -656,6 +681,7 @@ def build(source, output, svgs=None, annex=None, pages=None,
         'LANG': PROF['lang'],
         'DIR': PROF.get('direction', 'ltr'),
         'THEME_OVERRIDE': theme_override(PROF, brand),
+        'LOGO': logo_tag(logo) if logo else '',
         'UI_CONTENTS': ihtml.escape(ui['contents_button']),
         'UI_PRINT': ihtml.escape(ui['print_button']),
         'UI_NAV_TITLE': ihtml.escape(ui['nav_title']),

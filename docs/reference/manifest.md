@@ -76,6 +76,7 @@ writes `50.000` where English writes `50,000`. See `figures.md`.
 | `bibliography`, `citation_style` | See `citations.md` |
 | `publish` | The allowlist flag |
 | `request` | The request this work answers; snapshotted with every run |
+| `logo` | A project mark for the cover, title slide and Word head |
 
 A print edition **publishes only if it is declared**. Before that was true, any
 `.pdf` sitting beside the HTML was shipped, so a file appearing on disk could

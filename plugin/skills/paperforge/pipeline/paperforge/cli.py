@@ -7,9 +7,8 @@ import sys
 import tomllib
 from pathlib import Path
 
-from . import (brief, deck, diagrams, docx as docx_mod, editions, figures, lint,
-               markdown, pages, profile, publish as pub, runs, scaffold, typst,
-               verify)
+from . import (brief, deck, diagrams, editions, figures, lint, markdown, pages,
+               profile, publish as pub, runs, scaffold, typst, verify)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -351,6 +350,10 @@ def do_build(docs, cache, measure=True):
         # Word, for the reader who has to work on the document rather than read
         # it: lift a section into a submission, comment, track changes.
         if d.get('docx'):
+            # imported here, not at module scope: python-docx is only needed by
+            # a project that asks for a Word edition, and the version check runs
+            # on a job that installs nothing else
+            from . import docx as docx_mod
             docx_out = d['output_path'].with_suffix('.docx')
             try:
                 info = docx_mod.build(d['source_path'], docx_out, d['prof'], svgs=svgs,

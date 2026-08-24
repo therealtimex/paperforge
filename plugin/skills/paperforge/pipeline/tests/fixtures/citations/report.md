@@ -23,13 +23,14 @@ phê duyệt cùng năm [@qd1600].
 
 ## Phương pháp {.part}
 
-Đóng góp của năng suất các nhân tố tổng hợp được tính theo phần dư Solow, trong
+Đóng góp của năng suất các nhân tố tổng hợp được tính theo @eq-solow (phần dư
+Solow), trong
 đó $alpha$ là tỷ trọng vốn và $"TFP"$ là phần còn lại sau khi trừ đóng góp của
 vốn và lao động:
 
 $$
 "TFP" = g_Y - alpha g_K - (1 - alpha) g_L
-$$
+$$ {#eq-solow}
 
 Tỷ lệ tập trung tinh luyện được lấy trung bình theo trọng số sản lượng,
 $sum_(i=1)^n w_i c_i$, với $w_i = q_i \/ sum_j q_j$. Ngưỡng cảnh báo đặt tại

@@ -91,6 +91,24 @@ def main():
               'would mean the first',
               any(f['rule'] == 'duplicate-label' for f in found))
 
+    print('display equations')
+    from paperforge import xref as xr
+    block = ['$$', 'a^2 + b^2 = c^2', '$$ {#eq-p}', '', 'after']
+    expr, ident, after = xr.take_equation(block, 0)
+    check('a labelled block yields its expression and id',
+          expr == 'a^2 + b^2 = c^2' and ident == 'eq-p')
+    check('and the fence line is consumed, so the label cannot print',
+          after == 3 and block[after] == '')
+    check('an unlabelled block still yields its expression',
+          xr.take_equation(['$$', 'x', '$$'], 0)[:2] == ('x', None))
+    check('a line that is not a fence is left alone',
+          xr.take_equation(['ordinary prose'], 0) == (None, None, 0))
+    check('an unterminated fence is left to the paragraph path',
+          xr.take_equation(['$$', 'x'], 0) == (None, None, 0))
+    numbered = xr.resolve(profile.load('en'), block)
+    check('the equation is numbered like any other labelled thing',
+          numbered['eq-p']['label'] == 'Equation 1')
+
     print('the publication allowlist')
     declared, blocked, embedded = {'report.md'}, {'REVIEW.md'}, {'annex.md'}
     check('a declared document passes',

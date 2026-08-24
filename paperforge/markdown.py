@@ -292,6 +292,22 @@ def convert(lines, toc):
             pos += 1
             continue
 
+        # display maths --------------------------------------------------
+        # taken in the block pass, not left to the paragraph path: the label
+        # lives on the closing fence, and until this existed nothing stripped
+        # it, so `{#eq-x}` printed on the page and the equation had no number
+        # for its own reference to point at
+        expr, ident, after = xref.take_equation(lines, pos)
+        if expr is not None:
+            pos = after
+            entry = MATHS.get(maths_mod.key('display', expr.strip()))
+            body = maths_mod.to_html(entry) if entry else ihtml.escape(expr)
+            ref = XREF.get(ident) if ident else None
+            number = ('<span class="eq-number">(%d)</span>' % ref['number']) if ref else ''
+            out.append('<div class="equation"%s>%s%s</div>'
+                       % (' id="%s"' % ident if ident else '', body, number))
+            continue
+
         # blockquote / callout -------------------------------------------
         if stripped.startswith('>'):
             buf = []

@@ -31,6 +31,7 @@ import re
 
 CAPTION_RE = re.compile(r'^:\s+(.*?)\s*\{#((fig|tbl|eq)-[\w-]+)\}\s*$')
 DISPLAY_LABEL_RE = re.compile(r'^\$\$\s*\{#((?:eq)-[\w-]+)\}\s*$')
+OPEN_FENCE_RE = re.compile(r'^\$\$\s*$')
 REF_RE = re.compile(r'(?<![\w@])@((?:fig|tbl|eq)-[\w-]+)\b')
 KINDS = ('fig', 'tbl', 'eq')
 
@@ -134,3 +135,23 @@ def duplicates(body, annex=()):
                 repeated.append(entry['id'])
             seen.add(entry['id'])
     return repeated
+
+
+def take_equation(lines, pos):
+    """A display maths block starting at `pos`, if that is what is there.
+
+    Returns (expression, id or None, position after the block). The label lives
+    on the closing fence, so nothing else in the pipeline sees it - and until
+    this existed, nothing stripped it either and `{#eq-x}` printed on the page.
+    """
+    if pos >= len(lines) or not OPEN_FENCE_RE.match(lines[pos].strip()):
+        return None, None, pos
+    body, look = [], pos + 1
+    while look < len(lines):
+        stripped = lines[look].strip()
+        if stripped == '$$' or DISPLAY_LABEL_RE.match(stripped):
+            m = DISPLAY_LABEL_RE.match(stripped)
+            return '\n'.join(body), (m.group(1) if m else None), look + 1
+        body.append(lines[look])
+        look += 1
+    return None, None, pos          # unterminated: leave it to the paragraph path

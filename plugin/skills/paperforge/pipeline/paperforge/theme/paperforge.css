@@ -114,6 +114,11 @@ tbody tr:hover { background:var(--amber-soft); }
 tbody td.empty { border-top-color:transparent; }
 table strong { color:var(--navy); }
 
+/* ---------- numbered equation ---------- */
+.equation { display:flex; align-items:center; gap:16px; margin:16px 0 20px; }
+.equation .maths-display { flex:1; margin:0; }
+.equation .eq-number { color:var(--ink-soft); font-size:.95rem; white-space:nowrap; }
+
 /* ---------- table caption ---------- */
 .table-caption { margin:-18px 0 26px; font-size:.88rem; color:var(--ink-soft);
   text-align:center; }

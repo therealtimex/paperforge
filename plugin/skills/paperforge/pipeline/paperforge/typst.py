@@ -210,6 +210,22 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
             pos += 1
             continue
 
+        # display maths: the label is stripped here, and the number comes from
+        # the resolver rather than Typst's own equation numbering, so all three
+        # editions call the same equation the same thing
+        expr, ident, after = xref.take_equation(lines, pos)
+        if expr is not None:
+            pos = after
+            entry = XREF.get(ident) if ident else None
+            if entry:
+                out.append('#block(width: 100%%)[#grid(columns: (1fr, auto),'
+                           ' align: (center + horizon, right + horizon),'
+                           '\n  [$ %s $], [(%d)]\n)]'
+                           % (expr.strip(), entry['number']))
+            else:
+                out.append('$ %s $' % expr.strip())
+            continue
+
         if stripped.startswith('>'):
             buf = []
             while pos < n and lines[pos].strip().startswith('>'):

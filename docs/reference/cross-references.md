@@ -63,7 +63,9 @@ The pipeline is drawn in @fig-stages and the gates are set out in @tbl-gates.
 **图 1** — in prose, in a table cell, in another caption. Reorder the figures and
 the numbers follow; that is the whole point.
 
-Ids are prefixed by kind: `fig-`, `tbl-`, `eq-`. Figures and tables number
+Ids are prefixed by kind: `fig-`, `tbl-`, `eq-`. An equation carries its
+label on the closing `$$` fence rather than on a following line, because a
+display block has no natural line after it. Figures and tables number
 independently, and numbering restarts in the annex, which is what its label
 says — *Figure A1* is the annex's first, not the document's fourteenth.
 

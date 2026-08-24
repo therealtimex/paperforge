@@ -180,6 +180,20 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
             pos += 1
             continue
 
+        expr, ident, after = xref.take_equation(lines, pos)
+        if expr is not None:
+            pos = after
+            entry = (table or {}).get(ident) if ident else None
+            # Word has its own equation editor; a plain centred line keeps the
+            # expression readable and editable, which is what this edition is for
+            para = doc.add_paragraph()
+            para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = para.add_run(expr.strip())
+            run.italic = True
+            if entry:
+                para.add_run('    (%d)' % entry['number'])
+            continue
+
         if stripped.startswith('>'):
             buf = []
             while pos < n and lines[pos].strip().startswith('>'):

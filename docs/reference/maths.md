@@ -22,6 +22,25 @@ $$
 Bare multi-letter identifiers are the usual trap: `ROI` sets as three variables.
 Quote anything meant as a word.
 
+## Numbered equations
+
+Put a label on the closing fence and the equation is numbered, and referable:
+
+```markdown
+$$
+"TFP" = g_Y - alpha g_K - (1 - alpha) g_L
+$$ {#eq-solow}
+
+The residual is defined in @eq-solow.
+```
+
+renders the equation with **(1)** beside it and `@eq-solow` as *Equation 1*,
+localised from the profile — *Công thức 1*, *公式 1*. The number comes from the
+resolver, not from each emitter's own equation numbering, so all three editions
+call the same equation the same thing. See `cross-references.md`.
+
+An unlabelled display block is unnumbered, exactly as before.
+
 ## Delimiters
 
 `$$…$$` is display, `$…$` is inline. Inline requires a non-space character

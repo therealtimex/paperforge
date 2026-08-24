@@ -50,6 +50,23 @@ def render(cfg, docs, invocation):
                % Path(cfg['_manifest']).name)
     out.append('')
 
+    requests = sorted({str(d['request_path']) for d in docs if d.get('request_path')})
+    if requests:
+        out.append('## What was asked')
+        out.append('')
+        import os
+        for r in requests:
+            # a request commonly lives outside the project - a shared intake
+            # folder - so relative_to is not enough
+            out.append('- `%s`' % os.path.relpath(r, root))
+        out.append('')
+        out.append('Kept with every run record, so what was asked stays readable '
+                   'beside what was produced. If the request is thin, the reading '
+                   'of it *is* the specification — write that reading down '
+                   'somewhere it can be checked, rather than leaving it in a '
+                   'message nobody re-opens.')
+        out.append('')
+
     out.append('## Running it here')
     out.append('')
     out.append('```bash')

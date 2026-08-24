@@ -118,7 +118,14 @@ def load(config=None):
                        'profile_name': local or name, 'prof': prof,
                        'source': source, 'output': output,
                        'source_path': base / source, 'output_path': base / output,
-                       'annex_path': base / ed['annex'] if ed.get('annex') else None}
+                       'annex_path': base / ed['annex'] if ed.get('annex') else None,
+                       # what was asked, kept beside what was produced: when the
+                       # request is thin the interpretation becomes the real
+                       # spec, and an interpretation nobody can re-read is not
+                       # one anybody can check the delivery against
+                       'request_path': (base / doc_request).resolve()
+                       if (doc_request := {**cfg['defaults'], **shared, **ed}.get('request'))
+                       else None}
                 # the contents heading is in every profile; the manifest need not repeat it
                 if doc.get('page_numbers') and not doc.get('contents_heading') and prof:
                     doc['contents_heading'] = prof['structure'].get('contents_heading')

@@ -59,9 +59,12 @@ def check(label, condition):
         failures.append(label)
 
 
-def build(tmp, lint_section):
+def build(tmp, lint_section, request=None):
     root = Path(tmp)
-    (root / 'documents.toml').write_text(MANIFEST % lint_section, encoding='utf-8')
+    text = MANIFEST % lint_section
+    if request:
+        text = text.replace('profile = "en"', 'profile = "en"\nrequest = "%s"' % request)
+    (root / 'documents.toml').write_text(text, encoding='utf-8')
     (root / 'figures.toml').write_text(FIGURES, encoding='utf-8')
     for name in ('report.md', 'note.md', 'REVIEW.md'):
         (root / name).write_text('# T\n## Title\n\n---\n\nBody.\n', encoding='utf-8')
@@ -84,6 +87,10 @@ def main():
               '`REVIEW.md`' in text)
         check('declared figures are listed', '`target`' in text and '`10%`' in text)
 
+        print('the request')
+        check('a project that declares none does not invent one',
+              '## What was asked' not in text)
+
         print('what the gates refuse')
         check('unsupported constructs are called out',
               'footnotes `[^1]`' in text and 'caption lines' in text)
@@ -92,6 +99,14 @@ def main():
               'Reported but not blocking' in text and '`length-spec`' in text)
         check('no pack rule is claimed when none is enabled',
               'loop-id' not in text and 'agent-state' not in text)
+
+        print('with a request declared')
+        root = Path(tmp)
+        (root / 'ask.md').write_text('Roughly this.\n', encoding='utf-8')
+        asked = build(tmp, '', request='ask.md')
+        check('the request is cited', '## What was asked' in asked and '`ask.md`' in asked)
+        check('and the reading of it is named as the specification',
+              'the reading of it *is* the specification' in asked)
 
         print('with a pack enabled')
         packed = build(tmp, 'packs = ["realtimex-loops"]')

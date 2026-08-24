@@ -67,7 +67,10 @@ def write(cfg, docs, stages, label=None, root=None):
             entry['annex'] = d['annex']
             entry['annex_sha256'] = _sha(d['annex_path'])
         entries.append(entry)
-        for path in (d['source_path'], d.get('annex_path')):
+        if d.get('request_path') and Path(d['request_path']).exists():
+            entry['request'] = Path(d['request_path']).name
+            entry['request_sha256'] = _sha(d['request_path'])
+        for path in (d['source_path'], d.get('annex_path'), d.get('request_path')):
             if path and Path(path).exists():
                 shutil.copy2(path, out / 'sources' / Path(path).name)
 

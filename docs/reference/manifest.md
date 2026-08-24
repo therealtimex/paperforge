@@ -74,6 +74,7 @@ writes `50.000` where English writes `50,000`. See `figures.md`.
 | `pdf = "chrome"` | Print edition from the reading edition's own layout, including landscape wide tables |
 | `bibliography`, `citation_style` | See `citations.md` |
 | `publish` | The allowlist flag |
+| `request` | The request this work answers; snapshotted with every run |
 
 A print edition **publishes only if it is declared**. Before that was true, any
 `.pdf` sitting beside the HTML was shipped, so a file appearing on disk could

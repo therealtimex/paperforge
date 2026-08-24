@@ -125,6 +125,23 @@ def main():
         check('a print edition that merely repaginated is held apart from a rewrite',
               d['pdf_only'] == ['report.md'] and d['rewritten'] == [])
 
+        print('the request travels with the run')
+        req = root / 'request.md'
+        req.write_text('Answer this, roughly.\n', encoding='utf-8')
+        docs[0]['request_path'] = req
+        three = runs.write(cfg, docs, {'build': 'ok'}, label='with request')
+        rec3 = json.loads((three / 'record.json').read_text(encoding='utf-8'))
+        check('the request is fingerprinted',
+              len(rec3['documents'][0].get('request_sha256', '')) == 64)
+        check('and kept, so what was asked survives with what was produced',
+              (three / 'sources' / 'request.md').read_text(encoding='utf-8')
+              == 'Answer this, roughly.\n')
+        docs[0]['request_path'] = None
+        four = runs.write(cfg, docs, {'build': 'ok'}, label='no request')
+        rec4 = json.loads((four / 'record.json').read_text(encoding='utf-8'))
+        check('a project that declares none is recorded without one',
+              'request' not in rec4['documents'][0])
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

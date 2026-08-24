@@ -35,10 +35,13 @@ both. Do not expect a bullet: a cell beginning `- ` is *not* a list.
 matrices, where reading across the row *is* the content, so stacking them into
 cards on mobile would destroy the comparison to avoid a swipe. The reading
 edition puts a measured edge fade and a swipe hint only where content really is
-cut off; in print the table lays flat and scales to fit.
+cut off; in print the table lays flat, and from six columns up it turns onto a
+landscape page.
 
 Six columns on A4 leave roughly 25mm each, too narrow to justify — tables set
-ragged right for that reason while body text stays justified.
+ragged right for that reason while body text stays justified. From six columns
+up, print turns the table onto a landscape page rather than squeezing it; see
+`print.md`, including the Typst caveat.
 
 ## Density
 

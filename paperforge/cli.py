@@ -588,6 +588,15 @@ def main(argv=None):
         return main(['all', '--config', str(fixture), '--quiet'])
 
     cfg, docs = load(a.config)
+    # Say which project is being acted on. Without --config the manifest is
+    # found by walking up, and a run started from a repository root that holds
+    # one silently targets whatever it finds: on this pipeline's first real
+    # project, a run labelled as peer review for one report rebuilt and
+    # republished a different, already-approved corpus. The run record made it
+    # visible afterwards; one line makes it visible before.
+    # printed however the manifest was resolved: a wrapper that supplies
+    # --config hides the choice just as effectively as the walk-up does
+    print('project: %s' % cfg['_manifest'])
     cache = cfg['_cache']
     docs = pick(docs, a.only)
 

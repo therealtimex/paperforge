@@ -26,6 +26,26 @@ breaks.
 
 Printed diagrams are capped at **198mm** — see `diagrams.md` for why.
 
+## Wide tables turn landscape
+
+A table of six or more columns prints on a **landscape A4 page**, at a smaller
+face, with a fixed layout and long tokens allowed to break. Portrait cannot hold
+seven columns of prose plus a source URL at any legible size: shrinking until it
+fits gives one word per line and *still* loses the right-hand column off the
+page. In an evidence annex that column holds the citations, so the printed copy
+becomes unverifiable while every gate stays green.
+
+> **This applies to the Chrome print path only.** The Typst emitter has no
+> landscape page, so a document with wide tables that declares `pdf = "typst"`
+> will cut the source column again. Landscape has to be added to the Typst
+> emitter before that combination is safe. A real report hit this: its Typst
+> edition was declined for exactly this reason rather than shipped truncated.
+
+`verify` reports source URLs it cannot find whole in the print edition. It is a
+finding, not a failure — a table row taller than the page continues onto the
+next one and nothing rejoins a URL split across that break, so some reported
+URLs are in fact intact. Read it as "look at these pages".
+
 ## Printed page numbers are measured, never estimated
 
 The build prints the document, reads back which page each contents entry landed

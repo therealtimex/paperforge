@@ -29,7 +29,11 @@ that *uses* Paperforge carries no pipeline of its own — only its sources, its
 | `--diff <a>,<b>` | `runs`: compare two recorded runs |
 
 With no `--config`, `$PAPERFORGE_CONFIG` is used, then the nearest
-`documents.toml` above the working directory.
+`documents.toml` above the working directory. **Every run prints the manifest it
+resolved**, because that search is a footgun: a run started from a repository
+root that holds a manifest silently acts on whatever it finds. On this
+pipeline's first real project, a run labelled as peer review for one report
+rebuilt and republished a different, already-approved corpus.
 
 ## Two commands that are not stages
 

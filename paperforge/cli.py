@@ -36,6 +36,10 @@ BUILTIN_TYPES = {
     'brief': {'layout': 'brief'},
     'deck': {'format': 'deck'},
     'note': {'layout': 'brief', 'page_numbers': False},
+    # A book is a report that has been made into an object: it is bound, so it
+    # has an inside edge and two sides to a leaf, and it is not A4.
+    'book': {'layout': 'report', 'page_numbers': True, 'binding': True,
+             'trim': 'royal'},
 }
 
 
@@ -89,6 +93,36 @@ def columns_of(d):
                          'not a page and has no measure to divide'
                          % (d.get('source', '?'), n))
     return n
+
+
+def binding_of(d):
+    """Whether the print edition is set for binding, refusing what cannot be.
+
+    Binding is a print instruction, in the same sense as `columns`: it changes
+    the bound edition and nothing on screen, because a screen has no verso and
+    no gutter.
+    """
+    trim = d.get('trim', 'a4')
+    if trim not in typst.TRIM:
+        raise SystemExit('document %r sets trim = %r; the trims set are: %s'
+                         % (d.get('source', '?'), trim, ', '.join(sorted(typst.TRIM))))
+    if not d.get('binding'):
+        return False
+    if d.get('format') == 'deck':
+        raise SystemExit('document %r is a deck and is bound; a slide is one side '
+                         'of nothing and has no gutter to leave room for'
+                         % d.get('source', '?'))
+    if d.get('pdf') == 'chrome':
+        # measured, not assumed: Chrome honours `@page { size: }` and the
+        # `:left`/`:right` margin overrides, so the trim and the margins come
+        # out right and the document looks bound. It breaks `recto` to the next
+        # page whichever side that is, and renders no running head at all.
+        raise SystemExit('document %r is bound and sets pdf = "chrome". Chrome takes '
+                         'the trim and the mirrored margins but breaks to the next '
+                         'page rather than to a recto, and renders no running head, '
+                         'so the chapters would open on left-hand pages under the '
+                         'book title. Set pdf = "typst".' % d.get('source', '?'))
+    return True
 
 
 def load(config=None):
@@ -159,6 +193,7 @@ def load(config=None):
                 # lived there could never have fired for the one document type
                 # it exists to refuse.
                 columns_of(doc)
+                binding_of(doc)
                 docs.append(doc)
     return cfg, docs
 
@@ -383,7 +418,8 @@ def do_build(docs, cache, measure=True):
                                    bibliography=(d['root'] / d['bibliography'])
                                    if d.get('bibliography') else None,
                                    citation_style=d.get('citation_style', 'apa'),
-                                   columns=columns_of(d))
+                                   columns=columns_of(d), binding=binding_of(d),
+                                   trim=d.get('trim', 'a4'))
                 print('  %-38s %s' % (pdf_out.name, json.dumps(info, ensure_ascii=False)))
             except (RuntimeError, FileNotFoundError) as err:
                 print('  %-38s typst FAILED: %s' % (pdf_out.name, str(err).splitlines()[0][:90]))
@@ -505,7 +541,8 @@ def do_verify(docs, cache):
 
         if pdf_edition.exists() and d.get('pdf') == 'typst':
             ed = editions.compare(d['output_path'], pdf_edition,
-                                  columns=columns_of(d))
+                                  columns=columns_of(d),
+                                  header=typst.HEADER_BAND if binding_of(d) else 0)
             if ed['mid_page']:
                 problems.append('%d heading(s) open a page in HTML but not in the PDF: %s'
                                 % (len(ed['mid_page']), [h[:30] for h, _ in ed['mid_page']][:3]))

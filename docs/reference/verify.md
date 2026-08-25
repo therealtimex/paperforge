@@ -44,6 +44,17 @@ editions: 18 page-opening headings agree, 10 figures in both
 The contents repeats every heading, so pages carrying several candidates are
 excluded outright — the same trap that caught the page-number measurement.
 
+A **running head repeats one**, which is the same trap again in a place nothing
+looked. In a bound edition the chapter title is printed across the top of every
+recto of that chapter, so a check reading the first words of each page finds the
+chapter on four leaves and cannot tell an opening from a head — a chapter that
+opened no page at all would still be reported as opening one. The comparison
+drops the top margin before reading a bound edition. Cropping is safe *there*
+and nowhere else: the running head sits in the margin by construction and the
+body begins below it, whereas a crop taken down the middle of a two-column page
+cuts through a part banner entitled to cross it, and two of three came back
+unlocated when that was tried.
+
 ## Reading the output
 
 A clean run states what it confirmed, not just that it passed:

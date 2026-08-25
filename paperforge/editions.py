@@ -42,8 +42,8 @@ def page_openers_html(html):
     return [o for o in openers if o]
 
 
-def page_text(page, columns=1):
-    """One page in reading order, columns kept apart.
+def page_text(page, columns=1, header=0):
+    """One page in reading order, columns kept apart, the running head dropped.
 
     Both columns of a two-column page share one leading, so their baselines
     coincide and pdfplumber groups the pair into a single line - it reads
@@ -69,8 +69,19 @@ def page_text(page, columns=1):
 
     A landscape page is returned as it is. A wide table takes one to itself and
     is one column by construction.
+
+    `header` is a band at the top of the page to drop, in points. A bound
+    edition prints the chapter title across the top of every recto, and a check
+    asking which headings open a page reads the top of the page - so every
+    recto of a chapter answers to that chapter's heading and the check passes
+    whether or not the chapter ever opened one. Cropping columns was the wrong
+    fix for the wrong problem; cropping the top margin removes the running head
+    and nothing else, because the body starts below it by construction.
     """
-    if columns < 2 or page.width > page.height:
+    landscape = page.width > page.height
+    if header:
+        page = page.crop((0, min(header, page.height - 1), page.width, page.height))
+    if columns < 2 or landscape:
         return page.extract_text() or ''
     edges = [page.width * i / columns for i in range(1, columns)]
     rows = {}
@@ -103,7 +114,7 @@ def page_text(page, columns=1):
     return '\n'.join(out)
 
 
-def page_openers_pdf(pdf_path, candidates, words=6, columns=1):
+def page_openers_pdf(pdf_path, candidates, words=6, columns=1, header=0):
     """Which of those actually open a page in the PDF.
 
     The contents repeats every heading, so pages carrying several candidates are
@@ -112,7 +123,7 @@ def page_openers_pdf(pdf_path, candidates, words=6, columns=1):
     backwards; only if that fails is it looked for anywhere.
     """
     with _pdfplumber().open(pdf_path) as pdf:
-        pages = [_norm(page_text(p, columns)) for p in pdf.pages]
+        pages = [_norm(page_text(p, columns, header)) for p in pdf.pages]
     probes = {h: ' '.join(h.split()[:words]) for h in candidates if len(h.split()) >= 1}
     skip = {i for i, pg in enumerate(pages)
             if sum(pr in pg for pr in probes.values() if len(pr) > 8) >= 4}
@@ -142,10 +153,10 @@ def page_openers_pdf(pdf_path, candidates, words=6, columns=1):
     return found
 
 
-def compare(html_path, pdf_path, fold=True, columns=1):
+def compare(html_path, pdf_path, fold=True, columns=1, header=0):
     html = open(html_path, encoding='utf-8').read()
     expected = page_openers_html(html)
-    actual = page_openers_pdf(pdf_path, expected, columns=columns)
+    actual = page_openers_pdf(pdf_path, expected, columns=columns, header=header)
 
     mid_page = [(h, p) for h in expected for p, top in [actual.get(h, (None, True))]
                 if p and not top]

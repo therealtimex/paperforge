@@ -1,0 +1,25 @@
+[defaults]
+profile = "en"
+organisation = "Paperforge Press"
+publisher = "Paperforge Press"
+
+[[collection]]
+slug = "book"
+root = "."
+profile = "en"
+
+  # `type = "book"` carries the whole binding: royal trim, mirrored margins,
+  # chapters opening recto, verso/recto running heads, roman front matter.
+  # Nothing below repeats any of it - that is what naming the type is for.
+  [[collection.document]]
+  id = "monograph"
+  type = "book"
+  source = "book.md"
+  include = ["ch01-page.md", "ch02-verso.md", "ch03-folio.md"]
+  annex = "appendix.md"
+  pdf = "typst"
+  publish = false
+
+[internal]
+files = []
+reason = "fixture"

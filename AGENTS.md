@@ -132,6 +132,22 @@ the text every probe was matched against had stopped being sentences.
 Whenever the page changes shape — columns, landscape, RTL — ask what the checks
 believe about it, and go and measure rather than reasoning about it.
 
+Binding was the same trap from the other side. Adding a running head puts the
+chapter title at the top of every recto of that chapter, and the page-opening
+comparison asks which headings open a page by reading the top of each page. It
+does not start failing; it starts finding the chapter on four leaves instead of
+one, and a chapter that opened no page at all would be reported as opening one.
+Nothing about the page's *shape* changed — only what is printed on it. Ask what
+a feature adds to the page as well as what it moves.
+
+The fix is worth contrasting with the one above, because it is the same
+operation with the opposite verdict. Cropping the top margin is safe: the
+running head lives there by construction and the body begins below it. Cropping
+down the middle of a page is not: content is entitled to cross a gutter, and two
+of three part banners came back unlocated when that was tried. "Crop before
+reading" is not a technique that is right or wrong — it depends entirely on
+whether the boundary you are cutting on is one the layout guarantees.
+
 ## Conventions
 
 - No dependency the published document can see. Chrome and the Mermaid CDN are

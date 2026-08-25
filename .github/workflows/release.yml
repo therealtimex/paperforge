@@ -157,6 +157,10 @@ jobs:
           - { name: id, project: tests/fixtures/id-sample }
           - { name: bilingual, project: tests/fixtures/bilingual }
           - { name: citations, project: tests/fixtures/citations }
+          # the bound edition: recto chapter openings, blank versos,
+          # verso/recto running heads and a roman-to-arabic restart,
+          # none of which is visible in a document under ten pages
+          - { name: book, project: tests/fixtures/book }
           # the only fixture that publishes; target = "directory" needs no host
           - { name: publishing, project: tests/fixtures/publishing }
           # report + brief + deck in two languages: the only deck CI builds

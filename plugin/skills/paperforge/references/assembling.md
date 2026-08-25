@@ -45,6 +45,9 @@ A report of twenty pages is fine in one file. A thesis is not: a two-hundred
 page markdown file is neither editable by a human nor reviewable in a diff. The
 threshold is whoever has to work on it, not a page count.
 
+Chapters are the structure of a book; `type = "book"` is what turns that
+structure into one. See `books.md`.
+
 ## Related
 
-`structure.md` · `front-matter.md` · `cross-references.md` · `provenance.md`
+`structure.md` · `books.md` · `front-matter.md` · `cross-references.md` · `provenance.md`

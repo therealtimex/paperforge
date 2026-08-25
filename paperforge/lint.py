@@ -130,6 +130,26 @@ def summarise(findings):
             'rules': sorted({f['rule'] for f in findings})}
 
 
+def check_front_matter(source):
+    """Front matter that would render wrong, in the terms an author can fix.
+
+    An affiliation marker pointing at nothing is invisible in the output and
+    wrong for the reader - the same class as a dangling cross-reference. So is
+    an abstract that TOML swallowed into [affiliation] because it was written
+    below the table header.
+    """
+    from . import front as front_mod
+    text = Path(source).read_text(encoding='utf-8')
+    try:
+        data, _ = front_mod.split(text)
+    except ValueError as err:
+        return [{'rule': 'front-matter', 'severity': 'block', 'line': 1,
+                 'match': '+++', 'why': str(err), 'context': ''}]
+    return [{'rule': 'front-matter', 'severity': 'block', 'line': 1,
+             'match': '+++', 'why': problem, 'context': ''}
+            for problem in front_mod.problems(data)]
+
+
 def check_references(source, annex=None, prof=None):
     """Cross-references that point nowhere, and labels declared twice.
 

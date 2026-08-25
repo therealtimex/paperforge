@@ -121,6 +121,10 @@ jobs:
       - name: Authoring brief unit checks
         run: python3 -m coverage run tests/unit_brief.py
 
+      # manuscript front matter: parsed, validated, and refusing to guess
+      - name: Front matter unit checks
+        run: python3 -m coverage run tests/unit_front.py
+
       # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
       - uses: actions/upload-artifact@v4
         with:

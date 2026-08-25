@@ -1,3 +1,22 @@
++++
+abstract = "Kiểm thử trích dẫn, công thức và siêu dữ liệu tác giả trên nguồn thực tế."
+keywords = ["Physical AI", "Việt Nam", "chính sách công nghệ"]
+
+[[author]]
+name = "Nhóm Nghiên cứu Paperforge"
+affiliation = [1]
+orcid = "0000-0002-1825-0097"
+corresponding = true
+email = "research@example.vn"
+
+[affiliation]
+1 = "Paperforge"
+
+[declarations]
+funding = "Không có nguồn tài trợ ngoài."
+conflicts = "Không có xung đột lợi ích."
++++
+
 # BÁO CÁO NGHIÊN CỨU CHÍNH SÁCH
 ## Kiểm thử trích dẫn với nguồn thực tế
 

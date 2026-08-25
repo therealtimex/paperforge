@@ -58,7 +58,16 @@ def coverage(html, *sources):
         if not path:
             continue
         fenced = display = False
-        for n, line in enumerate(Path(path).read_text(encoding='utf-8').split('\n'), 1):
+        lines = Path(path).read_text(encoding='utf-8').split('\n')
+        # front matter is TOML, not prose: it renders as a byline, an abstract
+        # and a declarations block, so probing `abstract = "..."` for its own
+        # text reports the whole head as missing content
+        start = 0
+        if lines and lines[0].strip() == '+++':
+            close = next((i for i in range(1, len(lines))
+                          if lines[i].strip() == '+++'), None)
+            start = close + 1 if close is not None else 0
+        for n, line in enumerate(lines[start:], start + 1):
             s = line.strip()
             if s.startswith('```'):
                 fenced = not fenced

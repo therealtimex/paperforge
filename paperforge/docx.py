@@ -25,7 +25,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Mm, Pt, RGBColor
 
-from . import markdown as md, typst, xref
+from . import front as front_mod, markdown as md, typst, xref
 
 HEAD_RE = md.HEAD_RE
 ATTR_RE = md.ATTR_RE
@@ -262,7 +262,9 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     work = Path(cache or src.parent) / ('.docx-%s' % src.stem)
     work.mkdir(parents=True, exist_ok=True)
 
-    lines = src.read_text(encoding='utf-8').replace('\r\n', '\n').split('\n')
+    text = src.read_text(encoding='utf-8').replace('\r\n', '\n')
+    front, text = front_mod.split(text)
+    lines = text.split('\n')
     annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
     # An embedded annex loses its own head - title, subtitle, its own contents -
     # in the reading edition, because it is folded into the parent document. The
@@ -338,6 +340,33 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         run.bold, run.font.size = bold, Pt(size)
         if bold:
             run.font.color.rgb = _navy(brand)
+    for name, marks in front_mod.byline(front):
+        para = doc.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        para.add_run(name)
+        if marks:
+            sup = para.add_run(marks)
+            sup.font.superscript = True
+    for key, value in sorted(front_mod.affiliations(front).items()):
+        para = doc.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        mark = para.add_run(key)
+        mark.font.superscript = True
+        run = para.add_run(value)
+        run.font.size = Pt(9)
+    line = front_mod.corresponding(front, prof)
+    if line:
+        para = doc.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        para.add_run(line).font.size = Pt(9)
+    if front.get('abstract'):
+        head = doc.add_paragraph()
+        head.add_run(front_mod.label(prof, 'abstract')).bold = True
+        _runs(doc.add_paragraph(), str(front['abstract']))
+    if front.get('keywords'):
+        para = doc.add_paragraph()
+        para.add_run('%s: ' % front_mod.label(prof, 'keywords')).bold = True
+        para.add_run(', '.join(str(k) for k in front['keywords']))
     for key, value in meta:
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -364,6 +393,15 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                 run.font.color.rgb = _navy(brand)
         convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
                 images, brand, part_banner, force_parts=True, table=refs)
+
+    entries = front_mod.declarations(front, prof)
+    if entries:
+        head = doc.add_heading(level=2)
+        _runs(head, front_mod.label(prof, 'declarations'))
+        for key, value in entries:
+            para = doc.add_paragraph()
+            para.add_run('%s. ' % key).bold = True
+            _runs(para, str(value))
 
     doc.save(str(output))
     return {'figures': len(figures), 'tables': len(doc.tables),

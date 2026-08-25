@@ -31,6 +31,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Configure a project, or add a language edition | [references/manifest.md](references/manifest.md) |
 | Choose report vs brief vs deck, or declare a new type | [references/document-types.md](references/document-types.md) |
 | Divide a document into parts, or embed an annex | [references/structure.md](references/structure.md) |
+| Write a manuscript: authors, abstract, declarations | [references/front-matter.md](references/front-matter.md) |
 | Write a table, or a table cell with line breaks | [references/tables.md](references/tables.md) |
 | Add a diagram | [references/diagrams.md](references/diagrams.md) |
 | Add a callout or an aside | [references/callouts.md](references/callouts.md) |

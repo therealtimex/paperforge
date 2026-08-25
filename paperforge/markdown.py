@@ -7,7 +7,7 @@ from pathlib import Path
 
 from . import citations as cite_mod
 from . import maths as maths_mod
-from . import profile, xref
+from . import front as front_mod, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -26,6 +26,7 @@ MATHS = {}  # expressions pre-rendered by Typst, shared with the PDF edition
 CITES = {}  # in-text citation markers, formatted by Typst from the .bib
 XREF = {}   # labelled captions, numbered once in xref.py for every edition
 XREF_MISSING = []  # references pointing at no label
+FRONT = {}  # structured front matter: authors, affiliations, abstract
 BIB_WARNINGS = []  # bibliography entries that will render oddly
 FIG = {'n': 0, 'base': 0, 'label': '%d'}   # figure counter shared across report + annex
 PROF = profile.load('vi')                  # replaced per build; never assume a language
@@ -387,6 +388,45 @@ def parse_head(head_lines):
     return kind, title, meta, rest
 
 
+def front_html(data, prof):
+    """The manuscript block: byline, affiliations, corresponding, abstract."""
+    if not data:
+        return ''
+    parts = []
+    pairs = front_mod.byline(data)
+    if pairs:
+        parts.append('<p class="byline">%s</p>' % ', '.join(
+            '%s%s' % (inline(name), '<sup>%s</sup>' % ihtml.escape(marks) if marks else '')
+            for name, marks in pairs))
+    aff = front_mod.affiliations(data)
+    if aff:
+        parts.append('<ol class="affiliations">%s</ol>' % ''.join(
+            '<li value="%s">%s</li>' % (ihtml.escape(k), inline(v))
+            for k, v in sorted(aff.items())))
+    line = front_mod.corresponding(data, prof)
+    if line:
+        parts.append('<p class="corresponding">%s</p>' % inline(line))
+    if data.get('abstract'):
+        parts.append('<section class="abstract"><h2>%s</h2>%s</section>'
+                     % (ihtml.escape(front_mod.label(prof, 'abstract')),
+                        convert(str(data['abstract']).split('\n'), [])))
+    if data.get('keywords'):
+        parts.append('<p class="keywords"><strong>%s:</strong> %s</p>'
+                     % (ihtml.escape(front_mod.label(prof, 'keywords')),
+                        inline(', '.join(str(k) for k in data['keywords']))))
+    return '\n'.join(parts)
+
+
+def declarations_html(data, prof):
+    entries = front_mod.declarations(data, prof)
+    if not entries:
+        return ''
+    return ('<section class="declarations"><h2>%s</h2>%s</section>'
+            % (ihtml.escape(front_mod.label(prof, 'declarations')),
+               ''.join('<p><strong>%s.</strong> %s</p>'
+                       % (ihtml.escape(k), inline(str(v))) for k, v in entries)))
+
+
 def meta_grid(meta, cls='meta-grid'):
     return '<div class="%s">\n%s\n</div>' % (cls, '\n'.join(
         '<div class="meta-item"><span class="meta-k">%s</span><span class="meta-v">%s</span></div>'
@@ -664,6 +704,11 @@ def build(source, output, svgs=None, annex=None, pages=None,
     contents_heading = contents_heading or None
     SVGS[:] = svgs or []
     raw = Path(source).read_text(encoding='utf-8').replace('\r\n', '\n')
+    # structured front matter comes off first, so nothing downstream sees
+    # a +++ block and tries to render it as prose
+    FRONT.clear()
+    front_data, raw = front_mod.split(raw)
+    FRONT.update(front_data)
     lines = raw.split('\n')
 
     # The head is everything before the contents section, or before the first
@@ -744,10 +789,10 @@ def build(source, output, svgs=None, annex=None, pages=None,
         'KIND': ('<span class="kind">%s</span>' % inline(doc_kind)) if doc_kind else '',
         'HEADING': inline(title),
         'LEDE': ('  <div class="cover-lede">%s</div>\n' % convert(lede, [])) if lede else '',
-        'META': meta_grid(meta),
+        'META': meta_grid(meta) + front_html(FRONT, PROF),
         'NAV': nav if nav.strip() else ('<p class="toc-empty">%s</p>'
                                         % ihtml.escape(PROF['labels']['short_document'])),
-        'BODY': body + annex_html + biblio_html,
+        'BODY': body + declarations_html(FRONT, PROF) + annex_html + biblio_html,
     })
     Path(output).write_text(html, encoding='utf-8')
     return {'bytes': len(html.encode('utf-8')), 'structure': dict(STATS),

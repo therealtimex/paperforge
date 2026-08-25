@@ -114,6 +114,21 @@ tbody tr:hover { background:var(--amber-soft); }
 tbody td.empty { border-top-color:transparent; }
 table strong { color:var(--navy); }
 
+/* ---------- manuscript front matter ---------- */
+.byline { margin:14px 0 6px; font-size:1.02rem; }
+.byline sup { font-size:.7em; }
+.affiliations { margin:0 0 10px; padding:0; list-style:none;
+  font-size:.88rem; color:var(--ink-soft); }
+.affiliations li::before { content:counter(list-item) ". "; }
+.corresponding { margin:0 0 16px; font-size:.88rem; color:var(--ink-soft); }
+.abstract { margin:18px auto 8px; max-width:44em; text-align:left; }
+.abstract h2 { font-size:1rem; border:0; background:none; color:var(--navy);
+  margin:0 0 6px; padding:0; }
+.keywords { font-size:.9rem; color:var(--ink-soft); }
+.declarations { margin-top:34px; border-top:1px solid var(--line); padding-top:16px; }
+.declarations h2 { font-size:1.05rem; border:0; background:none;
+  color:var(--navy); padding:0; }
+
 /* ---------- numbered equation ---------- */
 .equation { display:flex; align-items:center; gap:16px; margin:16px 0 20px; }
 .equation .maths-display { flex:1; margin:0; }

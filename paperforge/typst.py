@@ -16,7 +16,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import browser, citations as cite_mod, profile, xref
+from . import browser, citations as cite_mod, front as front_mod, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -328,7 +328,9 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True, exist_ok=True)
 
-    lines = src.read_text(encoding='utf-8').replace('\r\n', '\n').split('\n')
+    text = src.read_text(encoding='utf-8').replace('\r\n', '\n')
+    front, text = front_mod.split(text)
+    lines = text.split('\n')
     annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
     notes, lines = collect_footnotes(lines)
     annex_notes, annex_lines = collect_footnotes(annex_lines)
@@ -372,6 +374,33 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         logo_block = ('#align(center)[#image("%s", height: 14mm)]\n#v(6pt)\n'
                       % Path(logo).name)
 
+    front_block = ''
+    if front:
+        bits = []
+        pairs = front_mod.byline(front)
+        if pairs:
+            bits.append('#align(center)[#text(size: 11pt)[%s]]' % ', '.join(
+                '%s#super[%s]' % (esc(n), esc(m)) if m else esc(n) for n, m in pairs))
+        aff = front_mod.affiliations(front)
+        if aff:
+            bits.append('#align(center)[#text(size: 8.5pt, fill: rgb("#4a5568"))[%s]]'
+                        % ' \\ '.join('#super[%s]%s' % (esc(k), esc(v))
+                                       for k, v in sorted(aff.items())))
+        line = front_mod.corresponding(front, prof)
+        if line:
+            bits.append('#align(center)[#text(size: 8.5pt, fill: rgb("#4a5568"))[%s]]'
+                        % esc(line))
+        if front.get('abstract'):
+            bits.append('#v(8pt)\n#block(width: 84%%, inset: (x: 0pt))[\n'
+                        '#text(weight: "bold")[%s]\n\n%s\n]'
+                        % (esc(front_mod.label(prof, 'abstract')),
+                           inline(str(front['abstract']), {})))
+        if front.get('keywords'):
+            bits.append('#text(size: 9pt)[*%s:* %s]'
+                        % (esc(front_mod.label(prof, 'keywords')),
+                           esc(', '.join(str(k) for k in front['keywords']))))
+        front_block = '\n'.join(bits) + '\n#v(10pt)\n'
+
     meta_block = ''
     if meta:
         rows = ',\n    '.join('[#text(fill: rgb("#6b7789"))[%s]], [%s]'
@@ -397,7 +426,14 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         display_font=quoted(fonts.get('serif'), 'Georgia'),
         navy=brand.get('navy', '#243b53'), navy2=brand.get('navy-2', '#334e68'),
         navy3=brand.get('navy-3', '#486581'), amber=brand.get('amber', '#8a6d1f'),
-        kind=esc(kind), meta=meta_block, logo=logo_block)
+        kind=esc(kind), meta=meta_block + front_block, logo=logo_block)
+
+    entries = front_mod.declarations(front, prof)
+    if entries:
+        typ_body += ('\n\n#v(14pt)\n#line(length: 100%%, stroke: 0.5pt + rgb("#dfe4ec"))\n'
+                     '#text(weight: "bold")[%s]\n\n' % esc(front_mod.label(prof, 'declarations'))
+                     + '\n\n'.join('*%s.* %s' % (esc(k), inline(str(v), {}))
+                                    for k, v in entries))
 
     if bibliography and cite_mod.find('\n'.join(lines + annex_lines)):
         bib = Path(bibliography)

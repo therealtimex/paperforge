@@ -51,6 +51,15 @@ $$
 "TFP" = g_Y - alpha g_K - (1 - alpha) g_L
 $$ {#eq-solow}
 
+Đóng góp của phần dư vào tăng trưởng được viết là @eq-share. Đoạn văn này nằm
+giữa hai công thức có nhãn, và đó là lý do nó tồn tại: trước khi hàng rào đóng
+mang nhãn được nhận diện, mọi dòng ở đây bị bỏ qua và cổng kiểm tra nội dung
+lặng lẽ ngừng đọc phần còn lại của tài liệu.
+
+$$
+s_A = g_A \/ g_Y
+$$ {#eq-share}
+
 Tỷ lệ tập trung tinh luyện được lấy trung bình theo trọng số sản lượng,
 $sum_(i=1)^n w_i c_i$, với $w_i = q_i \/ sum_j q_j$. Ngưỡng cảnh báo đặt tại
 $c >= 0.6$; các giá trị trong khoảng $0.4 <= c < 0.6$ được xem là rủi ro trung
@@ -69,7 +78,7 @@ của khổ giấy, ở cả ba bản.
 
 | Quốc gia | Mật độ 2025 | Chỉ số lương | Công cụ | Từ năm | Trần hỗ trợ | Nguồn |
 |:---|---:|---:|:---|---:|:---|:---|
-| Hàn Quốc | 1012 | 100 | Tín dụng thuế | 2013 | Không | https://ifr.org/statistics/korea-2025 |
+| Hàn Quốc | ~1012 | 100 | Tín dụng thuế | 2013 | Không | https://ifr.org/statistics/korea-2025 |
 | Singapore | 770 | 96 | Tài trợ | 2016 | 50% vốn đầu tư | https://ifr.org/statistics/singapore-2025 |
 | Việt Nam | 28 | 22 | Chưa có | – | – | https://ifr.org/statistics/vietnam-2025 |
 

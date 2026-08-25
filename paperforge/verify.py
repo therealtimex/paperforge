@@ -72,10 +72,16 @@ def coverage(html, *sources):
             if s.startswith('```'):
                 fenced = not fenced
                 continue
-            # a display block writes its $$ fences on their own lines, so the
+            # A display block writes its $$ fences on their own lines, so the
             # expression between them is never seen as maths by a line-at-a-time
-            # substitution - it has to be tracked like a code fence
-            if s == '$$':
+            # substitution - it has to be tracked like a code fence.
+            #
+            # `$$ {#eq-x}` counts as a fence. It did not, once equations gained
+            # labels, and the consequence was not a false report but a silent
+            # one: the flag never turned off, the next opening fence turned it
+            # *off*, and from the first labelled equation this gate stopped
+            # reading the document while continuing to pass it.
+            if s == '$$' or xref.DISPLAY_LABEL_RE.match(s):
                 display = not display
                 continue
             if fenced or display or not s or set(s) <= set('-*_|: '):
@@ -87,8 +93,9 @@ def coverage(html, *sources):
             # Constructs that do not render as their own text have to be
             # removed before probing, or the line they sit on is reported as
             # missing content. This list has grown four times, once per feature
-            # - maths, citations, cross-references, front matter - and each time
-            # the symptom was the same: a correct document failing coverage.
+            # - maths, citations, cross-references, front matter - plus once in
+            # the fence tracking below. The symptom is a correct document
+            # failing coverage, or worse, silently stopping being checked.
             # Anything added here that renders as something else belongs below.
             t = maths_mod.DISPLAY_RE.sub(' ', t)     # renders as an SVG image
             t = maths_mod.INLINE_RE.sub(' ', t)
@@ -113,6 +120,18 @@ def coverage(html, *sources):
     return missing
 
 
+# A remote `src`, or a stylesheet `href`, is a dependency: the published page
+# does not render without the network, which is the thing this pipeline inlines
+# everything to avoid. A remote `<a href>` is a citation - the page renders
+# identically offline and the reader may or may not follow it. Blocking on both
+# meant a reference list with retrieval URLs, which is what a reference list is
+# for, could not pass.
+ASSET_RE = re.compile(r'<(?:img|script|iframe|source|video|audio|embed)\b[^>]*?'
+                      r'\bsrc="(https?://[^"]+)"'
+                      r'|<link\b[^>]*?\bhref="(https?://[^"]+)"', re.I)
+LINK_RE = re.compile(r'<a\b[^>]*?\bhref="(https?://[^"]+)"', re.I)
+
+
 def check(html_path, *sources):
     html = Path(html_path).read_text(encoding='utf-8')
     b = _Balance(); b.feed(html)
@@ -123,7 +142,8 @@ def check(html_path, *sources):
         'missing_content': coverage(html, *sources),
         'broken_anchors': [l for l in links if l not in ids],
         'anchors': len(links),
-        'external_refs': sorted(set(re.findall(r'(?:src|href)="(https?://[^"]+)"', html))),
+        'external_assets': sorted(set(a or b for a, b in ASSET_RE.findall(html))),
+        'external_links': sorted(set(LINK_RE.findall(html))),
         'leaks': leaks(_visible(html, keep_code=False), Path(html_path).name),
         'diagrams': html.count('class="dgm"'), 'tables': html.count('<table>'),
     }

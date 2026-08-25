@@ -218,13 +218,21 @@ def main():
             '<p>A sentence that reaches the rendered page unchanged.</p>'
             '<a href="#nowhere">a reference to nothing</a>'
             '<img src="https://example.com/logo.png">'
+            '<a href="https://ifr.org/worldrobotics">a source the reader may follow</a>'
             '<b><i>crossed</b></i>'
             '</main></body></html>', encoding='utf-8')
         r = verify.check(page, src)
         check('crossed tags are reported',
               any('expected </i>, got </b>' in e for e in r['markup_errors']))
         check('an anchor pointing nowhere is reported', r['broken_anchors'] == ['nowhere'])
-        check('a network reference is reported', r['external_refs'] == ['https://example.com/logo.png'])
+        # A remote image is a dependency: without the network the page is
+        # wrong. A remote link is a citation: the page is identical offline.
+        # Blocking on both meant a reference list with retrieval URLs, which is
+        # what a reference list is for, could not pass.
+        check('a remote asset is reported as a dependency',
+              r['external_assets'] == ['https://example.com/logo.png'])
+        check('a link the reader may follow is not',
+              r['external_links'] == ['https://ifr.org/worldrobotics'])
         check('a source line that never reached the page is reported',
               any('second sentence' in m[2] for m in r['missing_content']))
         check('a line that did reach the page is not reported',
@@ -320,6 +328,31 @@ def main():
             browser.CANDIDATES = real_candidates
     finally:
         browser.shutil.which = real_which
+
+    # The document <title> is the browser tab, the bookmark and the share
+    # preview - the one string a reader meets before the document. It carried
+    # "Báo cáo nghiên cứu chính sách" for every language this pipeline ships,
+    # because it was a literal in the template and no profile could reach it.
+    # The rule is the general one: nothing inside <title> may be text.
+    # Typst markup that must survive as text. A character missing from this
+    # list is not a rendering error - it is a silent deletion, and the reading
+    # edition keeps what the print edition drops.
+    print('typst escaping')
+    from paperforge import typst as typst_mod
+    for ch in '#$*_`<>@~\\':
+        check('%r is escaped, not read as markup' % ch,
+              typst_mod.esc(ch) == '\\' + ch)
+    check('a tilde survives a whole cell',
+          typst_mod.esc('~28x') == '\\~28x')
+
+    print('the document head')
+    import re as _re
+    template = (Path(__file__).resolve().parents[1]
+                / 'paperforge/theme/document.html').read_text(encoding='utf-8')
+    m = _re.search(r'<title>(.*?)</title>', template, _re.S)
+    check('the template has a title', bool(m))
+    literal = _re.sub(r'\{\{\w+\}\}', '', m.group(1) if m else '').strip(' \u2014\u2013-|\u00b7')
+    check('and no literal text in it, in any language', literal == '')
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

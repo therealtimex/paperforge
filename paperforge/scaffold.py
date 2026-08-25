@@ -97,6 +97,48 @@ def deck(prof, title, publisher, when):
     return '\n'.join(out)
 
 
+# A book is chapters, in files. Scaffolding one as a single markdown file
+# would teach the opposite of what assembling.md exists to say - and the first
+# thing anyone does with a scaffold is copy its shape.
+#
+# The file name and the heading travel together because the contents entry and
+# the chapter heading have to be the same string: if they diverge, nothing in
+# the contents gets numbered and `all` says so.
+CHAPTERS = (('ch01', 'section_one', 'Context'),
+            ('ch02', 'section_two', 'Findings'),
+            ('ch03', 'conclusion', 'Conclusion'))
+
+
+def chapter_titles(prof):
+    """(file kind, heading) for each chapter a scaffolded book opens with."""
+    s = prof.get('scaffold', {})
+    return [(kind, s.get(key, fallback)) for kind, key, fallback in CHAPTERS]
+
+
+def book(prof, title, publisher, when):
+    """The cover and the contents. Every chapter is a file of its own."""
+    contents = prof['structure'].get('contents_heading', 'CONTENTS')
+    out = ['# %s' % prof['labels'].get('document', 'DOCUMENT'), '## %s' % title, '',
+           '---', _meta_block(prof, publisher, when), '---', '',
+           '## %s' % contents, '']
+    out += ['%d. **%s**' % (i, heading)
+            for i, (_, heading) in enumerate(chapter_titles(prof), 1)]
+    out += ['', '---', '']
+    return '\n'.join(out)
+
+
+def chapter(prof, heading):
+    """One chapter: body markdown, carrying no front matter and no title page.
+
+    `{.part}` explicitly rather than by pattern, for the reason structure.md
+    gives - a scaffolded project should not depend on a profile's part_banner
+    matching headings the project chose.
+    """
+    prose = prof.get('scaffold', {}).get('prose',
+                                         'Replace this paragraph with the substance of the section.')
+    return '\n'.join(['## %s {.part}' % heading, '', prose, '', prose, ''])
+
+
 def annex(prof, title, publisher, when):
     s = prof.get('scaffold', {})
     prose = s.get('prose', 'Replace this paragraph with the substance of the section.')
@@ -105,7 +147,10 @@ def annex(prof, title, publisher, when):
                       '## 1. %s' % s.get('sources', 'Sources'), '', prose, ''])
 
 
-BUILDERS = {'report': report, 'brief': brief, 'deck': deck, 'annex': annex}
+# chapters are deliberately absent: they are part of a book, not a
+# publication type anyone can ask for
+BUILDERS = {'report': report, 'book': book, 'brief': brief, 'deck': deck,
+            'annex': annex}
 
 
 def manifest(slug, title, languages, publications, organisation, publisher,
@@ -144,7 +189,13 @@ def manifest(slug, title, languages, publications, organisation, publisher,
         lines += ['  [[collection.document]]',
                   '  id = "%s"' % kind,
                   '  type = "%s"' % kind]
-        if kind == 'report':
+        if kind == 'book':
+            # the type already carries page_numbers, the trim and the binding;
+            # repeating them would be a generated file arguing with itself,
+            # because a type overrides the document that declares it
+            lines.append('  pdf = "typst"             # a bound edition: Chrome '
+                         'cannot open a chapter on a recto')
+        elif kind == 'report':
             lines.append('  page_numbers = true')
             lines.append('  # contents_heading comes from the profile; override only if it differs')
         else:
@@ -154,13 +205,17 @@ def manifest(slug, title, languages, publications, organisation, publisher,
             for lang in languages:
                 lines += ['    [collection.document.%s]' % lang,
                           '    source = "%s"' % source_name(slug, kind, lang, multi)]
-                if kind == 'report' and has_annex:
+                if kind == 'book':
+                    lines.append(_include_list(slug, lang, multi, '    '))
+                if kind in ('report', 'book') and has_annex:
                     lines.append('    annex = "%s"      # embedded inline, not published alone'
                                  % source_name(slug, 'annex', lang, multi))
                 lines += ['    publish = false        # flip to true when this edition is ready', '']
         else:
             lines.append('  source = "%s"' % source_name(slug, kind, languages[0], multi))
-            if kind == 'report' and has_annex:
+            if kind == 'book':
+                lines.append(_include_list(slug, languages[0], multi, '  '))
+            if kind in ('report', 'book') and has_annex:
                 lines.append('  annex = "%s"      # embedded inline, not published alone'
                              % source_name(slug, 'annex', languages[0], multi))
             lines += ['  publish = false           # flip to true when the document is ready', '']
@@ -170,6 +225,14 @@ def manifest(slug, title, languages, publications, organisation, publisher,
               'files = []',
               'reason = "process records: review, editorial notes, approvals"', '']
     return '\n'.join(lines)
+
+
+def _include_list(slug, language, multi, indent):
+    """The chapters, in reading order. Order is the whole meaning of the key:
+    the pieces are concatenated before anything parses them."""
+    names = [source_name(slug, kind, language, multi) for kind, _, _ in CHAPTERS]
+    pad = ' ' * (len(indent) + len('include = ['))
+    return indent + 'include = [' + (',\n' + pad).join('"%s"' % n for n in names) + ']'
 
 
 def source_name(slug, kind, language, multi):
@@ -227,6 +290,12 @@ def create(directory, slug, title, languages, profiles, publications,
             (root / name).write_text(BUILDERS[kind](prof, title, publisher, when),
                                      encoding='utf-8')
             written.append(name)
+            if kind != 'book':
+                continue
+            for chapter_kind, heading in chapter_titles(prof):
+                chapter_name = source_name(slug, chapter_kind, language, multi)
+                (root / chapter_name).write_text(chapter(prof, heading), encoding='utf-8')
+                written.append(chapter_name)
 
     if git and not (root / '.git').exists() and not _inside_work_tree(root):
         subprocess.run(['git', 'init', '-q'], cwd=root, capture_output=True)

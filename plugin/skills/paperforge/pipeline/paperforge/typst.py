@@ -175,6 +175,39 @@ MAIN_MATTER = """#pf-recto()
 CHAPTER = '<pf-chapter>'
 
 
+def split_meta(lines):
+    """`**Key:** value` lines, and everything that is not one."""
+    meta, rest = [], []
+    for line in lines:
+        m = META_RE.match(line.strip())
+        if m and m.group(2).strip():
+            meta.append((m.group(1), m.group(2)))
+        else:
+            rest.append(line)
+    return meta, rest
+
+
+def meta_grid(meta):
+    """A head's metadata as the two-column block. Both heads use it.
+
+    The document head has always been set this way; the annex head let its
+    metadata fall through as body prose, which keeps the colon that the grid
+    drops - "Prepared by: Paperforge" in the print edition against "Prepared
+    by | Paperforge" in the reading one. Whether `verify` noticed depended on
+    how many words the title had, because the probe is its first six: a
+    two-word title put the colon inside the probe and the annex head came back
+    unlocated, a four-word title did not.
+    """
+    if not meta:
+        return ''
+    rows = ',\n    '.join('[#text(fill: rgb("#6b7789"))[%s]], [%s]'
+                          % (esc(k), inline(v, {})) for k, v in meta)
+    # a grid, not a table: the header styling for content tables would
+    # otherwise paint the first metadata row navy
+    return ('#align(center)[#block(width: 80%%)[\n  #grid(columns: 2,'
+            ' align: (right, left), inset: 3pt,\n    %s\n  )]]' % rows)
+
+
 def running_head(title, organisation, binding):
     """The line across the top of every page after the first.
 
@@ -480,8 +513,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     h2 = next((HEAD_RE.match(l.strip()).group(2) for l in head if l.strip().startswith('## ')), None)
     title = h2 or h1 or src.stem
     kind = (h1 if h2 else title_kind) or prof['labels'].get('document', '')
-    meta = [(m.group(1), m.group(2)) for m in
-            (META_RE.match(l.strip()) for l in head) if m and m.group(2).strip()]
+    meta, _ = split_meta(head)
 
     XREF.clear()
     XREF.update(xref.resolve(prof, body, annex_lines))
@@ -507,10 +539,25 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         typ_body = convert(body, notes, figures, label, part_banner,
                            columns=columns, binding=binding)
     if annex_lines:
+        # The annex head runs to its first rule - a badge, a title, a meta block
+        # - and the reading edition sets the lot as one title block. Converting
+        # the whole file with force_parts made that `##` title an annex section,
+        # so it opened a page of its own and the two editions disagreed about
+        # where the annex began: verify reported 'annex a worked example
+        # prepare' unlocated in the PDF while the HTML had it on the annex head.
+        # Same split as markdown.build_annex, for the same reason.
+        rule = next((i for i, l in enumerate(annex_lines)
+                     if re.fullmatch(r'-{3,}', l.strip())), None)
+        head = annex_lines[:rule] if rule is not None else []
+        sections = annex_lines[rule + 1:] if rule is not None else annex_lines
         # an appendix opens like a chapter, on the right-hand leaf; unbound it
         # opens a page, which is what it has always done
+        head_meta, head_rest = split_meta(head)
         typ_body += ('\n\n%s\n\n' % ('#pf-recto()' if binding else '#pagebreak()')
-                     + convert(annex_lines, notes, figures, label, part_banner,
+                     + convert(head_rest, notes, figures, label, part_banner,
+                               columns=columns, binding=binding)
+                     + '\n\n' + meta_grid(head_meta) + '\n\n'
+                     + convert(sections, notes, figures, label, part_banner,
                                force_parts=True, columns=columns, binding=binding))
 
     if svgs:
@@ -552,14 +599,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                            esc(', '.join(str(k) for k in front['keywords']))))
         front_block = '\n'.join(bits) + '\n#v(10pt)\n'
 
-    meta_block = ''
-    if meta:
-        rows = ',\n    '.join('[#text(fill: rgb("#6b7789"))[%s]], [%s]'
-                              % (esc(k), inline(v, {})) for k, v in meta)
-        # a grid, not a table: the header styling for content tables would
-        # otherwise paint the first metadata row navy
-        meta_block = ('#align(center)[#block(width: 80%%)[\n  #grid(columns: 2,'
-                      ' align: (right, left), inset: 3pt,\n    %s\n  )]]' % rows)
+    meta_block = meta_grid(meta)
 
     # a project's own faces override the profile's, same order as the reading
     # edition, so the two do not disagree about type

@@ -304,12 +304,12 @@ jobs:
         with:
           typst-version: ${{ env.TYPST_VERSION }}
 
-      - name: Scaffold a project in two languages and four publications
+      - name: Scaffold a project in two languages and five publications
         run: |
           python3 -m coverage run bin/paperforge init \
             --into "$RUNNER_TEMP/scaffolded" --slug ci-check \
             --title "Scaffold acceptance check" --languages en,vi \
-            --publications report,annex,brief,deck \
+            --publications report,book,annex,brief,deck \
             --organisation "Paperforge" --publisher "Paperforge Research" --no-git
 
       - name: A fresh project must pass the whole chain clean

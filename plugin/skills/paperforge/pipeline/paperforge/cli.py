@@ -314,7 +314,11 @@ def do_build(docs, cache, measure=True):
     cache.mkdir(exist_ok=True)
     failures = []
     for d in docs:
-        srcs = diagrams.sources(d['source_path'], d['annex_path'])
+        # every file the document is made of, not just the first: the
+        # emitters read the assembled text, so a diagram in an included
+        # section was allocated a figure number and a raster nobody had been
+        # asked to render - see assemble.sources()
+        srcs = diagrams.sources(*assemble.sources(d))
         svgs = diagrams.render(srcs, cache=cache / ('%s.diagrams.json' % d['source']))
         if d.get('format') == 'deck':
             stats = deck.build(d['source_path'], d['output_path'], svgs=svgs,
@@ -443,8 +447,8 @@ def do_verify(docs, cache):
         r = verify.check(d['output_path'], *assemble.sources(d))
         if d.get('format') == 'deck':
             problems = []
-            if r['external_refs']:
-                problems.append('external refs %s' % r['external_refs'][:2])
+            if r['external_assets']:
+                problems.append('external assets %s' % r['external_assets'][:2])
             if r['missing_content']:
                 problems.append('%d missing lines %s' % (len(r['missing_content']),
                                                          r['missing_content'][:2]))
@@ -460,8 +464,14 @@ def do_verify(docs, cache):
             problems.append('%d missing lines %s' % (len(r['missing_content']), r['missing_content'][:2]))
         if r['broken_anchors']:
             problems.append('%d broken anchors' % len(r['broken_anchors']))
-        if r['external_refs']:
-            problems.append('external refs %s' % r['external_refs'][:2])
+        if r['external_assets']:
+            problems.append('external assets %s' % r['external_assets'][:2])
+        if r['external_links']:
+            # reported, never blocking: a citation the reader may follow is not
+            # a dependency - the page renders identically offline - and a
+            # reference list without retrieval URLs is the worse document
+            print('      %d external link(s); the page loads none of them'
+                  % len(r['external_links']))
         if r['leaks']:
             problems.append('%d raw markup leak(s): %s'
                             % (len(r['leaks']), [l['match'] for l in r['leaks'][:3]]))
@@ -630,9 +640,25 @@ def do_publish(cfg, docs, expires=None):
                 dest, how = pub.to_directory(artefact, cfg['_root'] / d.get('directory', 'dist'))
                 print('  %-38s %s' % (artefact.name, how))
                 continue
-            dest, how = pub.link(artefact, d['workspace'])
-            existing = pub.find(d['workspace'], artefact.name)
-            art = existing or pub.publish(d['workspace'], artefact.name, expires_at=expires)
+            # A target may refuse an edition: the RealTimeX artifact server
+            # serves browser-viewable entry files, so it declines a .docx. That
+            # is the host's policy and not ours to encode - encoding it here
+            # would go stale the moment the host changed, and silently. So the
+            # attempt is made and the refusal is reported per artefact.
+            #
+            # Per artefact, and not per run: this used to raise, which killed
+            # the stage on the first refusal. Every later document went
+            # unpublished and `record_run` never ran, so a run that had in fact
+            # published two artefacts left no evidence that it had.
+            try:
+                dest, how = pub.link(artefact, d['workspace'])
+                existing = pub.find(d['workspace'], artefact.name)
+                art = existing or pub.publish(d['workspace'], artefact.name,
+                                              expires_at=expires)
+            except RuntimeError as err:
+                reason = str(err).strip().splitlines()[-1][:120]
+                print('  %-38s REFUSED by the target: %s' % (artefact.name, reason))
+                continue
             print('  %-38s %s -> %s' % (artefact.name, how, art['publicUrl']))
 
 

@@ -25,7 +25,11 @@ META_RE = re.compile(r'^\*\*(.+?):\*\*\s*(.*)$')
 ATTR_RE = re.compile(r'\s*\{([^{}]*)\}\s*$')
 FOOTNOTE_DEF = re.compile(r'^\[\^([^\]]+)\]:\s*(.*)$')
 
-SPECIAL = '\\#$*_`<>@'
+# Every character Typst reads as markup rather than as text. `~` is its
+# non-breaking space, and leaving it out meant a source reading `~28x` set
+# as `28x` in the PDF and `~28x` in the HTML - a table of estimates printed
+# as though the numbers were exact. Add to this list when Typst does.
+SPECIAL = '\\#$*_`<>@~'
 XREF = {}   # resolved once in xref.py; this emitter never counts for itself
 
 

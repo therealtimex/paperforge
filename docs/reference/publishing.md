@@ -21,6 +21,27 @@ directory = "dist"
 A document declaring `pdf = "typst"` ships **both** editions as separate
 artifacts, each with its own URL and content type.
 
+### What a target will serve
+
+`target = "realtimex"` serves **browser-viewable entry files** — HTML and PDF.
+It refuses a `.docx`:
+
+```
+physical-ai-density-manuscript.docx    REFUSED by the target:
+  HTTP 400 {"error":"Only browser-viewable entry files can be published publicly."}
+```
+
+That is the host's policy, reported with the host's own words rather than
+predicted here — encoding one server's current rule in the pipeline is how a
+check goes stale without anyone noticing. A refusal is per artefact: the HTML
+and the PDF still publish, the documents after it still publish, and the run is
+still recorded.
+
+To publish a Word edition, use `target = "directory"` and serve the folder, or
+hand the file over outside the pipeline. `docx = true` is worth declaring
+either way: the edition is built, checked against the reading edition, and
+recorded in the run.
+
 ## Hard links, not copies
 
 The artifact server refuses symlinks that leave the artifact root

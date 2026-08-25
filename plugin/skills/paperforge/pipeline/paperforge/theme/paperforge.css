@@ -186,6 +186,13 @@ pre code { background:none; border:0; color:inherit; padding:0; }
 [role="doc-bibliography"] ul { padding-left:0; }
 [role="doc-bibliography"] li { margin:0 0 10px; padding-left:24px;
   text-indent:-24px; font-size:.92rem; line-height:1.55; }
+/* A retrieval URL is one unbreakable token, and a reference list is where they
+   live. Measured on a phone: a 508px link in a 500px viewport pushed the whole
+   document to 563px. Breaking anywhere is ugly and being 63px off the screen is
+   worse. `word-break` as well, because `overflow-wrap` alone will not break a
+   token that has no break opportunity at all. */
+[role="doc-bibliography"] li, [role="doc-bibliography"] a {
+  overflow-wrap:anywhere; word-break:break-word; }
 
 .maths svg { display:inline; }
 .maths-display { display:block; text-align:center; margin:14px 0 18px; }

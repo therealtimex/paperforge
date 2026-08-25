@@ -13,6 +13,11 @@ after a real defect got past everything else.
   clipped in print.
 - **Raw markup leaks** — HTML tags, real HTML entities, `**`, or Typst escapes
   that reached the rendered page in *either* edition.
+- **External assets** — a remote `src`, or a stylesheet `href`. These are
+  dependencies: without the network the published page is wrong, and this
+  pipeline inlines everything so that cannot happen. An external `<a href>` is
+  *not* one — the page renders identically offline — so a reference list with
+  retrieval URLs is counted and reported, never blocked.
 - **Near-empty printed pages** — a stranded heading or an orphaned frame.
   The cover, the contents and a last page carrying only the colophon are
   exempt: each is sparse by design, and none of them is the thing this is

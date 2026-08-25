@@ -18,7 +18,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import editions
+from paperforge import editions, profile, typst
 
 failures = []
 
@@ -135,6 +135,51 @@ def main():
               any('Gamma' in h for h in drift['missing']))
         check('a heading only Word carries is reported too',
               any('Beta' in h for h in drift['extra']))
+
+    # --- where the annex head ends, in both editions ----------------------
+    # The reading edition sets everything above the annex's first rule as one
+    # title block: badge, title, meta. The print edition converted the whole
+    # file with force_parts, which made that `##` title an annex *section*, so
+    # it opened a page of its own and the badge was left alone on the page
+    # before. `verify` reported the annex head unlocated in the PDF - correctly,
+    # since the two editions disagreed about where the annex began.
+    import shutil
+    if shutil.which('typst'):
+        work = Path(tempfile.mkdtemp())
+        # Every string here is distinct from the document title, because the
+        # title is printed as a running head on every page from the second and
+        # a probe it satisfies proves nothing. The first version of this test
+        # gave the annex the same title as the document and passed against the
+        # defect it was written for.
+        (work / 'doc.md').write_text(
+            '# REPORT\n## Critical Minerals\n\n---\n**Prepared by:** Paperforge\n\n'
+            '---\n\n## CONTENTS\n\n1. **Context**\n\n---\n\n'
+            '## Context {.part}\n\nBody.\n', encoding='utf-8')
+        (work / 'annex.md').write_text(
+            '# Annex\n## Provenance Of Every Figure\n\n**Prepared by:** Paperforge\n\n'
+            '---\n\n## 1. Sources and method\n\nBody.\n', encoding='utf-8')
+        typst.build(work / 'doc.md', work / 'doc.pdf', profile.load('en'),
+                    annex=work / 'annex.md', organisation='Paperforge',
+                    contents_heading='CONTENTS', cache=work)
+        import pdfplumber
+        with pdfplumber.open(work / 'doc.pdf') as pdf:
+            pages = [' '.join((p.extract_text() or '').split()) for p in pdf.pages]
+        badge = next((i for i, pg in enumerate(pages) if 'Annex' in pg), None)
+        check('the annex head is set on one page, badge and title together',
+              badge is not None and 'Provenance Of Every Figure' in pages[badge])
+        # the reading edition sets `**Prepared by:** X` as a two-column grid and
+        # drops the colon with the key; letting it fall through as body prose
+        # keeps it, and the two editions then disagree about the head's text
+        check('the annex metadata is a grid, as the document head is',
+              badge is not None and 'Prepared by' in pages[badge]
+              and 'Prepared by:' not in pages[badge])
+        # not `startswith`: an unbound edition prints the running head above
+        # every page from the second, so no page text starts with its heading
+        section = next((i for i, pg in enumerate(pages)
+                        if '1. Sources and method' in pg), None)
+        check('the annex section still opens a page of its own',
+              section is not None and section != badge)
+        shutil.rmtree(work, ignore_errors=True)
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

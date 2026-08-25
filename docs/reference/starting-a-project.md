@@ -9,7 +9,7 @@ Ask only what changes downstream behaviour:
 | Ask | Sets |
 |---|---|
 | Language(s) and script | `--profile` / `--languages` |
-| Which publications | `--publications report,annex,brief,deck` |
+| Which publications | `--publications report,book,brief,deck,annex` |
 | Who publishes it | `--organisation`, `--publisher` |
 | Where it is served | `--workspace` (RealTimeX) or a directory target |
 

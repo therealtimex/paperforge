@@ -717,7 +717,7 @@ def main(argv=None):
     ap.add_argument('--profile', help='init: language profile (vi, en, zh, ar, ...)')
     ap.add_argument('--languages', help='init: comma-separated editions, e.g. vi,en')
     ap.add_argument('--publications', default='report',
-                    help='init: comma-separated from report,brief,deck,annex')
+                    help='init: comma-separated from report,book,brief,deck,annex')
     ap.add_argument('--organisation', default='Paperforge', help='init: short name')
     ap.add_argument('--publisher', help='init: full publisher line')
     ap.add_argument('--workspace', help='init: RealTimeX workspace for publishing')
@@ -741,8 +741,11 @@ def main(argv=None):
         if unknown:
             sys.exit('unknown publication type(s): %s; choose from %s'
                      % (', '.join(unknown), ', '.join(scaffold.BUILDERS)))
-        if 'annex' in kinds and 'report' not in kinds:
-            sys.exit('an annex is embedded in a report; add report to --publications')
+        # an annex is embedded in its parent and never published alone, so it
+        # needs one: a report or a book, both of which carry an appendix
+        if 'annex' in kinds and not {'report', 'book'} & set(kinds):
+            sys.exit('an annex is embedded in a report or a book; add one of them '
+                     'to --publications')
         written = scaffold.create(target, slug, title, languages, profiles, kinds,
                                   a.organisation, a.publisher or a.organisation,
                                   a.workspace, git=not a.no_git)

@@ -52,7 +52,8 @@ rm -f .coverage .coverage.json
 python3 -m coverage run bin/paperforge plugin --check
 for t in tests/unit_*.py; do python3 -m coverage run "$t"; done
 python3 -m coverage run bin/paperforge init --into /tmp/scaffolded --slug ci \
-  --title Check --languages en,vi --publications report,annex,brief,deck --no-git
+  --title Check --languages en,vi --publications report,book,annex,brief,deck \
+  --no-git
 python3 -m coverage run bin/paperforge all --config /tmp/scaffolded/documents.toml
 for f in tests/fixtures/*/ tests/backtest/; do
   python3 -m coverage run bin/paperforge all --config "$PWD/$f/documents.toml"

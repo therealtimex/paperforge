@@ -21,6 +21,27 @@ any of it — that is what naming the type is for.
 | `trim = "royal"` | 156×234mm, the academic monograph |
 | `page_numbers`, `layout = "report"` | a book on screen is a long report |
 
+## Scaffolding one
+
+```bash
+paperforge init --into ~/research/monograph --slug monograph \
+                --title "..." --languages en --publications book,annex
+```
+
+That writes the cover and contents as `monograph-book.md`, three chapters as
+`monograph-ch01.md` … `ch03.md`, and the manifest wiring them together with
+`include`. **Chapters are separate files from the start** — a scaffold is the
+shape everyone copies, and one that put a book in a single markdown file would
+teach the opposite of `assembling.md`.
+
+`pdf = "typst"` is written into the manifest, because a book has no bound
+edition without it.
+
+A freshly scaffolded book comes out **mostly blank leaves** — five of twelve.
+Each stub chapter is a page long and ends on a recto, so every opening skips
+one. That is the convention working rather than a defect, and it disappears as
+the chapters fill.
+
 ## The four conventions
 
 **Mirrored margins.** A page bound at its inside edge loses part of that edge to

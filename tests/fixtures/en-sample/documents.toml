@@ -12,6 +12,7 @@ profile = "en"
 
   [[collection.document]]
   source = "report.md"
+  include = ["ch-findings.md"]   # assembled from more than one file
   output = "report.html"
   annex = "annex.md"
   contents_heading = "CONTENTS"

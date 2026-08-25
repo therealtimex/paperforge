@@ -125,6 +125,11 @@ jobs:
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py
 
+      # one document from several files: the pieces are concatenated before
+      # anything parses them, so references resolve across the whole work
+      - name: Assembly unit checks
+        run: python3 -m coverage run tests/unit_assemble.py
+
       # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
       - uses: actions/upload-artifact@v4
         with:

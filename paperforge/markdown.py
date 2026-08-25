@@ -5,6 +5,7 @@ import re
 import unicodedata
 from pathlib import Path
 
+from . import assemble
 from . import citations as cite_mod
 from . import maths as maths_mod
 from . import front as front_mod, profile, xref
@@ -699,14 +700,14 @@ def build(source, output, svgs=None, annex=None, pages=None,
           contents_heading=None, kind_fallback=None, layout='report', prof=None,
           organisation=None, publisher=None, footer_note=None, annex_label=None,
           brand=None, bibliography=None, citation_style='apa', logo=None,
-          review=False):
+          review=False, includes=()):
     """Render one markdown document. Contents section and annex are optional."""
     global PROF
     PROF = prof or profile.load('vi')
     kind_fallback = kind_fallback or PROF['labels']['document']
     contents_heading = contents_heading or None
     SVGS[:] = svgs or []
-    raw = Path(source).read_text(encoding='utf-8').replace('\r\n', '\n')
+    raw = assemble.read(source, includes)
     # structured front matter comes off first, so nothing downstream sees
     # a +++ block and tries to render it as prose
     FRONT.clear()

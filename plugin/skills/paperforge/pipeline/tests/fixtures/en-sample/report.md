@@ -35,6 +35,8 @@ graph TD
     C --> D[End use]
 ```
 
+: The pipeline, end to end {#fig-pipeline}
+
 ---
 
 ## PART I: CONTEXT

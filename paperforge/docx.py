@@ -26,6 +26,7 @@ from docx.enum.table import WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Mm, Pt, RGBColor
 
+from . import assemble
 from . import front as front_mod, markdown as md, typst, xref
 
 HEAD_RE = md.HEAD_RE
@@ -258,13 +259,13 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None, logo=None,
-          review=False, bibliography=None, citation_style='apa'):
+          review=False, bibliography=None, citation_style='apa', includes=()):
     """Render one document to .docx. Returns build facts."""
     src = Path(source)
     work = Path(cache or src.parent) / ('.docx-%s' % src.stem)
     work.mkdir(parents=True, exist_ok=True)
 
-    text = src.read_text(encoding='utf-8').replace('\r\n', '\n')
+    text = assemble.read(src, includes)
     front, text = front_mod.split(text)
     if review:
         front = front_mod.anonymise(front, prof)

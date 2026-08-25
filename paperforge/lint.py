@@ -130,17 +130,16 @@ def summarise(findings):
             'rules': sorted({f['rule'] for f in findings})}
 
 
-def check_citations(source, annex=None, bibliography=None):
+def check_citations(document, bibliography=None):
     """Citations with nowhere to resolve to.
 
     Without a declared bibliography the keys reach Typst as bare labels and it
     fails with "label `<nq57>` does not exist in the document" - true, and no
     help at all to an author who has simply not declared their .bib.
     """
-    from . import citations as cite_mod
-    text = Path(source).read_text(encoding='utf-8')
-    if annex:
-        text += '\n' + Path(annex).read_text(encoding='utf-8')
+    from . import assemble, citations as cite_mod
+    text = '\n'.join(Path(p).read_text(encoding='utf-8')
+                     for p in assemble.sources(document))
     keys = cite_mod.find(text)
     if keys and not bibliography:
         return [{'rule': 'no-bibliography', 'severity': 'block', 'line': 0,
@@ -170,7 +169,7 @@ def check_front_matter(source):
             for problem in front_mod.problems(data)]
 
 
-def check_references(source, annex=None, prof=None):
+def check_references(document, prof=None):
     """Cross-references that point nowhere, and labels declared twice.
 
     Neither is visible in the output: an unresolved reference prints as its own
@@ -178,12 +177,14 @@ def check_references(source, annex=None, prof=None):
     it silently mean the first one. Both are the sort of thing a reader finds
     and an author does not.
     """
-    from . import xref
-    body = Path(source).read_text(encoding='utf-8').split('\n')
+    from . import assemble, xref
+    body = assemble.read(document['source_path'],
+                         document.get('include_paths')).split('\n')
+    annex = document.get('annex_path')
     annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
     table = xref.resolve(prof or {}, body, annex_lines)
     findings = []
-    for path, lines in ((source, body), (annex, annex_lines)):
+    for path, lines in ((document['source_path'], body), (annex, annex_lines)):
         if not path:
             continue
         for line_no, ident in xref.dangling(lines, table):

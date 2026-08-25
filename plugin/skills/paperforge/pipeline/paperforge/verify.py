@@ -9,7 +9,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from . import browser, citations as cite_mod, maths as maths_mod
+from . import browser, citations as cite_mod, maths as maths_mod, xref
 
 VOID = {'br', 'hr', 'meta', 'img', 'link', 'input', 'source', 'col', 'area', 'base',
         'wbr', 'embed', 'path', 'circle', 'line', 'rect', 'polygon', 'polyline',
@@ -84,15 +84,16 @@ def coverage(html, *sources):
             t = re.sub(r'\s*\{[^{}]*\}\s*$', '', t)   # explicit heading attributes
             t = re.sub(r'\[!\w+\]', '', t)
             t = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', t)
-            # Maths renders as an SVG image and a citation renders as the
-            # formatted marker the bibliography produces, so neither survives
-            # as source text. Probing for them reported every maths-bearing
-            # line as missing content - which is what happened the first time
-            # any fixture used maths, because until then no document exercised
-            # this check and that feature together.
-            t = maths_mod.DISPLAY_RE.sub(' ', t)
+            # Constructs that do not render as their own text have to be
+            # removed before probing, or the line they sit on is reported as
+            # missing content. This list has grown four times, once per feature
+            # - maths, citations, cross-references, front matter - and each time
+            # the symptom was the same: a correct document failing coverage.
+            # Anything added here that renders as something else belongs below.
+            t = maths_mod.DISPLAY_RE.sub(' ', t)     # renders as an SVG image
             t = maths_mod.INLINE_RE.sub(' ', t)
-            t = cite_mod.CITE_RE.sub(' ', t)
+            t = cite_mod.CITE_RE.sub(' ', t)         # renders as a formatted marker
+            t = xref.REF_RE.sub(' ', t)              # renders as "Figure 3"
             t = re.sub(r'<br\s*/?>', ' ', t)
             t = t.replace('**', '').replace('*', '').replace('`', '').replace('|', ' ')
             t = re.sub(r'\s+', ' ', ihtml.unescape(t)).strip()

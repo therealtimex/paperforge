@@ -71,5 +71,5 @@ embedded, never published on its own.
 
 ## Related
 
-`document-types.md` (what a type implies) · `front-matter.md` · `cross-references.md` ·
+`document-types.md` (what a type implies) · `assembling.md` · `front-matter.md` · `cross-references.md` ·
 `languages.md` (where `part_banner` comes from) · `print.md` (page breaks)

@@ -75,7 +75,8 @@ def main():
         doc.write_text('Drawn in @fig-flow.\n\n```mermaid\ngraph LR\nA-->B\n```\n\n'
                        ': How it flows {#fig-flow}\n\nAnd @fig-absent is nothing.\n',
                        encoding='utf-8')
-        found = lint.check_references(doc, None, profile.load('en'))
+        found = lint.check_references({'source_path': doc, 'annex_path': None},
+                                      profile.load('en'))
         check('a reference to a label that does not exist is blocked',
               any(f['rule'] == 'dangling-reference' and f['match'] == '@fig-absent'
                   for f in found))
@@ -86,10 +87,24 @@ def main():
 
         twice = Path(tmp) / 'twice.md'
         twice.write_text(': One {#fig-a}\n\n: Two {#fig-a}\n', encoding='utf-8')
-        found = lint.check_references(twice, None, profile.load('en'))
+        found = lint.check_references({'source_path': twice, 'annex_path': None},
+                                      profile.load('en'))
         check('a label declared twice is blocked, because every reference '
               'would mean the first',
               any(f['rule'] == 'duplicate-label' for f in found))
+
+        # a document assembled from several files: the references have to
+        # resolve across all of them, not only within the file they sit in
+        one = Path(tmp) / 'one.md'
+        two = Path(tmp) / 'two.md'
+        one.write_text('```mermaid\ngraph LR\nA-->B\n```\n\n'
+                       ': A chart {#fig-c}\n', encoding='utf-8')
+        two.write_text('Discussed at @fig-c.\n', encoding='utf-8')
+        found = lint.check_references(
+            {'source_path': one, 'include_paths': [two], 'annex_path': None},
+            profile.load('en'))
+        check('a reference in one file to a label in another resolves',
+              found == [])
 
     print('display equations')
     from paperforge import xref as xr

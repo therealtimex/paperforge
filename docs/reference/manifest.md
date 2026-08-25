@@ -66,6 +66,7 @@ writes `50.000` where English writes `50,000`. See `figures.md`.
 | `type` | Layout and defaults — see `document-types.md` |
 | `source`, `output` | Input markdown, output HTML (defaults to the source's name) |
 | `annex` | Embedded inline, never published alone |
+| `include` | More source files, assembled in order; see `assembling.md` |
 | `annex_label` | Sidebar entry for the annex |
 | `title_kind` | Badge text when the source has no `# ` line |
 | `contents_heading` | Usually from the profile; enables sidebar and page numbers |

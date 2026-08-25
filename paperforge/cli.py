@@ -7,8 +7,8 @@ import sys
 import tomllib
 from pathlib import Path
 
-from . import (brief, deck, diagrams, editions, figures, lint, markdown, pages,
-               profile, publish as pub, runs, scaffold, typst, verify)
+from . import (assemble, brief, deck, diagrams, editions, figures, lint, markdown,
+               pages, profile, publish as pub, runs, scaffold, typst, verify)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -119,6 +119,9 @@ def load(config=None):
                        'source': source, 'output': output,
                        'source_path': base / source, 'output_path': base / output,
                        'annex_path': base / ed['annex'] if ed.get('annex') else None,
+                       # chapters: body fragments appended in declared order
+                       'include_paths': [base / f for f in
+                                         ({**cfg['defaults'], **shared, **ed}.get('include') or [])],
                        # what was asked, kept beside what was produced: when the
                        # request is thin the interpretation becomes the real
                        # spec, and an interpretation nobody can re-read is not
@@ -185,15 +188,17 @@ def do_lint(cfg, docs, quiet=False):
     blocked = set(cfg['internal']['files'])
     result = {}
     for d in docs:
-        findings = lint.check_document(d['source_path'], rules)
+        findings = []
+        for problem in assemble.problems(d['source_path'], d.get('include_paths')):
+            findings.append({'rule': 'include', 'severity': 'block', 'line': 0,
+                             'match': '', 'why': problem, 'context': ''})
+        for path in assemble.sources(d):
+            findings += lint.check_document(path, rules)
         findings += lint.check_publishable(d['source_path'], allowed, blocked, embedded)
-        findings += lint.check_references(d['source_path'], d['annex_path'], d['prof'])
+        findings += lint.check_references(d, d['prof'])
         findings += lint.check_front_matter(d['source_path'])
         findings += lint.check_citations(
-            d['source_path'], d['annex_path'],
-            (d['root'] / d['bibliography']) if d.get('bibliography') else None)
-        if d['annex_path']:
-            findings += lint.check_document(d['annex_path'], rules)
+            d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         s = lint.summarise(findings)
         result[d['source']] = s['blocking']
         state = 'BLOCKED' if s['blocking'] else ('warn' if s['total'] else 'ok')
@@ -214,6 +219,7 @@ def opts(d):
             'footer_note': d.get('footer_note'), 'annex_label': d.get('annex_label'),
             'brand': d.get('brand'), 'logo': d.get('logo_path'),
             'review': bool(d.get('review')),
+            'includes': d.get('include_paths') or (),
             'bibliography': (d['root'] / d['bibliography']) if d.get('bibliography') else None,
             'citation_style': d.get('citation_style', 'apa'),
             'layout': d.get('layout', 'report')}
@@ -344,6 +350,7 @@ def do_build(docs, cache, measure=True):
                                    organisation=d.get('organisation', ''),
                                    brand=d.get('brand'), cache=cache, logo=d.get('logo_path'),
                                    review=bool(d.get('review')),
+                                   includes=d.get('include_paths') or (),
                                    contents_heading=d.get('contents_heading'),
                                    bibliography=(d['root'] / d['bibliography'])
                                    if d.get('bibliography') else None,
@@ -367,6 +374,7 @@ def do_build(docs, cache, measure=True):
                                       organisation=d.get('organisation', ''),
                                       brand=d.get('brand'), cache=cache, logo=d.get('logo_path'),
                                       review=bool(d.get('review')),
+                                      includes=d.get('include_paths') or (),
                                       bibliography=(d['root'] / d['bibliography'])
                                       if d.get('bibliography') else None,
                                       citation_style=d.get('citation_style', 'apa'),
@@ -406,7 +414,7 @@ def do_verify(docs, cache):
     for d in docs:
         if not d['output_path'].exists():
             print('  %-38s NOT BUILT' % d['output']); failed += 1; continue
-        r = verify.check(d['output_path'], d['source_path'], d['annex_path'])
+        r = verify.check(d['output_path'], *assemble.sources(d))
         if d.get('format') == 'deck':
             problems = []
             if r['external_refs']:
@@ -486,8 +494,7 @@ def do_verify(docs, cache):
         # text can be read back at all before trusting anything derived from it
         readable = True
         if pdf.exists():
-            body = ''.join(p.read_text(encoding='utf-8') for p in
-                           [d['source_path']] + ([d['annex_path']] if d['annex_path'] else []))
+            body = ''.join(p.read_text(encoding='utf-8') for p in assemble.sources(d))
             quality = pages.extractable(pdf, len(re.sub(r'\s|[|#*`>-]', '', body)))
             readable = quality['usable']
             if not readable:
@@ -516,7 +523,7 @@ def do_verify(docs, cache):
             # Reported, not blocking: a row taller than the page splits a URL
             # across the break and no reconstruction here rejoins it, so some
             # of these are intact. It points at pages to look at.
-            cut = verify.print_truncation(pdf, d['source_path'], d['annex_path'])
+            cut = verify.print_truncation(pdf, *assemble.sources(d))
             if cut['unlocated']:
                 print('      print: %d of %d source URL(s) not found whole - check whether '
                       'a table row spans a page break: %s'

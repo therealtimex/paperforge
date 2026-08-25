@@ -16,6 +16,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from . import assemble
 from . import browser, citations as cite_mod, front as front_mod, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
@@ -320,7 +321,8 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None,
-          bibliography=None, citation_style='apa', logo=None, review=False):
+          bibliography=None, citation_style='apa', logo=None, review=False,
+          includes=()):
     """Render one document to PDF through Typst. Returns build facts."""
     brand = brand or {}
     src = Path(source)
@@ -328,7 +330,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True, exist_ok=True)
 
-    text = src.read_text(encoding='utf-8').replace('\r\n', '\n')
+    text = assemble.read(src, includes)
     front, text = front_mod.split(text)
     if review:
         front = front_mod.anonymise(front, prof)

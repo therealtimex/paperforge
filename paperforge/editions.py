@@ -42,7 +42,68 @@ def page_openers_html(html):
     return [o for o in openers if o]
 
 
-def page_openers_pdf(pdf_path, candidates, words=6):
+def page_text(page, columns=1):
+    """One page in reading order, columns kept apart.
+
+    Both columns of a two-column page share one leading, so their baselines
+    coincide and pdfplumber groups the pair into a single line - it reads
+    straight across the gutter. Measured on a two-column A4 of body text, 55 of
+    55 lines came back merged, e.g.
+
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit, utramque
+         Menandri legam? A quibus tantum dissentio, ut,'
+
+    which is two sentences from two different columns. Nothing matched against
+    that text is being matched against what the page says. The page-opening
+    check survives it today only because every heading it looks for spans the
+    gutter and so forms its own line - a property of the current candidate set,
+    not of the check.
+
+    Cropping the page into strips is not enough, because some blocks are meant
+    to cross the gutter - the title block, a part banner, a spanning figure -
+    and a crop cuts those in half. That version was measured too: two of three
+    part banners came back unlocated. So the split is per word instead. A line
+    with a word straddling a column edge is a spanning line and is kept whole;
+    everything else goes to the column it sits in, and the spanning lines are
+    emitted first, which is also where they are on the page.
+
+    A landscape page is returned as it is. A wide table takes one to itself and
+    is one column by construction.
+    """
+    if columns < 2 or page.width > page.height:
+        return page.extract_text() or ''
+    edges = [page.width * i / columns for i in range(1, columns)]
+    rows = {}
+    for word in page.extract_words():
+        rows.setdefault(round(word['top']), []).append(word)
+    # a superscript or an inline formula sits a point or two off its own line;
+    # merge neighbouring bands so one line does not come back as three
+    keys, merged = sorted(rows), {}
+    for key in keys:
+        band = next((b for b in merged if abs(b - key) <= 3), key)
+        merged.setdefault(band, []).extend(rows[key])
+
+    spanning, strips = [], [[] for _ in range(columns)]
+    for band in sorted(merged):
+        line = sorted(merged[band], key=lambda w: w['x0'])
+        if any(w['x0'] < e < w['x1'] for w in line for e in edges):
+            spanning.append((band, line))
+            continue
+        for word in line:
+            strips[sum(1 for e in edges if word['x0'] >= e)].append((band, word))
+
+    out = [' '.join(w['text'] for w in line) for _, line in spanning]
+    for strip in strips:
+        lines = {}
+        for band, word in strip:
+            lines.setdefault(band, []).append(word)
+        for band in sorted(lines):
+            out.append(' '.join(w['text'] for w in
+                                sorted(lines[band], key=lambda w: w['x0'])))
+    return '\n'.join(out)
+
+
+def page_openers_pdf(pdf_path, candidates, words=6, columns=1):
     """Which of those actually open a page in the PDF.
 
     The contents repeats every heading, so pages carrying several candidates are
@@ -51,7 +112,7 @@ def page_openers_pdf(pdf_path, candidates, words=6):
     backwards; only if that fails is it looked for anywhere.
     """
     with _pdfplumber().open(pdf_path) as pdf:
-        pages = [_norm(p.extract_text() or '') for p in pdf.pages]
+        pages = [_norm(page_text(p, columns)) for p in pdf.pages]
     probes = {h: ' '.join(h.split()[:words]) for h in candidates if len(h.split()) >= 1}
     skip = {i for i, pg in enumerate(pages)
             if sum(pr in pg for pr in probes.values() if len(pr) > 8) >= 4}
@@ -81,10 +142,10 @@ def page_openers_pdf(pdf_path, candidates, words=6):
     return found
 
 
-def compare(html_path, pdf_path, fold=True):
+def compare(html_path, pdf_path, fold=True, columns=1):
     html = open(html_path, encoding='utf-8').read()
     expected = page_openers_html(html)
-    actual = page_openers_pdf(pdf_path, expected)
+    actual = page_openers_pdf(pdf_path, expected, columns=columns)
 
     mid_page = [(h, p) for h in expected for p, top in [actual.get(h, (None, True))]
                 if p and not top]

@@ -107,6 +107,22 @@ def main():
     check('and it does not masquerade as an affiliation',
           'abstract' not in front.affiliations(trap))
 
+    # The same trap one table header earlier, and the likelier one: [[author]]
+    # is the first header in every example anyone writes. It went unnoticed
+    # until a manuscript was built and its abstract simply was not on the page.
+    sunk, _ = front.split(GOOD.replace('abstract = "Physical AI reshapes production."\n', '')
+                          .replace('name = "Nguyễn Thị B"',
+                                   'name = "Nguyễn Thị B"\nabstract = "swallowed"'))
+    check('an abstract written below [[author]] is reported too',
+          any("'abstract' is not a key an author carries" in p
+              for p in front.problems(sunk)))
+    check('the author it was swallowed by is named',
+          any('Nguyễn Thị B' in p for p in front.problems(sunk)))
+    check('and so is the way out of it',
+          any('above the first table header' in p for p in front.problems(sunk)))
+    check('a correctly placed abstract raises nothing',
+          not any('not a key an author carries' in p for p in front.problems(data)))
+
     print('the blind review copy')
     blind = front.anonymise(data, profile.load('en'))
     check('the author list is gone', 'author' not in blind)

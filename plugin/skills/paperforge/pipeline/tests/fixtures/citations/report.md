@@ -63,3 +63,14 @@ không phải công thức, và phải hiện ra đúng như vậy.
 
 Trữ lượng đất hiếm tham chiếu theo USGS [@usgs2026]; tiềm năng điện gió ngoài
 khơi theo Ngân hàng Thế giới [@esmap; @wipo].
+
+Bảy cột không nằm vừa một cột báo: @tbl-nguon phải rời khỏi cột và lấy cạnh dài
+của khổ giấy, ở cả ba bản.
+
+| Quốc gia | Mật độ 2025 | Chỉ số lương | Công cụ | Từ năm | Trần hỗ trợ | Nguồn |
+|:---|---:|---:|:---|---:|:---|:---|
+| Hàn Quốc | 1012 | 100 | Tín dụng thuế | 2013 | Không | https://ifr.org/statistics/korea-2025 |
+| Singapore | 770 | 96 | Tài trợ | 2016 | 50% vốn đầu tư | https://ifr.org/statistics/singapore-2025 |
+| Việt Nam | 28 | 22 | Chưa có | – | – | https://ifr.org/statistics/vietnam-2025 |
+
+: Công cụ chính sách đang hiệu lực, một số nền kinh tế {#tbl-nguon}

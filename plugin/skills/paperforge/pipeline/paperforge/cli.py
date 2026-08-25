@@ -73,6 +73,24 @@ def editions_of(d):
     return {k: v for k, v in d.items() if isinstance(v, dict) and 'source' in v}
 
 
+def columns_of(d):
+    """How many columns the print editions set. 1 or 2, and nothing else.
+
+    No journal asks for three, and a third column on A4 is 55mm wide - it
+    cannot hold a table, a source URL, or a Vietnamese compound noun. Refusing
+    the number is kinder than setting a document nobody can read.
+    """
+    n = d.get('columns', 1)
+    if n not in (1, 2):
+        raise SystemExit('document %r sets columns = %r; only 1 or 2 are set'
+                         % (d.get('source', '?'), n))
+    if n > 1 and d.get('format') == 'deck':
+        raise SystemExit('document %r is a deck and sets columns = %d; a slide is '
+                         'not a page and has no measure to divide'
+                         % (d.get('source', '?'), n))
+    return n
+
+
 def load(config=None):
     path = find_config(config)
     root = path.parent.parent if path.parent.name == 'tools' else path.parent
@@ -136,6 +154,11 @@ def load(config=None):
                 if doc.get('page_numbers') and not doc.get('contents_heading') and prof:
                     doc['contents_heading'] = prof['structure'].get('contents_heading')
                 doc.setdefault('publish', False)
+                # checked here rather than where it is used: a deck returns
+                # from the build before opts() is reached, so a refusal that
+                # lived there could never have fired for the one document type
+                # it exists to refuse.
+                columns_of(doc)
                 docs.append(doc)
     return cfg, docs
 
@@ -222,7 +245,8 @@ def opts(d):
             'includes': d.get('include_paths') or (),
             'bibliography': (d['root'] / d['bibliography']) if d.get('bibliography') else None,
             'citation_style': d.get('citation_style', 'apa'),
-            'layout': d.get('layout', 'report')}
+            'layout': d.get('layout', 'report'),
+            'columns': columns_of(d)}
 
 
 def record_run(cfg, docs, stages, label=None):
@@ -354,7 +378,8 @@ def do_build(docs, cache, measure=True):
                                    contents_heading=d.get('contents_heading'),
                                    bibliography=(d['root'] / d['bibliography'])
                                    if d.get('bibliography') else None,
-                                   citation_style=d.get('citation_style', 'apa'))
+                                   citation_style=d.get('citation_style', 'apa'),
+                                   columns=columns_of(d))
                 print('  %-38s %s' % (pdf_out.name, json.dumps(info, ensure_ascii=False)))
             except (RuntimeError, FileNotFoundError) as err:
                 print('  %-38s typst FAILED: %s' % (pdf_out.name, str(err).splitlines()[0][:90]))
@@ -378,7 +403,8 @@ def do_build(docs, cache, measure=True):
                                       bibliography=(d['root'] / d['bibliography'])
                                       if d.get('bibliography') else None,
                                       citation_style=d.get('citation_style', 'apa'),
-                                      contents_heading=d.get('contents_heading'))
+                                      contents_heading=d.get('contents_heading'),
+                                      columns=columns_of(d))
                 print('  %-38s %s' % (docx_out.name, json.dumps(info, ensure_ascii=False)))
             except Exception as err:
                 print('  %-38s docx FAILED: %s' % (docx_out.name, str(err).splitlines()[0][:90]))
@@ -468,7 +494,8 @@ def do_verify(docs, cache):
                       % (wd['headings_docx'], wd['figures_docx'], wd['tables_docx']))
 
         if pdf_edition.exists() and d.get('pdf') == 'typst':
-            ed = editions.compare(d['output_path'], pdf_edition)
+            ed = editions.compare(d['output_path'], pdf_edition,
+                                  columns=columns_of(d))
             if ed['mid_page']:
                 problems.append('%d heading(s) open a page in HTML but not in the PDF: %s'
                                 % (len(ed['mid_page']), [h[:30] for h, _ in ed['mid_page']][:3]))
@@ -531,6 +558,10 @@ def do_verify(docs, cache):
                          ', '.join(u[:38] for u in cut['unlocated'][:2])))
             elif cut['checked']:
                 print('      print: all %d source URL(s) survive the page' % cut['checked'])
+            # the colophon is not a page either - see verify.colophon()
+            tail = verify.colophon(pdf, d['output_path'].read_text(encoding='utf-8'))
+            if tail:
+                exempt |= {tail}
             pg = verify.pagination(pdf, exempt=exempt,
                                   script=d['prof'].get('script', 'latin'))
             if pg['thin']:

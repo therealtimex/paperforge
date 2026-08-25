@@ -16,6 +16,11 @@ profile = "vi"
   citation_style = "apa"
   pdf = "typst"
   source = "report.md"
+  # the journal submission: two columns, with a wide table that has to leave
+  # them and a title block that has to span them. `docx` as well, because the
+  # column count lives on a Word section and nothing else here writes one.
+  columns = 2
+  docx = true
   publish = false
 
   # the same source as a blind review copy: line-numbered, anonymised,

@@ -44,16 +44,30 @@ would be that trade made for exactly one block.
 
 ## One rule worth knowing
 
-**Scalar keys go above the first table header.** That is TOML's rule, not ours,
-and getting it wrong is quiet: `abstract = "..."` written below `[affiliation]`
-becomes an *affiliation* called "abstract", and the abstract vanishes.
+**Scalar keys go above the first table header** — the *first*, which in
+practice is `[[author]]`. That is TOML's rule, not ours, and getting it wrong is
+quiet: `abstract = "..."` written below `[[author]]` becomes a key of that
+author, and written below `[affiliation]` becomes an *affiliation* called
+"abstract". Either way it leaves the page with nothing said.
 
-The gate names it rather than leaving you to wonder:
+The gate names both rather than leaving you to wonder:
 
 ```
+'abstract' is not a key an author carries, so nothing renders it. If it
+belongs to the document, move it above the first table header: TOML reads
+a scalar written below [[author]] as a key of that author ('Nguyễn Thị B').
+
 'abstract' was written after [affiliation], so TOML read it as an
 affiliation. Move it above the first table header.
 ```
+
+The first also fires on a key an author simply does not carry — `twitter`, say
+— which renders nowhere either, so the message holds for both rather than
+asserting the likelier cause and being wrong about the other.
+
+The `[[author]]` half went ungated for a while, because the `[affiliation]` half
+was the one that had been hit. It surfaced when a two-column manuscript was
+built and its abstract simply was not on the page.
 
 ## What the gate refuses
 
@@ -76,4 +90,4 @@ other rendered string. See `languages.md`.
 
 ## Related
 
-`manifest.md` · `review-copy.md` · `structure.md` · `cross-references.md` · `document-types.md`
+`manifest.md` · `review-copy.md` · `columns.md` · `structure.md` · `cross-references.md` · `document-types.md`

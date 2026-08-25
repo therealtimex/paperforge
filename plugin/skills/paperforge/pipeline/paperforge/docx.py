@@ -72,8 +72,58 @@ def _runs(paragraph, text):
         paragraph.add_run(text[pos:])
 
 
-def _landscape(doc, on):
-    """Word changes page orientation per section, so a wide table gets its own."""
+def _columns(section, n, space=425):
+    """Set a section's column count. `w:cols` is already in every sectPr Word
+    writes, so this sets attributes rather than appending an element out of
+    schema order. 425 twips is 0.75cm, Word's own default gutter."""
+    from docx.oxml.ns import qn
+    cols = section._sectPr.find(qn('w:cols'))
+    if cols is None:      # pragma: no cover - python-docx writes one every time
+        from docx.oxml import OxmlElement
+        cols = OxmlElement('w:cols')
+        section._sectPr.append(cols)
+    cols.set(qn('w:num'), str(n))
+    cols.set(qn('w:space'), str(space))
+    return section
+
+
+def _line_numbers(doc):
+    """Number every line, in every section.
+
+    Word carries line numbering per section, and python-docx does not expose
+    it, so the element goes in directly. Two details, both checked rather than
+    assumed:
+
+    `w:lnNumType` precedes `w:cols` in the schema's sequence, and appending it
+    put it after `w:cols` and `w:docGrid`. That was harmless while nothing wrote
+    `w:cols`; the column count does, so it is inserted in order instead.
+
+    Every section, rather than the first: `add_section` clones the trailing
+    section properties, so setting it early does in fact reach the sections a
+    wide table opens later - measured, having expected otherwise. Relying on
+    that means line numbering depends on the order two unrelated features run
+    in, which is not a property worth keeping.
+    """
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+    for section in doc.sections:
+        marks = OxmlElement('w:lnNumType')
+        marks.set(qn('w:countBy'), '1')
+        marks.set(qn('w:restart'), 'continuous')
+        cols = section._sectPr.find(qn('w:cols'))
+        if cols is None:  # pragma: no cover - as above
+            section._sectPr.append(marks)
+        else:
+            cols.addprevious(marks)
+
+
+def _landscape(doc, on, columns=1):
+    """Word changes page orientation per section, so a wide table gets its own.
+
+    A wide table also leaves the columns behind: it needs the long edge of the
+    paper at 8pt already, and half of that is not a smaller version of the
+    problem. The body returns to its own column count after it.
+    """
     section = doc.add_section()
     if on:
         section.orientation = WD_ORIENT.LANDSCAPE
@@ -82,6 +132,7 @@ def _landscape(doc, on):
         section.orientation = WD_ORIENT.PORTRAIT
         section.page_width, section.page_height = Mm(210), Mm(297)
     section.left_margin = section.right_margin = Mm(18)
+    _columns(section, 1 if on else columns)
     return section
 
 
@@ -119,7 +170,7 @@ def take_caption(lines, pos, table):
 
 
 def convert(doc, lines, figures, label, images, brand, part_banner=None,
-            force_parts=False, table=None):
+            force_parts=False, table=None, columns=1):
     """Block pass. Mirrors the HTML emitter's structure decisions."""
     pos, n = 0, len(lines)
     landscape = False
@@ -172,7 +223,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
             inferred = bool(part_banner and re.match(part_banner, text))
             is_part = ('part' in attrs) or force_parts or (inferred and 'no-part' not in attrs)
             if landscape:
-                _landscape(doc, False)
+                _landscape(doc, False, columns)
                 landscape = False
             heading = doc.add_heading(level=min(depth, 4))
             _runs(heading, text)
@@ -218,10 +269,10 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
             if len(rows) >= 2:
                 wide = len(rows[0]) >= WIDE
                 if wide and not landscape:
-                    _landscape(doc, True)
+                    _landscape(doc, True, columns)
                     landscape = True
                 elif landscape and not wide:
-                    _landscape(doc, False)
+                    _landscape(doc, False, columns)
                     landscape = False
                 _table(doc, rows, wide)
                 entry, pos = take_caption(lines, pos, table or {})
@@ -254,12 +305,13 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
             pos += 1
         _runs(doc.add_paragraph(), xref.substitute(' '.join(buf), table or {}))
     if landscape:
-        _landscape(doc, False)
+        _landscape(doc, False, columns)
 
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None, logo=None,
-          review=False, bibliography=None, citation_style='apa', includes=()):
+          review=False, bibliography=None, citation_style='apa', includes=(),
+          columns=1):
     """Render one document to .docx. Returns build facts."""
     src = Path(source)
     work = Path(cache or src.parent) / ('.docx-%s' % src.stem)
@@ -335,14 +387,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     normal.font.size = Pt(11)
     normal.font.color.rgb = _colour(brand, 'ink')
     if review:
-        # Word numbers lines natively, per section, which python-docx does not
-        # expose - so the element goes in directly
-        from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn
-        marks = OxmlElement('w:lnNumType')
-        marks.set(qn('w:countBy'), '1')
-        marks.set(qn('w:restart'), 'continuous')
-        doc.sections[0]._sectPr.append(marks)
+        # the line numbers themselves go on at the end, once every section
+        # exists - see _line_numbers()
         normal.paragraph_format.line_spacing = 2.0
 
     # not `text`: that name holds the document body, and shadowing it here made
@@ -400,13 +446,20 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         para.add_run(organisation).italic = True
-    doc.add_page_break()
+    if columns > 1:
+        # a section, not a page break: Word carries the column count on the
+        # section, so the title block keeps the full measure and the body
+        # opens in columns on the page after it
+        _landscape(doc, False, columns)
+    else:
+        doc.add_page_break()
 
     figures = []
     label = prof['labels'].get('figure', 'Figure %d')
     part_banner = prof['structure'].get('part_banner')
     refs = xref.resolve(prof, body, annex_lines)
-    convert(doc, body, figures, label, images, brand, part_banner, table=refs)
+    convert(doc, body, figures, label, images, brand, part_banner, table=refs,
+            columns=columns)
     if annex_lines:
         doc.add_page_break()
         if annex_title:
@@ -415,7 +468,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
             for run in heading.runs:
                 run.font.color.rgb = _navy(brand)
         convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
-                images, brand, part_banner, force_parts=True, table=refs)
+                images, brand, part_banner, force_parts=True, table=refs,
+                columns=columns)
 
     # The reference list. Without this the Word edition silently dropped it -
     # a submission copy with no bibliography - and only the cross-edition check
@@ -446,6 +500,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
             para.add_run('%s. ' % key).bold = True
             _runs(para, str(value))
 
+    if review:
+        _line_numbers(doc)
     doc.save(str(output))
     return {'figures': len(figures), 'tables': len(doc.tables),
             'headings': sum(1 for p in doc.paragraphs if p.style.name.startswith('Heading')),

@@ -12,15 +12,15 @@ than two - and this pipeline vendors reveal.js and refuses pandoc rather than
 buy a dependency for one feature.
 
     +++
+    abstract = "..."
+    keywords = ["Physical AI", "Việt Nam"]
+
     [[author]]
     name = "Trần Văn A"
     affiliation = [1, 2]
     orcid = "0000-0002-1825-0097"
     corresponding = true
     email = "a@example.gov.vn"
-
-    abstract = "..."
-    keywords = ["Physical AI", "Việt Nam"]
 
     [affiliation]
     1 = "Bộ Ngoại giao"
@@ -35,10 +35,13 @@ Rendering is the emitters' business. This module parses, validates and lays out
 the pieces as plain text and marker lists, so three emitters cannot each decide
 a different superscript order.
 
-Scalar keys go above the first table header. That is TOML's rule, not ours, and
-getting it wrong is quiet - an abstract written below [affiliation] becomes an
-affiliation - so problems() names it rather than leaving the author to wonder
-where their abstract went.
+Scalar keys go above the first table header - the *first*, which in practice is
+[[author]]. That is TOML's rule, not ours, and getting it wrong is quiet: an
+abstract written below [[author]] becomes a key of that author, and one written
+below [affiliation] becomes an affiliation. Either way it leaves the page with
+nothing said. This module's own example had the trap in it until a two-column
+manuscript was built and the abstract was not there, so problems() names both
+rather than leaving the author to wonder where their abstract went.
 """
 import re
 import tomllib
@@ -59,6 +62,9 @@ LABELS = {
     'anonymised': ANONYMISED,
 }
 DECLARATION_ORDER = ('funding', 'conflicts', 'ethics', 'data', 'acknowledgements')
+# What an author is allowed to carry. Anything else under [[author]] is a
+# document key TOML swallowed because it was written below the header.
+AUTHOR_KEYS = ('name', 'affiliation', 'orcid', 'email', 'corresponding')
 
 
 def split(text):
@@ -105,6 +111,23 @@ def stray(front):
     """Keys that landed in [affiliation] because they were written after it."""
     return [str(k) for k, v in (front.get('affiliation') or {}).items()
             if not (MARKER_RE.match(str(k)) and isinstance(v, str))]
+
+
+def misplaced(front):
+    """Keys under [[author]] that an author does not carry, with whose they are.
+
+    Almost always a document key written below the header: [[author]] is the
+    first table header in every example anyone writes, so this is the likelier
+    half of the scalar-placement trap - and the half that was missed when the
+    [affiliation] half was gated. It also catches a key that is simply not
+    supported, which renders nowhere either.
+    """
+    found = []
+    for a in front.get('author') or []:
+        for key in a:
+            if key not in AUTHOR_KEYS:
+                found.append((key, a.get('name', '')))
+    return found
 
 
 def authors(front):
@@ -171,6 +194,15 @@ def problems(front):
     found = []
     if not front:
         return found
+    for key, name in misplaced(front):
+        # Two things produce this - a document key written below [[author]], and
+        # a key an author simply does not carry - and the message has to hold
+        # for both rather than assert the likelier one and be wrong about the
+        # other. Either way the value renders nowhere, which is the finding.
+        found.append('%r is not a key an author carries, so nothing renders it. '
+                     'If it belongs to the document, move it above the first table '
+                     'header: TOML reads a scalar written below [[author]] as a key '
+                     'of that author (%r).' % (key, name))
     for key in stray(front):
         found.append('%r was written after [affiliation], so TOML read it as an '
                      'affiliation. Move it above the first table header.' % key)

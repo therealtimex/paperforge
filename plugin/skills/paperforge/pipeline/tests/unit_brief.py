@@ -29,6 +29,7 @@ figures = "figures.toml"
   id = "report"
   type = "report"
   pdf = "chrome"
+  columns = 2
   source = "report.md"
   publish = true
 
@@ -81,6 +82,9 @@ def main():
               '/usr/local/bin/paperforge status' in text and '<paperforge>' not in text)
         check('every declared source is listed', '`report.md`' in text and '`note.md`' in text)
         check('the print edition is named', 'pdf:chrome' in text)
+        # a column count is an authoring constraint, not only a rendering one:
+        # in two columns a wide table leaves the columns and takes its own page
+        check('a two-column setting is named', '2 columns' in text)
         check('publishable and not publishable are distinguished',
               'publishable |' in text and 'not publishable |' in text)
         check('the internal file is named as never publishable',

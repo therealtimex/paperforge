@@ -372,6 +372,41 @@ body.doc-brief figure.diagram { margin:18px 0 22px; padding:16px 12px 8px; }
   main .table-frame.wide table { table-layout:fixed; width:100% !important;
     font-size:8pt; }
   main .table-frame.wide th, main .table-frame.wide td { padding:4px 6px; }
+  /* Two columns, on paper only. A journal wants an article set in two
+     columns; a reader on a screen wants one, because multicol in a scrolling
+     page means reading to the bottom of the window and back to the top for
+     every screenful. `columns = 2` is therefore a print instruction, and this
+     is also what `pdf = "chrome"` prints - so the two print engines set the
+     same document the same way. */
+  body.doc-columns main { column-count:2; column-gap:8mm; column-fill:auto; }
+  body.doc-columns main h2.part { column-span:all; break-before:page; }
+  body.doc-columns .annex-head { column-span:all; }
+  /* A figure or a wide table in an 88mm column is not a smaller version of
+     itself - it is illegible. Both cross the gutter, as they do in the PDF. */
+  body.doc-columns main figure.diagram,
+  body.doc-columns main .table-frame.wide { column-span:all; }
+  /* Named pages do not work inside a multi-column container in Chrome. This
+     was measured four ways, all on the same probe: with column-span:all the
+     table does get its landscape page but never hands it back - the references
+     and the declarations were set in two columns of a 297mm measure - and
+     neither break-after:page on the table nor page:auto plus break-before:page
+     on the element after it moved them; without column-span:all the page name
+     is ignored outright. So in a two-column document the wide table takes the
+     full portrait measure instead. That is 180mm either way, exactly what it
+     has in a one-column document, so nothing is lost that a one-column
+     document keeps - but Typst does turn the page, and a manuscript with wide
+     tables belongs there. If a fifth approach works, this is the line to
+     change. */
+  body.doc-columns main .table-frame.wide { page:auto; break-inside:avoid; }
+  body.doc-columns main figure.diagram svg { max-height:120mm !important; }
+  body.doc-columns main p, body.doc-columns main li { orphans:2; widows:2; }
+
+  /* Two columns pack the body tighter, and on one fixture that left the
+     colophon alone on a seventh page - reported, correctly, as a near-empty
+     page. Setting it tight to what precedes it helps and is not sufficient:
+     when the page before is full the break has to happen, so verify.colophon()
+     exempts a last page that carries nothing else. */
+  footer { padding:14px 0 0; break-before:avoid; break-inside:avoid; }
   .is-scrollable::after, .scroll-hint { display:none !important; }
   thead th { position:static; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   tbody tr:hover { background:none; }

@@ -196,6 +196,37 @@ def pagination(pdf_path, floor=80, exempt=(), script='latin'):
     return {'pages': total, 'thin': thin}
 
 
+def colophon(pdf_path, html):
+    """The last page's number, if it carries nothing but the colophon.
+
+    A body that ends near a page boundary pushes the footer onto a page of its
+    own: the copyright line and the handling notice, and nothing else. That is
+    not a stranded heading and not an orphaned frame, which is what the
+    near-empty check is looking for, so it is exempted the way the cover is.
+
+    Two columns pack the text tighter, and a fixture that had never done this
+    started doing it the day the column count landed - which is the argument
+    for exempting rather than tuning the floor, since the floor was never the
+    thing that was wrong.
+    """
+    m = re.search(r'<footer\b[^>]*>(.*?)</footer>', html, re.S)
+    if not m:
+        return None
+    flat = lambda t: re.sub(r'[\s\d]+', '', re.sub(r'<[^>]+>', ' ', t)).casefold()
+    foot = flat(m.group(1))
+    if not foot:
+        return None
+    import logging
+    import warnings
+    warnings.filterwarnings('ignore')
+    logging.getLogger('pdfminer').setLevel(logging.ERROR)
+    import pdfplumber
+    with pdfplumber.open(pdf_path) as pdf:
+        last = flat(pdf.pages[-1].extract_text() or '')
+        total = len(pdf.pages)
+    return total if last and last in foot else None
+
+
 # Raw markup that reached the rendered page. Found after <br> in table cells
 # survived into the PDF: the Typst emitter escaped the angle brackets before it
 # tried to replace the tag, so the replace could never match. The HTML edition

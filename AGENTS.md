@@ -98,6 +98,40 @@ re-tests someone else's tool. A limitation attributed to our own code is a
 to-do. Before writing "X cannot", spend the two minutes finding out whether X
 cannot, or we have not.
 
+## Gate the trap, not the instance of it you were shown
+
+Front matter is TOML, and a scalar written below a table header belongs to that
+table. That was gated for `[affiliation]`, because `[affiliation]` was where it
+had been hit. It was not gated for `[[author]]` — the *first* header in every
+example anyone writes, including this module's own docstring, where the trap sat
+uncorrected for weeks. A manuscript built with two columns simply had no
+abstract on the page.
+
+The same shape appears in `verify.coverage()`, whose strip list has been
+extended four times, once per feature, each time after a false report. When you
+fix one instance, write down what the general trap is and gate that. If you
+cannot state the general form, you have not understood the defect.
+
+## A refusal has to be reachable
+
+`columns = 2` on a deck is meaningless, and the refusal for it was first written
+where the column count is used — which a deck never reaches, because the deck
+branch returns from the build several steps earlier. A gate that cannot fire is
+worse than no gate: it reads as coverage.
+
+Manifest errors belong in `load()`, where every document passes regardless of
+what it later becomes. Prove a refusal by triggering it, not by reading it.
+
+## A check that reads an artifact assumes a layout
+
+`editions.py` reads a printed page a line at a time. In two columns both columns
+share one leading, so their baselines coincide and the reader runs straight
+across the gutter: 55 of 55 lines merged on a measured A4. Nothing failed, and
+the text every probe was matched against had stopped being sentences.
+
+Whenever the page changes shape — columns, landscape, RTL — ask what the checks
+believe about it, and go and measure rather than reasoning about it.
+
 ## Conventions
 
 - No dependency the published document can see. Chrome and the Mermaid CDN are

@@ -700,7 +700,7 @@ def build(source, output, svgs=None, annex=None, pages=None,
           contents_heading=None, kind_fallback=None, layout='report', prof=None,
           organisation=None, publisher=None, footer_note=None, annex_label=None,
           brand=None, bibliography=None, citation_style='apa', logo=None,
-          review=False, includes=()):
+          review=False, includes=(), columns=1):
     """Render one markdown document. Contents section and annex are optional."""
     global PROF
     PROF = prof or profile.load('vi')
@@ -778,7 +778,12 @@ def build(source, output, svgs=None, annex=None, pages=None,
     nav = build_toc(toc)
     ui = PROF['ui']
     html = render('document.html', {
-        'BODYCLASS': 'doc-' + layout + (' doc-review' if review else ''),
+        # `columns` is a print instruction. On screen a two-column article
+        # means reading to the foot of the window and scrolling back up for
+        # every screenful, so the reading edition stays one column and the
+        # print rules take over - see paperforge.css.
+        'BODYCLASS': 'doc-' + layout + (' doc-review' if review else '')
+                     + (' doc-columns' if columns > 1 else ''),
         'LANG': PROF['lang'],
         'DIR': PROF.get('direction', 'ltr'),
         'THEME_OVERRIDE': theme_override(PROF, brand),

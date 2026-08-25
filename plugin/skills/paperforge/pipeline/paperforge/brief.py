@@ -32,6 +32,10 @@ def _documents(docs):
             bits.append('+annex')
         if d.get('pdf'):
             bits.append('pdf:%s' % d['pdf'])
+        # an authoring constraint, not just a rendering one: in two columns a
+        # wide table leaves the columns and takes a page of its own
+        if (d.get('columns') or 1) > 1:
+            bits.append('%d columns' % d['columns'])
         rows.append((d['source'], ', '.join(bits),
                      'publishable' if d.get('publish') else 'not publishable'))
     return rows

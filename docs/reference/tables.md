@@ -55,4 +55,4 @@ print as a stray paragraph, so lint blocks it. See `unsupported-syntax.md`.
 
 ## Related
 
-`unsupported-syntax.md` · `print.md` · `layout.md` (scroll affordance)
+`unsupported-syntax.md` · `print.md` · `columns.md` · `layout.md` (scroll affordance)

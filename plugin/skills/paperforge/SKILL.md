@@ -34,6 +34,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Split a long document into chapters | [references/assembling.md](references/assembling.md) |
 | Write a manuscript: authors, abstract, declarations | [references/front-matter.md](references/front-matter.md) |
 | Send a paper out for blind review | [references/review-copy.md](references/review-copy.md) |
+| Set a manuscript in two columns | [references/columns.md](references/columns.md) |
 | Write a table, or a table cell with line breaks | [references/tables.md](references/tables.md) |
 | Add a diagram | [references/diagrams.md](references/diagrams.md) |
 | Add a callout or an aside | [references/callouts.md](references/callouts.md) |

@@ -49,4 +49,4 @@ file, not the HTML. Send one of those.
 
 ## Related
 
-`front-matter.md` · `manifest.md` · `docx.md` · `print.md`
+`front-matter.md` · `columns.md` · `manifest.md` · `docx.md` · `print.md`

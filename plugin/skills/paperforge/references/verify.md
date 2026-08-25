@@ -14,6 +14,9 @@ after a real defect got past everything else.
 - **Raw markup leaks** — HTML tags, real HTML entities, `**`, or Typst escapes
   that reached the rendered page in *either* edition.
 - **Near-empty printed pages** — a stranded heading or an orphaned frame.
+  The cover, the contents and a last page carrying only the colophon are
+  exempt: each is sparse by design, and none of them is the thing this is
+  looking for.
 - **Page-number audit** — re-checks each measured number against the PDF
   *without reusing the build's matching*; a number is accepted only if the
   entry's own wording is found where it claims to be.
@@ -51,4 +54,4 @@ the `ToUnicode` limitation in `print.md`.
 
 ## Related
 
-`print.md` · `layout.md` · `lint.md` · `unsupported-syntax.md`
+`print.md` · `columns.md` · `layout.md` · `lint.md` · `unsupported-syntax.md`

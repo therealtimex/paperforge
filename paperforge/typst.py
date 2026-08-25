@@ -119,6 +119,19 @@ def cell(text, notes):
     return MARKER_RE.sub(lambda m: '\\' + m.group(1), inline(text, notes))
 
 
+def span(content, columns):
+    """Content that must cross the gutter of a two-column page.
+
+    Typst floats a `scope: "parent"` placement to the top of the page and flows
+    the columns around it, which is how a journal sets a figure or a table too
+    wide for one column. In a one-column document there is no gutter and the
+    content is returned as it is.
+    """
+    if columns < 2:
+        return content
+    return '#place(top, scope: "parent", float: true)[\n%s\n]' % content
+
+
 WIDE = 6        # columns from which a table needs a page of its own, turned
 
 
@@ -152,8 +165,15 @@ def take_caption(lines, pos):
     return None, pos
 
 
-def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
-    """Block pass. `figures` receives (index, caption) for each diagram."""
+def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
+            columns=1):
+    """Block pass. `figures` receives (index, caption) for each diagram.
+
+    `columns` is carried through because two blocks cannot live inside a
+    column: a wide table, which already needs a landscape page of its own, and
+    a diagram, which at 88mm is a flowchart nobody can read. Both span the
+    full measure instead, which is what a journal does with them.
+    """
     out, pos, n = [], 0, len(lines)
     while pos < n:
         line, stripped = lines[pos], lines[pos].strip()
@@ -177,9 +197,15 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
                 # reads "Hình 1: Sơ đồ 1", its label and ours doubled up
                 entry, pos = take_caption(lines, pos)
                 cap = xref.caption_of(entry) if entry else label % (idx + 1)
-                out.append('#figure(image("fig-%d.png", width: 92%%), caption: [%s],'
-                           ' supplement: none, numbering: none)'
-                           % (idx, inline(cap, notes)))
+                # '92%', not '92%%': this is an argument to the format, not
+                # part of it, so nothing consumes the doubled sign. A stray %%
+                # has reached a Typst source here before; it compiles to
+                # "invalid number suffix" and nothing earlier says why.
+                width = '78%' if columns > 1 else '92%'
+                fig = ('#figure(image("fig-%d.png", width: %s), caption: [%s],'
+                       ' supplement: none, numbering: none)'
+                       % (idx, width, inline(cap, notes)))
+                out.append(span(fig, columns))
             else:
                 out.append('#raw("%s", block: true)' % '\\n'.join(
                     l.replace('\\', '\\\\').replace('"', '\\"') for l in buf))
@@ -207,7 +233,11 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
             is_part = ('part' in classes) or force_parts or (inferred and 'no-part' not in classes)
             if is_part and depth == 2:
                 out.append('#pagebreak(weak: true)')
-            out.append('%s %s' % ('=' * max(1, depth - 1), inline(text, notes)))
+            heading = '%s %s' % ('=' * max(1, depth - 1), inline(text, notes))
+            # a part banner is a full-bleed block that opens a page, so it
+            # crosses the gutter rather than sitting in the left column - the
+            # reading edition's print rules span it the same way
+            out.append(span(heading, columns) if is_part and depth == 2 else heading)
             pos += 1
             continue
 
@@ -233,7 +263,7 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
                 buf.append(re.sub(r'^\s*>\s?', '', lines[pos]))
                 pos += 1
             buf[0] = re.sub(r'^\[!\w+\]\s*', '', buf[0])
-            inner = convert(buf, notes, figures, label, part_banner, force_parts)
+            inner = convert(buf, notes, figures, label, part_banner, force_parts, columns)
             out.append('#block(fill: rgb("#fdf3e3"), inset: 8pt, radius: 3pt, width: 100%%,\n'
                        '  stroke: (left: 3pt + rgb("#c2761a")))[\n%s\n]' % inner)
             continue
@@ -253,7 +283,10 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
                     # takes a flipped page for one block and returns to portrait
                     # after it, the same treatment the reading edition's print
                     # rules give a wide table.
-                    out.append('#page(flipped: true, margin: 16mm)[\n'
+                    # `columns: 1` is not decoration: a seven-column table
+                    # already needs the long edge of the paper, and half of it
+                    # is not a smaller version of that problem.
+                    out.append('#page(flipped: true, margin: 16mm, columns: 1)[\n'
                                '#text(size: 8pt)[\n%s%s\n]\n]' % (block, caption))
                 else:
                     out.append(block + caption)
@@ -275,7 +308,7 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False):
 
 
 PREAMBLE = '''#set document(title: "{title}", author: "{author}")
-#set page(paper: "a4", margin: (x: 15mm, top: 16mm, bottom: 18mm),
+#set page(paper: "a4", margin: (x: 15mm, top: 16mm, bottom: 18mm),{columns}
   numbering: "1", number-align: center,
   header: context {{ if counter(page).get().first() > 1 [
     #set text(size: 8pt, fill: rgb("#6b7789"))
@@ -305,7 +338,7 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 #show table: set par(justify: false)
 #set table(fill: (_, y) => if y == 0 {{ rgb("{navy}") }})
 
-{logo}#align(center)[
+{cover_open}{logo}#align(center)[
   #block(inset: (y: 18pt))[
     #text(size: 9pt, fill: rgb("{amber}"), weight: "bold", tracking: 1.5pt)[{kind}]
     #v(6pt)
@@ -316,13 +349,13 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 ]
 {meta}
 #v(10pt)
-'''
+{cover_close}'''
 
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None,
           bibliography=None, citation_style='apa', logo=None, review=False,
-          includes=()):
+          includes=(), columns=1):
     """Render one document to PDF through Typst. Returns build facts."""
     brand = brand or {}
     src = Path(source)
@@ -363,11 +396,11 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     figures = []
     label = prof['labels'].get('figure', 'Figure %d').replace('%d', '%d')
     part_banner = prof['structure'].get('part_banner')
-    typ_body = convert(body, notes, figures, label, part_banner)
+    typ_body = convert(body, notes, figures, label, part_banner, columns=columns)
     if annex_lines:
         typ_body += ('\n\n#pagebreak()\n\n'
                      + convert(annex_lines, notes, figures, label, part_banner,
-                               force_parts=True))
+                               force_parts=True, columns=columns))
 
     if svgs:
         rasterise(svgs[:len(figures)], work)
@@ -425,7 +458,12 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         names = [n.strip().strip('"\'') for n in (stack or fallback).split(',')]
         return ', '.join('"%s"' % n for n in names if n)
 
+    # The title block spans the measure, as it does in every two-column
+    # journal: a byline broken over a gutter is not a byline.
     preamble = PREAMBLE.format(
+        columns=' columns: %d,' % columns if columns > 1 else '',
+        cover_open='#place(top + center, scope: "parent", float: true)[\n' if columns > 1 else '',
+        cover_close=']\n' if columns > 1 else '',
         title=esc(title), author=esc(organisation), running=esc(title[:60]),
         organisation=esc(organisation), lang=prof.get('lang', 'en'),
         rtl=', dir: rtl' if prof.get('direction') == 'rtl' else '',

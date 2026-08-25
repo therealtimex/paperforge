@@ -69,7 +69,8 @@ Projects: [starting a project](docs/reference/starting-a-project.md) ·
 [document types](docs/reference/document-types.md) ·
 [languages](docs/reference/languages.md) ·
 [branding](docs/reference/branding.md) · [layout](docs/reference/layout.md) ·
-[print](docs/reference/print.md) · [two columns](docs/reference/columns.md) · [figures](docs/reference/figures.md) ·
+[print](docs/reference/print.md) · [two columns](docs/reference/columns.md) ·
+[books](docs/reference/books.md) · [figures](docs/reference/figures.md) ·
 [lint](docs/reference/lint.md) · [verify](docs/reference/verify.md) ·
 [publishing](docs/reference/publishing.md) ·
 [commands](docs/reference/commands.md)

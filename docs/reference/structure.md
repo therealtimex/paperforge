@@ -31,7 +31,8 @@ body of the PDF.
 ## Parts
 
 A `##` heading may open a **part**: new page in print, banner in HTML, top-level
-contents entry. Three ways to mark one, explicit first:
+contents entry. In a bound document a part is a chapter and opens a *recto* —
+same mark, see `books.md`. Three ways to mark one, explicit first:
 
 ```markdown
 ## PART III: International experience {.part}   mark this heading as a part

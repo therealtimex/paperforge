@@ -123,6 +123,85 @@ def cell(text, notes):
     return MARKER_RE.sub(lambda m: '\\' + m.group(1), inline(text, notes))
 
 
+# Named trim sizes, in millimetres. Royal octavo is the academic monograph,
+# ISO B5 its common European alternative, and A4 is what a thesis is bound in.
+# The set is small on purpose: a trim is a decision made with a printer, and
+# accepting any two numbers invites one made with nobody.
+TRIM = {'a4': (210, 297), 'a5': (148, 210), 'b5': (176, 250), 'royal': (156, 234)}
+
+# A bound page is asymmetric: the inside edge disappears into the gutter, so it
+# needs more margin than the outside one, not the same.
+BOUND_MARGIN = 'inside: 22mm, outside: 16mm, top: 18mm, bottom: 20mm'
+LOOSE_MARGIN = 'x: 15mm, top: 16mm, bottom: 18mm'
+
+# The top margin of a bound page, in points: the band the running head sits in,
+# and the band anything reading "what opens this page" has to skip. See
+# editions.page_text.
+HEADER_BAND = 18 * 72 / 25.4
+
+
+# A chapter opens on a recto, and the leaf left blank to put it there carries no
+# folio and no running head - a page number alone on an empty page is the first
+# thing that says nobody typeset this.
+#
+# The `set` is scoped to the block, so it styles the pages `to: "odd"` skips and
+# nothing else: measured, the page before the break keeps its folio and the
+# chapter opening gets one. Computing the skip by hand instead - `pagebreak(weak:
+# true)` then a context testing `calc.even(here().page())` - does not converge,
+# because inserting the break makes the page odd, which removes the break, which
+# makes it even. Chapter one landed on a verso.
+RECTO = """#let pf-recto() = {
+  set page(header: none, footer: none, numbering: none)
+  pagebreak(to: "odd", weak: true)
+}
+"""
+
+# Front matter numbers in roman and the book proper restarts at arabic 1, on a
+# recto. The chapter that follows calls pf-recto() again; on an empty odd page
+# that break is a no-op, and because no page starts inside its scope the folio
+# survives.
+MAIN_MATTER = """#pf-recto()
+#set page(numbering: "1")
+#counter(page).update(1)"""
+
+
+# The mark the emitter puts on every heading that opens a page. Querying
+# `heading.where(level: 1)` instead is a proxy for it, and the proxy is wrong in
+# a case that can be stated: a `##` marked {.no-part} is a top-level heading that
+# does *not* open a page, so a leaf whose text runs on past one lost its running
+# head - measured, page 14 of a bound test came back bare. The emitter already
+# knows which headings open a page; it says so rather than leaving the header to
+# infer it.
+CHAPTER = '<pf-chapter>'
+
+
+def running_head(title, organisation, binding):
+    """The line across the top of every page after the first.
+
+    Unbound, that is the document title throughout. Bound, it is the classical
+    setting: the book on the verso, the chapter on the recto, and nothing at all
+    on a page a chapter opens - a running head above a chapter title repeats it.
+    Parity is taken from the physical leaf rather than the printed folio, which
+    restarts at the main matter and would put versos on the right.
+    """
+    if not binding:
+        return ('context { if counter(page).get().first() > 1 [\n'
+                '    #set text(size: 8pt, fill: rgb("#6b7789"))\n'
+                '    #smallcaps[' + title + '] #h(1fr) ' + organisation + '\n'
+                '  ] }')
+    return ('context {\n'
+            '    let leaf = here().page()\n'
+            '    let opens = query(' + CHAPTER + ').any(h => h.location().page() == leaf)\n'
+            '    if leaf > 1 and not opens {\n'
+            '      set text(size: 8pt, fill: rgb("#6b7789"))\n'
+            '      let seen = query(selector(' + CHAPTER + ').before(here()))\n'
+            '      if calc.even(leaf) [ #smallcaps[' + title + '] #h(1fr) '
+            + organisation + ' ]\n'
+            '      else [ #h(1fr) #emph(if seen.len() > 0 { seen.last().body } else [ ]) ]\n'
+            '    }\n'
+            '  }')
+
+
 def span(content, columns):
     """Content that must cross the gutter of a two-column page.
 
@@ -170,7 +249,7 @@ def take_caption(lines, pos):
 
 
 def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
-            columns=1):
+            columns=1, binding=False):
     """Block pass. `figures` receives (index, caption) for each diagram.
 
     `columns` is carried through because two blocks cannot live inside a
@@ -236,8 +315,19 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             # where build_annex marks them all
             is_part = ('part' in classes) or force_parts or (inferred and 'no-part' not in classes)
             if is_part and depth == 2:
-                out.append('#pagebreak(weak: true)')
-            heading = '%s %s' % ('=' * max(1, depth - 1), inline(text, notes))
+                # bound, a chapter opens on the right-hand leaf, which is the
+                # difference between a book and a long report printed on both
+                # sides; pf-recto() leaves the verso before it properly blank.
+                # Not inside an annex: there every section is a part, and a book
+                # gives an appendix a recto but not each section within it - six
+                # sections would cost six blank leaves to say nothing.
+                out.append('#pf-recto()' if binding and not force_parts
+                           else '#pagebreak(weak: true)')
+            # depth 1 is an annex title, which opens a page from the break
+            # written before the annex rather than from here
+            opens_page = (is_part and depth == 2) or depth == 1
+            heading = '%s %s%s' % ('=' * max(1, depth - 1), inline(text, notes),
+                                   ' ' + CHAPTER if binding and opens_page else '')
             # a part banner is a full-bleed block that opens a page, so it
             # crosses the gutter rather than sitting in the left column - the
             # reading edition's print rules span it the same way
@@ -267,7 +357,8 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
                 buf.append(re.sub(r'^\s*>\s?', '', lines[pos]))
                 pos += 1
             buf[0] = re.sub(r'^\[!\w+\]\s*', '', buf[0])
-            inner = convert(buf, notes, figures, label, part_banner, force_parts, columns)
+            inner = convert(buf, notes, figures, label, part_banner, force_parts,
+                            columns, binding)
             out.append('#block(fill: rgb("#fdf3e3"), inset: 8pt, radius: 3pt, width: 100%%,\n'
                        '  stroke: (left: 3pt + rgb("#c2761a")))[\n%s\n]' % inner)
             continue
@@ -312,13 +403,10 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
 
 
 PREAMBLE = '''#set document(title: "{title}", author: "{author}")
-#set page(paper: "a4", margin: (x: 15mm, top: 16mm, bottom: 18mm),{columns}
-  numbering: "1", number-align: center,
-  header: context {{ if counter(page).get().first() > 1 [
-    #set text(size: 8pt, fill: rgb("#6b7789"))
-    #smallcaps[{running}] #h(1fr) {organisation}
-  ] }})
-#set text(font: ({body_font}), size: 10.5pt, lang: "{lang}"{rtl})
+#set page({page_size}, margin: ({margin}),{columns}
+  numbering: "{numbering}", number-align: center,
+  header: {header})
+{recto}#set text(font: ({body_font}), size: 10.5pt, lang: "{lang}"{rtl})
 #set par(justify: true, leading: 0.68em, spacing: 1.1em)
 #set heading(numbering: none)
 #show heading.where(level: 1): it => block(width: 100%, above: 1.4em, below: 0.8em)[
@@ -359,7 +447,7 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None,
           bibliography=None, citation_style='apa', logo=None, review=False,
-          includes=(), columns=1):
+          includes=(), columns=1, binding=False, trim='a4'):
     """Render one document to PDF through Typst. Returns build facts."""
     brand = brand or {}
     src = Path(source)
@@ -400,11 +488,30 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     figures = []
     label = prof['labels'].get('figure', 'Figure %d').replace('%d', '%d')
     part_banner = prof['structure'].get('part_banner')
-    typ_body = convert(body, notes, figures, label, part_banner, columns=columns)
+    # Front matter is the cover and the contents; the book proper begins at the
+    # first top-level heading after them, and that is where roman numbering gives
+    # way to arabic. A document with no contents section has no front matter to
+    # number apart, so it numbers from 1 throughout - which is also every
+    # unbound document, and why this is the only place the split is made.
+    main = 0
+    if binding and contents_heading:
+        main = next((i for i, l in enumerate(body[1:], 1)
+                     if l.strip().startswith('## ')), 0)
+    if main:
+        typ_body = (convert(body[:main], notes, figures, label, part_banner,
+                            columns=columns, binding=binding)
+                    + '\n\n' + MAIN_MATTER + '\n\n'
+                    + convert(body[main:], notes, figures, label, part_banner,
+                              columns=columns, binding=binding))
+    else:
+        typ_body = convert(body, notes, figures, label, part_banner,
+                           columns=columns, binding=binding)
     if annex_lines:
-        typ_body += ('\n\n#pagebreak()\n\n'
+        # an appendix opens like a chapter, on the right-hand leaf; unbound it
+        # opens a page, which is what it has always done
+        typ_body += ('\n\n%s\n\n' % ('#pf-recto()' if binding else '#pagebreak()')
                      + convert(annex_lines, notes, figures, label, part_banner,
-                               force_parts=True, columns=columns))
+                               force_parts=True, columns=columns, binding=binding))
 
     if svgs:
         rasterise(svgs[:len(figures)], work)
@@ -468,8 +575,11 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         columns=' columns: %d,' % columns if columns > 1 else '',
         cover_open='#place(top + center, scope: "parent", float: true)[\n' if columns > 1 else '',
         cover_close=']\n' if columns > 1 else '',
-        title=esc(title), author=esc(organisation), running=esc(title[:60]),
-        organisation=esc(organisation), lang=prof.get('lang', 'en'),
+        page_size='width: %dmm, height: %dmm' % TRIM[trim],
+        margin=BOUND_MARGIN if binding else LOOSE_MARGIN,
+        numbering='i' if main else '1', recto=RECTO if binding else '',
+        header=running_head(esc(title[:60]), esc(organisation), binding),
+        title=esc(title), author=esc(organisation), lang=prof.get('lang', 'en'),
         rtl=', dir: rtl' if prof.get('direction') == 'rtl' else '',
         body_font=quoted(fonts.get('sans'), 'Helvetica Neue, Arial'),
         display_font=quoted(fonts.get('serif'), 'Georgia'),

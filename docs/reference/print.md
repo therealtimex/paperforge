@@ -90,6 +90,15 @@ an A4 print at those margins.
 > numbers and a document full of "empty" pages. Rendering, structure and
 > publication are unaffected.
 
+## A bound edition
+
+`type = "book"` sets the print edition for binding: a trim that is not A4,
+mirrored margins, chapters opening on a recto with the skipped leaf left bare,
+verso/recto running heads, and roman front matter restarting at arabic one. It
+is the one type that refuses `pdf = "chrome"`, because Chrome honours the trim
+and the mirrored margins and then gets the other three wrong — which is worse
+than getting all five wrong, since the result looks bound. See `books.md`.
+
 ## Both editions are published
 
 A document declaring `pdf = "typst"` gets its reading edition and its print
@@ -102,4 +111,4 @@ the same headings must open a page and both must carry the same figures. See
 
 ## Related
 
-`diagrams.md` · `maths.md` · `citations.md` · `verify.md` · `layout.md` · `docx.md` · `columns.md`
+`diagrams.md` · `maths.md` · `citations.md` · `verify.md` · `layout.md` · `docx.md` · `columns.md` · `books.md`

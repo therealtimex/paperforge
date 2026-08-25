@@ -21,6 +21,8 @@ filename shown to a reader is wrong regardless of who wrote it:
 | `unsupported-footnote` | `[^1]` — see `unsupported-syntax.md` |
 | `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
 | `duplicate-label` | the same id declared twice |
+| `no-bibliography` | citations with no `bibliography` declared — Typst would fail with an unhelpful "label does not exist" |
+| `front-matter` | an affiliation marker pointing at nothing, a malformed ORCID, a block that is not TOML |
 | `length-spec` (warn) | an authoring length specification left in the text |
 
 **Packs** — opt-in, for a particular authoring system. `realtimex-loops` catches

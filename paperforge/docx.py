@@ -16,6 +16,7 @@ It is the pipeline's third emitter. The first two drifted apart within a day of
 the second existing, so `structure()` reports what a docx carries and `verify`
 compares it against the reading edition rather than trusting all three to agree.
 """
+import html as ihtml
 import re
 from pathlib import Path
 
@@ -256,7 +257,8 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
 
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
-          organisation='', brand=None, cache=None, contents_heading=None, logo=None):
+          organisation='', brand=None, cache=None, contents_heading=None, logo=None,
+          review=False, bibliography=None, citation_style='apa'):
     """Render one document to .docx. Returns build facts."""
     src = Path(source)
     work = Path(cache or src.parent) / ('.docx-%s' % src.stem)
@@ -264,6 +266,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
 
     text = src.read_text(encoding='utf-8').replace('\r\n', '\n')
     front, text = front_mod.split(text)
+    if review:
+        front = front_mod.anonymise(front, prof)
     lines = text.split('\n')
     annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
     # An embedded annex loses its own head - title, subtitle, its own contents -
@@ -329,17 +333,35 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                              if f and f.lower() not in SYSTEM_UI), 'Calibri')
     normal.font.size = Pt(11)
     normal.font.color.rgb = _colour(brand, 'ink')
+    if review:
+        # Word numbers lines natively, per section, which python-docx does not
+        # expose - so the element goes in directly
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        marks = OxmlElement('w:lnNumType')
+        marks.set(qn('w:countBy'), '1')
+        marks.set(qn('w:restart'), 'continuous')
+        doc.sections[0]._sectPr.append(marks)
+        normal.paragraph_format.line_spacing = 2.0
 
-    for text, size, bold in ((kind or title_kind or '', 12, False),
+    # not `text`: that name holds the document body, and shadowing it here made
+    # the reference list search the title instead and silently find no citations
+    for line, size, bold in ((kind or title_kind or '', 12, False),
                              (title or src.stem, 20, True)):
-        if not text:
+        if not line:
             continue
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = para.add_run(text)
+        run = para.add_run(line)
         run.bold, run.font.size = bold, Pt(size)
         if bold:
             run.font.color.rgb = _navy(brand)
+    if front.get('anonymised'):
+        para = doc.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = para.add_run(str(front['anonymised']))
+        run.italic = True
+        run.font.size = Pt(9)
     for name, marks in front_mod.byline(front):
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -393,6 +415,26 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                 run.font.color.rgb = _navy(brand)
         convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
                 images, brand, part_banner, force_parts=True, table=refs)
+
+    # The reference list. Without this the Word edition silently dropped it -
+    # a submission copy with no bibliography - and only the cross-edition check
+    # noticed, because the reading edition had one and Word did not.
+    if bibliography:
+        from . import citations as cite_mod
+        keys = cite_mod.find(text + '\n' + '\n'.join(annex_lines))
+        if keys:
+            _, biblio = cite_mod.render(keys, bibliography, citation_style,
+                                        prof['labels'].get('references', 'References'),
+                                        prof.get('lang', 'en'))
+            head = doc.add_heading(level=2)
+            _runs(head, prof['labels'].get('references', 'References'))
+            for item in re.findall(r'<li[^>]*>(.*?)</li>', biblio, re.S):
+                plain = re.sub(r'<[^>]+>', '', item)
+                plain = re.sub(r'\s+', ' ', ihtml.unescape(plain)).strip()
+                if plain:
+                    para = doc.add_paragraph(plain)
+                    para.paragraph_format.left_indent = Mm(8)
+                    para.paragraph_format.first_line_indent = Mm(-8)
 
     entries = front_mod.declarations(front, prof)
     if entries:

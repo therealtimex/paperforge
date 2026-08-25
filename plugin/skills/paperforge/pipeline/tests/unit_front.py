@@ -107,6 +107,23 @@ def main():
     check('and it does not masquerade as an affiliation',
           'abstract' not in front.affiliations(trap))
 
+    print('the blind review copy')
+    blind = front.anonymise(data, profile.load('en'))
+    check('the author list is gone', 'author' not in blind)
+    check('the affiliations are gone', 'affiliation' not in blind)
+    check('funding is gone, because a funder identifies a group',
+          'funding' not in (blind.get('declarations') or {}))
+    check('conflicts stay, because a reviewer needs them',
+          'conflicts' in (blind.get('declarations') or {}))
+    check('the abstract and keywords stay',
+          blind.get('abstract') and blind.get('keywords'))
+    check('and the copy says why the names are missing',
+          'blind review' in blind.get('anonymised', ''))
+    check('the notice is localised',
+          'phản biện kín' in front.anonymise(data, profile.load('vi'))['anonymised'])
+    check('anonymising nothing is not an error', front.anonymise({}, None) == {})
+    check('the original is not mutated', 'author' in data)
+
     print('the gate')
     with tempfile.TemporaryDirectory() as tmp:
         doc = Path(tmp) / 'r.md'

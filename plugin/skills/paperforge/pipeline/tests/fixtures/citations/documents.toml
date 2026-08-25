@@ -18,6 +18,20 @@ profile = "vi"
   source = "report.md"
   publish = false
 
+  # the same source as a blind review copy: line-numbered, anonymised,
+  # double-spaced. Two documents may share one source.
+  [[collection.document]]
+  id = "review"
+  type = "report"
+  bibliography = "references.bib"
+  citation_style = "apa"
+  source = "report.md"
+  output = "report-review.html"
+  pdf = "typst"
+  docx = true
+  review = true
+  publish = false
+
 [internal]
 files = []
 reason = "back test"

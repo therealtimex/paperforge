@@ -393,6 +393,8 @@ def front_html(data, prof):
     if not data:
         return ''
     parts = []
+    if data.get('anonymised'):
+        parts.append('<p class="anonymised">%s</p>' % inline(str(data['anonymised'])))
     pairs = front_mod.byline(data)
     if pairs:
         parts.append('<p class="byline">%s</p>' % ', '.join(
@@ -696,7 +698,8 @@ def render(name, mapping):
 def build(source, output, svgs=None, annex=None, pages=None,
           contents_heading=None, kind_fallback=None, layout='report', prof=None,
           organisation=None, publisher=None, footer_note=None, annex_label=None,
-          brand=None, bibliography=None, citation_style='apa', logo=None):
+          brand=None, bibliography=None, citation_style='apa', logo=None,
+          review=False):
     """Render one markdown document. Contents section and annex are optional."""
     global PROF
     PROF = prof or profile.load('vi')
@@ -708,6 +711,10 @@ def build(source, output, svgs=None, annex=None, pages=None,
     # a +++ block and tries to render it as prose
     FRONT.clear()
     front_data, raw = front_mod.split(raw)
+    if review:
+        # anonymised before anything renders: the identifying fields never
+        # reach an emitter, so there is nothing left to leak
+        front_data = front_mod.anonymise(front_data, prof)
     FRONT.update(front_data)
     lines = raw.split('\n')
 
@@ -770,7 +777,7 @@ def build(source, output, svgs=None, annex=None, pages=None,
     nav = build_toc(toc)
     ui = PROF['ui']
     html = render('document.html', {
-        'BODYCLASS': 'doc-' + layout,
+        'BODYCLASS': 'doc-' + layout + (' doc-review' if review else ''),
         'LANG': PROF['lang'],
         'DIR': PROF.get('direction', 'ltr'),
         'THEME_OVERRIDE': theme_override(PROF, brand),

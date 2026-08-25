@@ -44,6 +44,10 @@ import re
 import tomllib
 
 FENCE = '+++'
+# A funder identifies a group as reliably as a name does, and an
+# acknowledgements list names colleagues; neither belongs in a blind copy.
+IDENTIFYING = ('funding', 'acknowledgements')
+ANONYMISED = 'Author details removed for blind review.'
 LABELS = {
     'abstract': 'Abstract',
     'keywords': 'Keywords',
@@ -52,6 +56,7 @@ LABELS = {
     'conflicts': 'Conflicts of interest',
     'ethics': 'Ethics',
     'declarations': 'Declarations',
+    'anonymised': ANONYMISED,
 }
 DECLARATION_ORDER = ('funding', 'conflicts', 'ethics', 'data', 'acknowledgements')
 
@@ -186,3 +191,23 @@ def problems(front):
     if front.get('author') and not any(a['corresponding'] for a in authors(front)):
         found.append('no author is marked corresponding')
     return found
+
+
+def anonymise(front, prof=None):
+    """The same front matter with everything identifying removed.
+
+    Not a redaction of the rendered page - the identifying fields never reach
+    an emitter, so there is nothing to leak. The abstract, keywords and the
+    non-identifying declarations stay, because a reviewer needs them.
+    """
+    if not front:
+        return front
+    kept = {k: v for k, v in front.items() if k not in ('author', 'affiliation')}
+    block = {k: v for k, v in (front.get('declarations') or {}).items()
+             if k not in IDENTIFYING}
+    if block:
+        kept['declarations'] = block
+    else:
+        kept.pop('declarations', None)
+    kept['anonymised'] = label(prof, 'anonymised') if prof else ANONYMISED
+    return kept

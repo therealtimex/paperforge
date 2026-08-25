@@ -73,6 +73,7 @@ writes `50.000` where English writes `50,000`. See `figures.md`.
 | `pdf = "typst"` | Print edition typeset by Typst — footnotes at the foot of the page, running heads |
 | `pdf = "chrome"` | Print edition from the reading edition's own layout, including landscape wide tables |
 | `docx = true` | Word edition — a working document the reader can edit; see `docx.md` |
+| `review = true` | A blind review copy: line-numbered, anonymised, double-spaced; see `review-copy.md` |
 | `bibliography`, `citation_style` | See `citations.md` |
 | `publish` | The allowlist flag |
 | `request` | The request this work answers; snapshotted with every run |

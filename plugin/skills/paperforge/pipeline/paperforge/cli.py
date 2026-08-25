@@ -189,6 +189,9 @@ def do_lint(cfg, docs, quiet=False):
         findings += lint.check_publishable(d['source_path'], allowed, blocked, embedded)
         findings += lint.check_references(d['source_path'], d['annex_path'], d['prof'])
         findings += lint.check_front_matter(d['source_path'])
+        findings += lint.check_citations(
+            d['source_path'], d['annex_path'],
+            (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         if d['annex_path']:
             findings += lint.check_document(d['annex_path'], rules)
         s = lint.summarise(findings)
@@ -210,6 +213,7 @@ def opts(d):
             'organisation': d.get('organisation'), 'publisher': d.get('publisher'),
             'footer_note': d.get('footer_note'), 'annex_label': d.get('annex_label'),
             'brand': d.get('brand'), 'logo': d.get('logo_path'),
+            'review': bool(d.get('review')),
             'bibliography': (d['root'] / d['bibliography']) if d.get('bibliography') else None,
             'citation_style': d.get('citation_style', 'apa'),
             'layout': d.get('layout', 'report')}
@@ -339,6 +343,7 @@ def do_build(docs, cache, measure=True):
                                    annex=d['annex_path'], title_kind=d.get('title_kind'),
                                    organisation=d.get('organisation', ''),
                                    brand=d.get('brand'), cache=cache, logo=d.get('logo_path'),
+                                   review=bool(d.get('review')),
                                    contents_heading=d.get('contents_heading'),
                                    bibliography=(d['root'] / d['bibliography'])
                                    if d.get('bibliography') else None,
@@ -361,6 +366,10 @@ def do_build(docs, cache, measure=True):
                                       annex=d['annex_path'], title_kind=d.get('title_kind'),
                                       organisation=d.get('organisation', ''),
                                       brand=d.get('brand'), cache=cache, logo=d.get('logo_path'),
+                                      review=bool(d.get('review')),
+                                      bibliography=(d['root'] / d['bibliography'])
+                                      if d.get('bibliography') else None,
+                                      citation_style=d.get('citation_style', 'apa'),
                                       contents_heading=d.get('contents_heading'))
                 print('  %-38s %s' % (docx_out.name, json.dumps(info, ensure_ascii=False)))
             except Exception as err:

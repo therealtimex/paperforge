@@ -320,7 +320,7 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 
 def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           organisation='', brand=None, cache=None, contents_heading=None,
-          bibliography=None, citation_style='apa', logo=None):
+          bibliography=None, citation_style='apa', logo=None, review=False):
     """Render one document to PDF through Typst. Returns build facts."""
     brand = brand or {}
     src = Path(source)
@@ -330,6 +330,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
 
     text = src.read_text(encoding='utf-8').replace('\r\n', '\n')
     front, text = front_mod.split(text)
+    if review:
+        front = front_mod.anonymise(front, prof)
     lines = text.split('\n')
     annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
     notes, lines = collect_footnotes(lines)
@@ -377,6 +379,9 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     front_block = ''
     if front:
         bits = []
+        if front.get('anonymised'):
+            bits.append('#align(center)[#text(size: 9pt, style: "italic",'
+                        ' fill: rgb("#4a5568"))[%s]]' % esc(str(front['anonymised'])))
         pairs = front_mod.byline(front)
         if pairs:
             bits.append('#align(center)[#text(size: 11pt)[%s]]' % ', '.join(
@@ -441,6 +446,11 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         typ_body += ('\n\n#bibliography("%s", title: "%s", style: "%s")'
                      % (bib.name, prof['labels'].get('references', 'References'),
                         citation_style))
+    # a review copy: true line numbers in the margin and double leading, the
+    # two things a journal asks for and the reading edition cannot give
+    if review:
+        preamble += ('\n#set par.line(numbering: "1")\n'
+                     '#set par(leading: 1.5em, spacing: 1.5em)\n')
     (work / 'doc.typ').write_text(preamble + '\n' + typ_body + '\n', encoding='utf-8')
     result = subprocess.run(['typst', 'compile', 'doc.typ', str(Path(output).absolute())],
                             cwd=work, capture_output=True, text=True)

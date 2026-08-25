@@ -130,6 +130,26 @@ def summarise(findings):
             'rules': sorted({f['rule'] for f in findings})}
 
 
+def check_citations(source, annex=None, bibliography=None):
+    """Citations with nowhere to resolve to.
+
+    Without a declared bibliography the keys reach Typst as bare labels and it
+    fails with "label `<nq57>` does not exist in the document" - true, and no
+    help at all to an author who has simply not declared their .bib.
+    """
+    from . import citations as cite_mod
+    text = Path(source).read_text(encoding='utf-8')
+    if annex:
+        text += '\n' + Path(annex).read_text(encoding='utf-8')
+    keys = cite_mod.find(text)
+    if keys and not bibliography:
+        return [{'rule': 'no-bibliography', 'severity': 'block', 'line': 0,
+                 'match': '[@%s]' % keys[0],
+                 'why': '%d citation(s) but no `bibliography` in the manifest' % len(keys),
+                 'context': ''}]
+    return []
+
+
 def check_front_matter(source):
     """Front matter that would render wrong, in the terms an author can fix.
 

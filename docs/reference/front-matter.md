@@ -76,4 +76,4 @@ other rendered string. See `languages.md`.
 
 ## Related
 
-`manifest.md` · `structure.md` · `cross-references.md` · `document-types.md`
+`manifest.md` · `review-copy.md` · `structure.md` · `cross-references.md` · `document-types.md`

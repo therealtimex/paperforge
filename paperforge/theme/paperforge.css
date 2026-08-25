@@ -114,6 +114,17 @@ tbody tr:hover { background:var(--amber-soft); }
 tbody td.empty { border-top-color:transparent; }
 table strong { color:var(--navy); }
 
+/* ---------- review copy ---------- */
+/* CSS counts elements, not wrapped lines, so the reading edition numbers
+   paragraphs. True line numbers are in the print and Word editions - a
+   reviewer quoting "line 214" must be looking at one of those. */
+body.doc-review main { counter-reset: para; line-height: 2; }
+body.doc-review main > p { counter-increment: para; position: relative; }
+body.doc-review main > p::before { content: counter(para); position: absolute;
+  left: -3.2em; width: 2.6em; text-align: right; color: var(--muted);
+  font-size: .78rem; line-height: 2; }
+.anonymised { margin: 12px 0 4px; font-style: italic; color: var(--ink-soft); }
+
 /* ---------- manuscript front matter ---------- */
 .byline { margin:14px 0 6px; font-size:1.02rem; }
 .byline sup { font-size:.7em; }

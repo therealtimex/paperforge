@@ -405,16 +405,22 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             while pos < n and lines[pos].strip().startswith('>'):
                 buf.append(re.sub(r'^\s*>\s?', '', lines[pos]))
                 pos += 1
-            buf[0] = re.sub(r'^\[!\w+\]\s*', '', buf[0])
+            # the type is what makes a warning a warning. It was matched here,
+            # stripped, and thrown away, so `> [!WARNING]` printed in the note
+            # colours - a limitation of this emitter, one line above the block
+            # it was needed in, and not of Typst
+            mark = re.match(r'^\[!(\w+)\]\s*(.*)$', buf[0].strip())
+            kind = mark.group(1) if mark else 'note'
+            if mark:
+                buf[0] = mark.group(2)
+            rule, fill, hairline = palette.variant(kind)
             inner = convert(buf, notes, figures, label, part_banner, force_parts,
                             columns, binding)
-            # the reading edition sets a callout in amber-soft behind an amber
-            # rule; this printed #fdf3e3 behind #c2761a, which are neither of
-            # those and are not tokens at all, so the same callout came out a
-            # different colour in each edition with no brand set anywhere
+            # `rest` draws the hairline the reading edition has always drawn
+            # around a callout; this block had the edge rule and nothing else
             out.append('#block(fill: %s, inset: 8pt, radius: 3pt, width: 100%%,\n'
-                       '  stroke: (left: 3pt + %s))[\n%s\n]'
-                       % (colour('amber-soft'), colour('amber'), inner))
+                       '  stroke: (left: 3pt + %s, rest: 0.5pt + %s))[\n%s\n]'
+                       % (colour(fill), colour(rule), colour(hairline), inner))
             continue
 
         if stripped.startswith('|') and pos + 1 < n and re.match(r'^\|[\s:|-]+\|?$', lines[pos + 1].strip()):
@@ -691,11 +697,15 @@ def rasterise(svgs, work, scale=3):
         page.write_text('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
                         # mermaid sets style="max-width: NNNpx" inline, which capped the
                         # raster at the diagram's natural size and left the rest white
-                        'html,body{margin:0;background:#fff}'
+                        'html,body{margin:0}'
                         'svg{display:block;max-width:none!important;width:%dpx;height:%dpx}'
                         '</style></head><body>%s</body></html>' % (w * scale, h * scale, svg),
                         encoding='utf-8')
+        # A transparent matte rather than a white one. White is a colour chosen
+        # where it is written - correct on white paper and a white rectangle on
+        # any other - and the way not to have to brand it is not to paint it.
         browser.run(['--hide-scrollbars', '--virtual-time-budget=8000',
+                     '--default-background-color=00000000',
                      '--window-size=%d,%d' % (w * scale, h * scale),
                      '--screenshot=%s' % (work / ('fig-%d.png' % i)),
                      page.absolute().as_uri()])

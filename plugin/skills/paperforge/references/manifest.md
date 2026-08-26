@@ -15,7 +15,7 @@ publisher = "…"               # full line, shown on the cover
 footer_note = "…"
 paper = "A4"
 
-[defaults.brand]              # see branding.md — thirteen tokens, the whole surface
+[defaults.brand]              # see branding.md — twenty colour tokens
 navy = "#0b2545"
 
 [[collection]]

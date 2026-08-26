@@ -11,20 +11,32 @@ long-form research documents. It is deliberately not a component library.
 
 ## The palette
 
-Thirteen colour tokens, and they are the whole brand surface — the remaining
-~290 lines of the stylesheet are structure and print behaviour. The table ships
-neutral defaults; a project declares its own in the manifest, and the build
-emits them *after* the theme so they win. Every token the stylesheet consumes is
-overridable, and a token it does not know is carried through rather than
-dropped:
+Twenty colour tokens. The table ships neutral defaults; a project declares its
+own in the manifest, and the build emits them *after* the theme so they win.
+Every token the stylesheet consumes is overridable, and a token it does not know
+is carried through rather than dropped:
+
+> **Not yet the whole brand surface.** The stylesheets also paint with 56 colour
+> literals across 33 distinct values that are not tokens, including the entire
+> cover — a fourth palette, darker than the document's. This page used to claim
+> the tokens *were* the whole surface, and that claim was wrong before the count
+> in it was. See #25.
 
 ```toml
 [defaults.brand]
 navy   = "#5b2333"      # carries structure: parts, table headers, links
 "navy-2" = "#7a3145"
 "navy-3" = "#9a4058"
-amber  = "#2f6d5b"      # emphasis and annex material
+"navy-soft" = "#efe2e6"   # diagram node fills
+amber  = "#2f6d5b"      # emphasis, annex material, note callouts
 "amber-soft" = "#eaf3f0"
+"amber-line" = "#bcd8cd"
+red    = "#8c2f39"      # warning callouts
+"red-soft" = "#f9ecee"
+"red-line" = "#e3c3c7"
+green  = "#3f6d2f"      # tip callouts
+"green-soft" = "#eef5e9"
+"green-line" = "#cfe0c4"
 ink    = "#231f20"      # body text
 "ink-soft" = "#4a5568"
 muted  = "#7a736b"
@@ -32,7 +44,6 @@ bg     = "#f7f4ef"      # page behind the sheet
 paper  = "#fffdf9"      # the sheet
 line   = "#e3ddd4"
 "line-soft" = "#eef1f6"
-red    = "#8c2f39"      # reserved for warnings
 shadow = "0 1px 3px rgba(0,0,0,.06)"
 ```
 
@@ -68,33 +79,43 @@ the same way diagrams are; a project keeps one copy of its own mark.
 
 | | Reading | Print (Typst) | Deck | Word |
 |---|---|---|---|---|
-| Palette | all thirteen | nine | all thirteen | five |
+| Palette | 19 of 20 | 16 | 8 | 7 |
 | Type | yes | yes | yes | first real family in the stack |
 | Logo | yes | yes | title slide | yes, rasterised |
 
-Print takes `navy` ×3, `amber`, `amber-soft`, `ink`, `ink-soft`, `muted` and
-`line`. Word takes `navy`, `ink`, `amber`, `muted` and `ink-soft`.
+- **Reading** consumes every token but `navy-soft`, which only diagrams use.
+- **Print** takes `navy` ×3, `ink`, `ink-soft`, `muted`, `line` and all nine
+  callout colours.
+- **Deck** has fewer surfaces to paint: no tables, no callouts, no captions.
+- **Word** takes `navy`, `ink`, `ink-soft`, `muted` and the three callout rules.
+  It cannot draw a callout's fill without fighting its own `Intense Quote`
+  style, so it says the same thing in the text colour.
 
-Four colours are **screen-only**, and the reason is the paper rather than the
-emitter:
+**Diagrams** take seven tokens across twelve Mermaid variables, and they take
+them in every edition, because a diagram is rendered once and then placed.
+
+Three colours are **screen-only**, and every one of them is about the sheet
+rather than about anything printed on it:
 
 - `bg` is the colour behind the sheet, and paper has no behind.
 - `paper` is the sheet, which a printer supplies — and most cannot full-bleed.
 - `shadow` is the lift under the sheet, the same absence.
-- `line-soft` is consumed only by rules the print edition does not draw.
 
-`red` is the exception, and it is ours: it colours the rule beside a warning
-callout, and the print emitter does not distinguish a warning from a note
-(#21). It is listed as screen-only pointing at that issue rather than described
-as a screen colour, which it is not.
+> `red` and `line-soft` were listed here too, each justified by a feature that
+> did not exist rather than by the paper: the print emitter could not tell a
+> warning callout from a note, and drew no soft rules. A limitation attributed
+> to the medium ages into a property of the medium. Both reach print now.
 
 Word takes a single face rather than a fallback list, and CSS system keywords —
 `-apple-system`, `system-ui` — are skipped, because naming one in a `.docx`
 gives Word a font it cannot find and a document that renders differently on
 every machine.
 
-Diagrams take none of it: `diagrams.py` renders Mermaid in a third palette
-that no project can change (#22).
+Diagrams take eleven tokens through `palette.MERMAID`, which writes the mapping
+onto Mermaid's own vocabulary down once — see `diagrams.md`. They used to take
+none of it and render in a private palette; the diagram cache now keys on the
+palette as well as the sources, because it did not, and a rebuild after a brand
+change served the old colours back while reporting success.
 
 > The deck used to receive **none** of this. `deck.css` shipped one project's
 > brand colours in its own `:root`, so every other project's slides came out
@@ -119,6 +140,20 @@ Report parts (`h2.part`) get a navy banner; annex sections (`h2.annex-part`) get
 amber, so a reader can tell at a glance whether they are in the report or the
 annex. The same tokens apply to the print edition and to decks, so the palette
 and the script-safe font stack are consistent across all three.
+
+## Callouts
+
+Three colours per variant — the rule down the edge, the fill behind, the
+hairline around — and all nine are tokens:
+
+| | Rule | Fill | Hairline |
+|---|---|---|---|
+| note | `amber` | `amber-soft` | `amber-line` |
+| warning | `red` | `red-soft` | `red-line` |
+| tip | `green` | `green-soft` | `green-line` |
+
+`palette.CALLOUTS` is the one place this is written down, and all three editions
+read it, so a warning is a warning everywhere. See `callouts.md`.
 
 ## Fonts are declared per language, not per brand
 

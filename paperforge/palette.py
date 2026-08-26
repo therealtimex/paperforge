@@ -22,7 +22,10 @@ in either emitter, rather than on any particular colour going missing.
 # theme by markdown.theme_override, which is what lets it win.
 TOKENS = {
     'navy': '#243b53', 'navy-2': '#334e68', 'navy-3': '#486581',
-    'amber': '#8a6d1f', 'amber-soft': '#faf6ec', 'red': '#a4262c',
+    'navy-soft': '#e8eef8',
+    'amber': '#8a6d1f', 'amber-soft': '#faf6ec', 'amber-line': '#f0dcbb',
+    'red': '#a4262c', 'red-soft': '#fdf0f0', 'red-line': '#f0c9c9',
+    'green': '#1f7a4d', 'green-soft': '#eefaf3', 'green-line': '#c6e9d6',
     'ink': '#1b2430', 'ink-soft': '#4a5568', 'muted': '#6b7789',
     'bg': '#eef1f6', 'paper': '#ffffff', 'line': '#dfe4ec', 'line-soft': '#eef1f6',
     'shadow': '0 1px 3px rgba(11,37,69,.06),0 12px 32px rgba(11,37,69,.08)',
@@ -37,13 +40,41 @@ TOKENS = {
 # constraint rather than a preference - see docs/reference/languages.md.
 COLOURS = frozenset(k for k, v in TOKENS.items() if v.startswith('#'))
 
-# Screen-only by nature rather than by omission, and documented as such:
+# Screen-only by nature rather than by omission, and every one of them is about
+# the sheet rather than about anything printed on it:
 #   bg      the colour behind the sheet, and paper has no behind
 #   paper   the sheet itself, which a printer supplies and cannot full-bleed
 #   shadow  the lift under the sheet, which is the same absence
-#   line-soft, red   consumed only by rules and callout variants the print
-#                    emitter does not yet distinguish - see issue #21
-SCREEN_ONLY = frozenset(['bg', 'paper', 'shadow', 'line-soft', 'red'])
+# `red` and `line-soft` were here too, each justified by a feature that did not
+# exist yet rather than by the paper: the print emitter could not tell a warning
+# callout from a note, and drew no soft rules. Both do now.
+SCREEN_ONLY = frozenset(['bg', 'paper', 'shadow'])
+
+# A callout's three colours: the rule down its edge, the fill behind it, and the
+# hairline around it. The reading edition takes the type from `> [!WARNING]` and
+# turns it into a class; the print and Word editions matched it, dropped it and
+# drew a note. An unknown type is a note in every edition - which is what the
+# stylesheet already did, having rules for two variants and a base.
+CALLOUTS = {'note': ('amber', 'amber-soft', 'amber-line'),
+            'warning': ('red', 'red-soft', 'red-line'),
+            'tip': ('green', 'green-soft', 'green-line')}
+
+
+def variant(kind):
+    """The (rule, fill, hairline) tokens for a callout type."""
+    return CALLOUTS.get((kind or 'note').lower(), CALLOUTS['note'])
+
+
+# Mermaid names its theme in its own vocabulary, so the mapping onto these
+# tokens is written down once here rather than inferred at each use. A node fill
+# is `navy-soft` and not `navy`: a flowchart node filled with a structural
+# colour at full strength has unreadable text on it.
+MERMAID = {'primaryColor': 'navy-soft', 'primaryTextColor': 'navy',
+           'primaryBorderColor': 'navy-3', 'lineColor': 'navy-3',
+           'secondaryColor': 'amber-soft', 'tertiaryColor': 'line-soft',
+           'clusterBkg': 'line-soft', 'clusterBorder': 'line',
+           'titleColor': 'navy',
+           'cScale0': 'navy', 'cScale1': 'navy-3', 'cScale2': 'amber'}
 
 
 def resolve(prof=None, brand=None):

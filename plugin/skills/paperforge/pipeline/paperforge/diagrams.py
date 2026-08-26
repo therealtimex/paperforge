@@ -11,22 +11,37 @@ import re
 import tempfile
 from pathlib import Path
 
-from . import browser
+from . import browser, palette
 
 # Narrow label wrapping keeps wide flowcharts legible in print: the interagency
 # matrix goes from 2171px to 1471px, i.e. ~50% scale on A4 instead of ~34%.
-CONFIG = """{
-  startOnLoad:false, theme:'base', securityLevel:'loose',
-  fontFamily:'"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif',
-  themeVariables:{primaryColor:'#e8eef8',primaryTextColor:'#0b2545',primaryBorderColor:'#1c4a80',
-    lineColor:'#1c4a80',secondaryColor:'#fdf3e3',tertiaryColor:'#f8fafd',fontSize:'14px',
-    clusterBkg:'#f4f7fc',clusterBorder:'#c9d5e6',titleColor:'#0b2545',
-    cScale0:'#0b2545',cScale1:'#1c4a80',cScale2:'#c2761a',
-    cScaleLabel0:'#ffffff',cScaleLabel1:'#ffffff',cScaleLabel2:'#ffffff'},
-  flowchart:{curve:'basis',useMaxWidth:true,htmlLabels:false,nodeSpacing:30,
+SHAPE = """  flowchart:{curve:'basis',useMaxWidth:true,htmlLabels:false,nodeSpacing:30,
     rankSpacing:50,wrappingWidth:135,padding:10},
-  timeline:{useMaxWidth:true}
-}"""
+  timeline:{useMaxWidth:true}"""
+
+
+def config(tokens=None):
+    """Mermaid's configuration for this document's palette.
+
+    This was a module constant carrying twelve colours of its own - a third
+    palette, near enough the document's to look deliberate and far enough to be
+    visible beside it. A project that declared a full brand got a branded cover,
+    branded parts, branded tables and Paperforge-blue flowcharts between them.
+
+    The font stack comes from the palette too. The constant named `"Segoe UI"`
+    first and no Vietnamese-safe face at all, so a diagram's labels were set in
+    whatever the profile had been chosen to avoid.
+    """
+    tokens = tokens or palette.TOKENS
+    theme = ',\n    '.join("%s:'%s'" % (k, tokens[v])
+                           for k, v in palette.MERMAID.items())
+    return ("{\n  startOnLoad:false, theme:'base', securityLevel:'loose',\n"
+            "  fontFamily:'%s',\n"
+            "  themeVariables:{fontSize:'14px',\n    %s,\n"
+            # reversed out of the scale colours above, so it is the absence of
+            # ink rather than a colour the project can set
+            "    cScaleLabel0:'white',cScaleLabel1:'white',cScaleLabel2:'white'},\n"
+            "%s\n}" % (tokens['sans'].replace("'", "\\'"), theme, SHAPE))
 
 PAGE = """<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>
 <pre id="out"></pre>
@@ -53,16 +68,22 @@ def sources(*markdown_files):
     return found
 
 
-def render(srcs, cache=None):
+def render(srcs, cache=None, tokens=None):
     """Render each diagram to SVG. Requires network access for the Mermaid module."""
     if not srcs:
         return []
+    theme = config(tokens)
     if cache and Path(cache).exists():
         cached = json.loads(Path(cache).read_text(encoding='utf-8'))
-        # reuse only when the diagram sources are unchanged
-        if isinstance(cached, dict) and cached.get('sources') == srcs:
+        # Reuse only when the sources *and* the theme are unchanged. The key was
+        # the sources alone, so changing a palette and rebuilding served the
+        # diagrams back in the old colours - on a machine where everything else
+        # had changed, with the build reporting success. A cache written before
+        # this carries no theme, compares unequal, and re-renders.
+        if (isinstance(cached, dict) and cached.get('sources') == srcs
+                and cached.get('theme') == theme):
             return cached['svgs']
-    page = PAGE.replace('__SRCS__', json.dumps(srcs, ensure_ascii=False)).replace('__CONFIG__', CONFIG)
+    page = PAGE.replace('__SRCS__', json.dumps(srcs, ensure_ascii=False)).replace('__CONFIG__', theme)
     with tempfile.TemporaryDirectory() as tmp:
         gen = Path(tmp) / 'render.html'
         gen.write_text(page, encoding='utf-8')
@@ -78,6 +99,7 @@ def render(srcs, cache=None):
     if missing:
         raise RuntimeError('diagram %s rendered without a viewBox and would overlap' % missing)
     if cache:
-        Path(cache).write_text(json.dumps({'sources': srcs, 'svgs': svgs}, ensure_ascii=False),
-                               encoding='utf-8')
+        Path(cache).write_text(
+            json.dumps({'sources': srcs, 'theme': theme, 'svgs': svgs},
+                       ensure_ascii=False), encoding='utf-8')
     return svgs

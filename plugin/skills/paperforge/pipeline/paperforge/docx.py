@@ -260,6 +260,13 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 buf[0] = mark.group(2)
             para = doc.add_paragraph(style='Intense Quote')
             _runs(para, ' '.join(b.strip() for b in buf if b.strip()))
+            # the type was matched and discarded here as well, so a warning read
+            # as a note in the third edition too. Intense Quote owns the border;
+            # the run colour is what this emitter can say, and it says the same
+            # thing the rule down the edge says in the other two.
+            for run in para.runs:
+                run.font.color.rgb = _colour(brand, palette.variant(
+                    mark.group(1) if mark else 'note')[0])
             continue
 
         if stripped.startswith('|') and pos + 1 < n and \

@@ -317,7 +317,10 @@ def convert(lines, toc):
                 buf.append(re.sub(r'^\s*>\s?', '', lines[pos]))
                 pos += 1
             first = buf[0] if buf else ''
-            kind, title = 'note', 'GHI CHÚ'
+            # `title` used to be assigned here as 'GHI CHÚ' and never read: a
+            # Vietnamese string sitting unused in the shared emitter, which is
+            # the assumption the English fixture exists to catch
+            kind = 'note'
             m2 = re.match(r'^\[!(\w+)\]\s*(.*)$', first.strip())
             if m2:
                 kind = m2.group(1).lower()

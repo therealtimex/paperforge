@@ -36,14 +36,19 @@ def check(label, condition):
         failures.append(label)
 
 
-HEX = re.compile(r'#[0-9a-fA-F]{6}\b')
+# Three digits as well as six: #fff is a colour chosen where it is written just
+# as #ffffff is, and a gate about literals that shorthand walks through is not a
+# gate. Widening it found the last one - a white matte painted behind every
+# rasterised diagram, now transparent, because the way not to have to brand a
+# colour is not to paint it.
+HEX = re.compile(r'#[0-9a-fA-F]{3,8}\b')
 
-# Read from the palette instead, and stated as an exception rather than left
-# out silently: a gate that quietly skips a file reads as covering it.
-#   diagrams.py   Mermaid's theme variables are a different vocabulary from
-#                 these tokens, and the diagram cache would have to key on the
-#                 palette as well - github.com/therealtimex/paperforge/issues/22
-EMITTERS = ('typst.py', 'docx.py')
+EMITTERS = ('typst.py', 'docx.py', 'diagrams.py', 'markdown.py', 'deck.py')
+
+# The stylesheets are *not* checked yet, and that is stated rather than left to
+# be inferred: they carry 56 literals across 33 distinct values, including the
+# whole cover - github.com/therealtimex/paperforge/issues/25. A gate that
+# quietly skips a file reads as covering it.
 
 
 def literals(source):
@@ -114,8 +119,20 @@ def main():
           not unknown)
     if unknown:
         print('       orphaned: %s' % ', '.join(unknown))
-    dead = sorted(set(palette.TOKENS) - used)
-    check('and every token in the table is consumed by a stylesheet', not dead)
+    # A token nothing reads is a token a project can set with no effect, which
+    # is the same silence this whole file is about, pointed the other way. The
+    # surfaces are the two stylesheets, the two mappings, and the emitters' own
+    # calls - listing them here is also the record of where each token is used.
+    live = set(used) | set(palette.MERMAID.values())
+    live |= {tok for triple in palette.CALLOUTS.values() for tok in triple}
+    READS = re.compile(r"colour\('([a-z0-9-]+)'\)"
+                       r"|_colour\(brand, '([a-z0-9-]+)'\)"
+                       r"|(?:PAL|tokens)\['([a-z0-9-]+)'\]")
+    for name in EMITTERS:
+        live |= {tok for group in READS.findall((root / name).read_text(encoding='utf-8'))
+                 for tok in group if tok}
+    dead = sorted(set(palette.TOKENS) - live)
+    check('and every token in the table is read by something', not dead)
     if dead:
         print('       unused: %s' % ', '.join(dead))
 
@@ -128,8 +145,45 @@ def main():
           palette.resolve(prof, {'sans': 'Palatino'})['sans'] == 'Palatino')
     check('a token the table does not know is carried through, not dropped',
           palette.resolve(prof, {'houseblue': '#010203'})['houseblue'] == '#010203')
-    check('thirteen colour tokens, and the fonts are not among them',
-          len(palette.COLOURS) == 13 and 'sans' not in palette.COLOURS)
+    check('twenty colour tokens, and the fonts are not among them',
+          len(palette.COLOURS) == 20 and 'sans' not in palette.COLOURS)
+
+    # This count has been written down by hand beside the thing it counts three
+    # times and been wrong twice - "seven" while thirteen were declared, then
+    # "thirteen" while twenty were. A number in prose next to the table it
+    # describes is a copy, and copies drift; this is the same defect the whole
+    # module exists for, in English rather than in CSS.
+    WORDS = {13: 'Thirteen', 20: 'Twenty', 21: 'Twenty-one', 24: 'Twenty-four'}
+    doc = (Path(__file__).resolve().parents[1]
+           / 'docs/reference/branding.md').read_text(encoding='utf-8')
+    said = re.search(r'^(\w+(?:-\w+)?) colour tokens\.', doc, re.M)
+    check('branding.md states the number of tokens the table declares',
+          said is not None and said.group(1) == WORDS.get(len(palette.COLOURS)))
+    if said and said.group(1) != WORDS.get(len(palette.COLOURS)):
+        print('       branding.md says %r, the table declares %d'
+              % (said.group(1), len(palette.COLOURS)))
+
+    print('callout variants')
+    check('a warning is not a note', palette.variant('warning')[0] == 'red')
+    check('the type is read case-insensitively, as the class name is',
+          palette.variant('WARNING') == palette.variant('warning'))
+    check('a type nothing styles is a note, in every edition',
+          palette.variant('caution') == palette.variant('note'))
+    check('and so is a blockquote with no type at all',
+          palette.variant(None) == palette.variant('note'))
+
+    print('the diagram theme')
+    from paperforge import diagrams
+    themed = diagrams.config(palette.resolve(None, BRAND))
+    check('a diagram is drawn in the document palette',
+          BRAND['navy-soft'] in themed and BRAND['navy'] in themed)
+    check('and no longer in the one it kept for itself',
+          '#0b2545' not in themed and '#1c4a80' not in themed)
+    check("the diagram takes the document's font stack too",
+          palette.resolve(profile.load('vi'))['sans'] in
+          diagrams.config(palette.resolve(profile.load('vi'))))
+    check('every Mermaid variable names a token that exists',
+          all(v in palette.TOKENS for v in palette.MERMAID.values()))
 
     return measured()
 
@@ -144,7 +198,10 @@ def _root_of(css):
 # earlier version of this file set `ink-soft` to the shipped `#4a5568` and could
 # not tell the two apart.
 BRAND = {'navy': '#5b2333', 'navy-2': '#7a3145', 'navy-3': '#9a4058',
-         'amber': '#2f6d5b', 'amber-soft': '#eaf3f0', 'red': '#8c2f39',
+         'navy-soft': '#efe2e6',
+         'amber': '#2f6d5b', 'amber-soft': '#eaf3f0', 'amber-line': '#bcd8cd',
+         'red': '#8c2f39', 'red-soft': '#f9ecee', 'red-line': '#e3c3c7',
+         'green': '#3f6d2f', 'green-soft': '#eef5e9', 'green-line': '#cfe0c4',
          'ink': '#231f20', 'ink-soft': '#7a5c00', 'muted': '#7a736b',
          'bg': '#f7f4ef', 'paper': '#fffdf9', 'line': '#e3ddd4',
          'line-soft': '#d8d2c8'}
@@ -169,7 +226,16 @@ Body text, which the print edition set in black whatever the project asked for.
 
 ### 1.1. A subheading
 
-> A callout, which each edition used to give a colour of its own.
+> A note, which each edition used to give a colour of its own.
+
+> [!WARNING]
+> A warning, which two of the three editions used to draw as a note.
+
+> [!TIP]
+> A tip, likewise.
+
+> [!CAUTION]
+> A type no edition styles, which must come out a note in all of them.
 
 | Measure | Value |
 |---|---|
@@ -242,7 +308,7 @@ def measured():
                  contents_heading='CONTENTS')
         html = html_out.read_text(encoding='utf-8')
         missing = sorted(k for k, v in BRAND.items() if v not in html)
-        check('the reading edition carries all thirteen tokens', not missing)
+        check('the reading edition carries all twenty tokens', not missing)
         if missing:
             print('       missing: %s' % ', '.join(missing))
 
@@ -269,6 +335,18 @@ def measured():
             check('print sets %s from the project palette' % token,
                   BRAND[token] in seen)
 
+        # the defect this half was written for: `> [!WARNING]` printed in the
+        # note colours, because the type was matched, stripped and discarded one
+        # line above the block that needed it
+        for kind, token in (('warning', 'red-soft'), ('tip', 'green-soft')):
+            check('a %s prints in its own fill, not the note fill' % kind,
+                  BRAND[token] in seen)
+        check('and the hairline around a callout is drawn, as on screen',
+              BRAND['red-line'] in seen and BRAND['amber-line'] in seen)
+        check('a type nothing styles falls back to the note fill',
+              # four callouts, three variants: note and caution share a fill
+              seen[BRAND['amber-soft']] >= 2)
+
         docx_out = work / 'paper.docx'
         docx_mod.build(src, docx_out, prof, brand=BRAND, organisation='Paperforge',
                        contents_heading='CONTENTS')
@@ -276,6 +354,9 @@ def measured():
             word = (z.read('word/document.xml') + z.read('word/styles.xml')).decode('utf-8')
         for token in ('navy', 'ink', 'amber', 'muted', 'ink-soft'):
             check('Word sets %s from the project palette' % token,
+                  BRAND[token].lstrip('#').upper() in word.upper())
+        for kind, token in (('warning', 'red'), ('tip', 'green')):
+            check('Word tells a %s from a note' % kind,
                   BRAND[token].lstrip('#').upper() in word.upper())
 
     return 1 if failures else 0

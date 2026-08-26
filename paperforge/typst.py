@@ -17,7 +17,7 @@ import subprocess
 from pathlib import Path
 
 from . import assemble
-from . import browser, citations as cite_mod, front as front_mod, profile, xref
+from . import browser, citations as cite_mod, front as front_mod, palette, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -31,6 +31,22 @@ FOOTNOTE_DEF = re.compile(r'^\[\^([^\]]+)\]:\s*(.*)$')
 # as though the numbers were exact. Add to this list when Typst does.
 SPECIAL = '\\#$*_`<>@~'
 XREF = {}   # resolved once in xref.py; this emitter never counts for itself
+# Resolved once in build(), read by every emitter below - the same arrangement
+# as XREF, and for the same reason: these are document-wide facts that half a
+# dozen small functions need and none of them should be asked to carry. The
+# shipped defaults stand in until a document is built, so this module still
+# converts markup outside a build.
+PAL = dict(palette.TOKENS)
+
+
+def colour(token):
+    """A palette token as a Typst colour.
+
+    Every colour in this emitter comes through here. Writing one as a literal
+    produces the right colour by default and ignores the project's palette
+    forever, which is a defect that reads as finished code - see palette.py.
+    """
+    return 'rgb("%s")' % PAL[token]
 
 
 def esc(text):
@@ -200,8 +216,8 @@ def meta_grid(meta):
     """
     if not meta:
         return ''
-    rows = ',\n    '.join('[#text(fill: rgb("#6b7789"))[%s]], [%s]'
-                          % (esc(k), inline(v, {})) for k, v in meta)
+    rows = ',\n    '.join('[#text(fill: %s)[%s]], [%s]'
+                          % (colour('muted'), esc(k), inline(v, {})) for k, v in meta)
     # a grid, not a table: the header styling for content tables would
     # otherwise paint the first metadata row navy
     return ('#align(center)[#block(width: 80%%)[\n  #grid(columns: 2,'
@@ -219,14 +235,14 @@ def running_head(title, organisation, binding):
     """
     if not binding:
         return ('context { if counter(page).get().first() > 1 [\n'
-                '    #set text(size: 8pt, fill: rgb("#6b7789"))\n'
+                '    #set text(size: 8pt, fill: ' + colour('muted') + ')\n'
                 '    #smallcaps[' + title + '] #h(1fr) ' + organisation + '\n'
                 '  ] }')
     return ('context {\n'
             '    let leaf = here().page()\n'
             '    let opens = query(' + CHAPTER + ').any(h => h.location().page() == leaf)\n'
             '    if leaf > 1 and not opens {\n'
-            '      set text(size: 8pt, fill: rgb("#6b7789"))\n'
+            '      set text(size: 8pt, fill: ' + colour('muted') + ')\n'
             '      let seen = query(selector(' + CHAPTER + ').before(here()))\n'
             '      if calc.even(leaf) [ #smallcaps[' + title + '] #h(1fr) '
             + organisation + ' ]\n'
@@ -265,8 +281,8 @@ def emit_table(lines, pos, notes, out):
     for row in rows[2:]:
         cells += ['[%s]' % cell(row[i] if i < len(row) else '', notes) for i in range(cols)]
     inset = 5 if cols >= WIDE else 6
-    return ('#table(columns: %d, stroke: 0.4pt + rgb("#dfe4ec"), inset: %dpt,\n  %s\n)'
-            % (cols, inset, ',\n  '.join(cells))), pos
+    return ('#table(columns: %d, stroke: 0.4pt + %s, inset: %dpt,\n  %s\n)'
+            % (cols, colour('line'), inset, ',\n  '.join(cells))), pos
 
 
 def take_caption(lines, pos):
@@ -328,7 +344,7 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             continue
 
         if re.fullmatch(r'(-{3,}|\*{3,}|_{3,})', stripped):
-            out.append('#line(length: 100%, stroke: 0.5pt + rgb("#dfe4ec"))')
+            out.append('#line(length: 100%%, stroke: 0.5pt + %s)' % colour('line'))
             pos += 1
             continue
 
@@ -392,15 +408,21 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             buf[0] = re.sub(r'^\[!\w+\]\s*', '', buf[0])
             inner = convert(buf, notes, figures, label, part_banner, force_parts,
                             columns, binding)
-            out.append('#block(fill: rgb("#fdf3e3"), inset: 8pt, radius: 3pt, width: 100%%,\n'
-                       '  stroke: (left: 3pt + rgb("#c2761a")))[\n%s\n]' % inner)
+            # the reading edition sets a callout in amber-soft behind an amber
+            # rule; this printed #fdf3e3 behind #c2761a, which are neither of
+            # those and are not tokens at all, so the same callout came out a
+            # different colour in each edition with no brand set anywhere
+            out.append('#block(fill: %s, inset: 8pt, radius: 3pt, width: 100%%,\n'
+                       '  stroke: (left: 3pt + %s))[\n%s\n]'
+                       % (colour('amber-soft'), colour('amber'), inner))
             continue
 
         if stripped.startswith('|') and pos + 1 < n and re.match(r'^\|[\s:|-]+\|?$', lines[pos + 1].strip()):
             block, pos = emit_table(lines, pos, notes, out)
             entry, pos = take_caption(lines, pos)
-            caption = ('\n#align(center)[#text(size: 9pt, fill: rgb("#4a5568"))[%s]]'
-                       % inline(xref.caption_of(entry), notes)) if entry else ''
+            caption = ('\n#align(center)[#text(size: 9pt, fill: %s)[%s]]'
+                       % (colour('ink-soft'),
+                          inline(xref.caption_of(entry), notes))) if entry else ''
             if block:
                 wide = block.startswith('#table(columns: ') and \
                     int(block[len('#table(columns: '):].split(',')[0]) >= WIDE
@@ -439,7 +461,7 @@ PREAMBLE = '''#set document(title: "{title}", author: "{author}")
 #set page({page_size}, margin: ({margin}),{columns}
   numbering: "{numbering}", number-align: center,
   header: {header})
-{recto}#set text(font: ({body_font}), size: 10.5pt, lang: "{lang}"{rtl})
+{recto}#set text(font: ({body_font}), size: 10.5pt, fill: rgb("{ink}"), lang: "{lang}"{rtl})
 #set par(justify: true, leading: 0.68em, spacing: 1.1em)
 #set heading(numbering: none)
 #show heading.where(level: 1): it => block(width: 100%, above: 1.4em, below: 0.8em)[
@@ -483,6 +505,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
           includes=(), columns=1, binding=False, trim='a4'):
     """Render one document to PDF through Typst. Returns build facts."""
     brand = brand or {}
+    PAL.clear()
+    PAL.update(palette.resolve(prof, brand))
     src = Path(source)
     work = Path(cache or src.parent) / ('.typst-%s' % src.stem)
     shutil.rmtree(work, ignore_errors=True)
@@ -574,20 +598,22 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         bits = []
         if front.get('anonymised'):
             bits.append('#align(center)[#text(size: 9pt, style: "italic",'
-                        ' fill: rgb("#4a5568"))[%s]]' % esc(str(front['anonymised'])))
+                        ' fill: %s)[%s]]'
+                        % (colour('ink-soft'), esc(str(front['anonymised']))))
         pairs = front_mod.byline(front)
         if pairs:
             bits.append('#align(center)[#text(size: 11pt)[%s]]' % ', '.join(
                 '%s#super[%s]' % (esc(n), esc(m)) if m else esc(n) for n, m in pairs))
         aff = front_mod.affiliations(front)
         if aff:
-            bits.append('#align(center)[#text(size: 8.5pt, fill: rgb("#4a5568"))[%s]]'
-                        % ' \\ '.join('#super[%s]%s' % (esc(k), esc(v))
-                                       for k, v in sorted(aff.items())))
+            bits.append('#align(center)[#text(size: 8.5pt, fill: %s)[%s]]'
+                        % (colour('ink-soft'),
+                           ' \\ '.join('#super[%s]%s' % (esc(k), esc(v))
+                                        for k, v in sorted(aff.items()))))
         line = front_mod.corresponding(front, prof)
         if line:
-            bits.append('#align(center)[#text(size: 8.5pt, fill: rgb("#4a5568"))[%s]]'
-                        % esc(line))
+            bits.append('#align(center)[#text(size: 8.5pt, fill: %s)[%s]]'
+                        % (colour('ink-soft'), esc(line)))
         if front.get('abstract'):
             bits.append('#v(8pt)\n#block(width: 84%%, inset: (x: 0pt))[\n'
                         '#text(weight: "bold")[%s]\n\n%s\n]'
@@ -623,14 +649,15 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         rtl=', dir: rtl' if prof.get('direction') == 'rtl' else '',
         body_font=quoted(fonts.get('sans'), 'Helvetica Neue, Arial'),
         display_font=quoted(fonts.get('serif'), 'Georgia'),
-        navy=brand.get('navy', '#243b53'), navy2=brand.get('navy-2', '#334e68'),
-        navy3=brand.get('navy-3', '#486581'), amber=brand.get('amber', '#8a6d1f'),
+        navy=PAL['navy'], navy2=PAL['navy-2'], navy3=PAL['navy-3'],
+        amber=PAL['amber'], ink=PAL['ink'],
         kind=esc(kind), meta=meta_block + front_block, logo=logo_block)
 
     entries = front_mod.declarations(front, prof)
     if entries:
-        typ_body += ('\n\n#v(14pt)\n#line(length: 100%%, stroke: 0.5pt + rgb("#dfe4ec"))\n'
-                     '#text(weight: "bold")[%s]\n\n' % esc(front_mod.label(prof, 'declarations'))
+        typ_body += ('\n\n#v(14pt)\n#line(length: 100%%, stroke: 0.5pt + %s)\n'
+                     '#text(weight: "bold")[%s]\n\n'
+                     % (colour('line'), esc(front_mod.label(prof, 'declarations')))
                      + '\n\n'.join('*%s.* %s' % (esc(k), inline(str(v), {}))
                                     for k, v in entries))
 

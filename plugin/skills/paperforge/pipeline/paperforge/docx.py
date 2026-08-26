@@ -27,7 +27,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Mm, Pt, RGBColor
 
 from . import assemble
-from . import front as front_mod, markdown as md, typst, xref
+from . import front as front_mod, markdown as md, palette, typst, xref
 
 HEAD_RE = md.HEAD_RE
 ATTR_RE = md.ATTR_RE
@@ -39,13 +39,14 @@ LINK = re.compile(r'\[([^\]]+)\]\(([^)\s]+)\)')
 WIDE = 6                      # columns from which a table gets a landscape section
 
 
-DEFAULTS = {'navy': '#243b53', 'amber': '#8a6d1f', 'ink': '#1b2430',
-            'muted': '#6b7789'}
-
-
 def _colour(brand, token):
-    value = (brand or {}).get(token, DEFAULTS[token]).lstrip('#')
-    return RGBColor(int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16))
+    """A palette token as a Word colour.
+
+    This emitter used to keep its own four-entry copy of the defaults, of which
+    it read two: `amber` and `muted` were declared, never used, and documented
+    as reaching the Word edition. They do now.
+    """
+    return RGBColor(*palette.channels(palette.resolve(None, brand)[token]))
 
 
 def _navy(brand):
@@ -202,6 +203,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 for run in cap.runs:
                     run.italic = True
                     run.font.size = Pt(9)
+                    run.font.color.rgb = _colour(brand, 'ink-soft')
             else:
                 para = doc.add_paragraph()
                 run = para.add_run('\n'.join(buf))
@@ -282,6 +284,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                     for run in cap.runs:
                         run.italic = True
                         run.font.size = Pt(9)
+                        run.font.color.rgb = _colour(brand, 'ink-soft')
                 doc.add_paragraph()
             continue
 
@@ -401,8 +404,10 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = para.add_run(line)
         run.bold, run.font.size = bold, Pt(size)
-        if bold:
-            run.font.color.rgb = _navy(brand)
+        # the kind above the title is amber on the cover of the reading and
+        # print editions; here it was the body colour, so the one word that
+        # says what the document is came out looking like the first line of it
+        run.font.color.rgb = _navy(brand) if bold else _colour(brand, 'amber')
     if front.get('anonymised'):
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -441,6 +446,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         run = para.add_run('%s: ' % key)
         run.bold = True
+        run.font.color.rgb = _colour(brand, 'muted')
         _runs(para, value)
     if organisation:
         para = doc.add_paragraph()

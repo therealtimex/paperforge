@@ -46,11 +46,18 @@ HEX = re.compile(r'#[0-9a-fA-F]{3,8}\b')
 EMITTERS = ('typst.py', 'docx.py', 'diagrams.py', 'markdown.py', 'deck.py')
 SHEETS = ('paperforge.css', 'deck.css')
 
-# `rgba()` is the one thing the stylesheet check does not cover, because a
-# translucent colour cannot take a var without color-mix and whether a published
-# document may depend on that is a decision rather than a refactor:
-# github.com/therealtimex/paperforge/issues/27. Stated, not skipped - a gate
-# that quietly passes over something reads as covering it.
+# Translucency counts. A stylesheet free of hex and full of rgba() is a
+# stylesheet whose topbar still does not follow the brand, which was true of
+# this one for exactly one commit.
+PAINT = re.compile(r'#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(')
+
+
+def literals_source(path):
+    """A module's source with comments stripped, for the paint check."""
+    return ' '.join(tok.string for tok in
+                    tokenize.generate_tokens(io.StringIO(
+                        path.read_text(encoding='utf-8')).readline)
+                    if tok.type != tokenize.COMMENT)
 
 
 def literals(source):
@@ -79,10 +86,16 @@ def main():
             print('       found: %s' % ', '.join(sorted(set(found))))
 
     for sheet in SHEETS:
-        found = HEX.findall((root / 'theme' / sheet).read_text(encoding='utf-8'))
+        found = PAINT.findall((root / 'theme' / sheet).read_text(encoding='utf-8'))
         check('%s paints with tokens, not colours' % sheet, not found)
         if found:
             print('       found %d: %s' % (len(found), ', '.join(sorted(set(found)))))
+    # the emitters' own CSS is the same surface: RTL_CSS lives in markdown.py
+    # and carried the scroll fade in rgba long after the stylesheet stopped
+    found = PAINT.findall(literals_source(root / 'markdown.py'))
+    check('the emitters ship no CSS colours either', not found)
+    if found:
+        print('       found: %s' % ', '.join(sorted(set(found))))
 
     # the gate has to fail on the thing it was written for, so here is that
     # thing: the line as typst.py carried it until this commit
@@ -122,7 +135,10 @@ def main():
         used |= set(re.findall(r'var\(--([a-z0-9-]+)', text))
     # set per element as an inline style, so no project can address it
     used.discard('logo-h')
-    unknown = sorted(used - set(palette.TOKENS))
+    # a veil and the shadow are emitted alongside the table rather than in it,
+    # because each is written twice - a resolved value and a color-mix
+    declared = set(palette.TOKENS) | set(palette.VEILS) | {'shadow'}
+    unknown = sorted(used - declared)
     check('every token the stylesheets consume is declared in the table',
           not unknown)
     if unknown:
@@ -139,7 +155,8 @@ def main():
     for name in EMITTERS:
         live |= {tok for group in READS.findall((root / name).read_text(encoding='utf-8'))
                  for tok in group if tok}
-    dead = sorted(set(palette.TOKENS) - live)
+    live |= {base for base, _ in palette.VEILS.values()}
+    dead = sorted(declared - live - set(palette.VEILS) - {'shadow'})
     check('and every token in the table is read by something', not dead)
     if dead:
         print('       unused: %s' % ', '.join(dead))
@@ -172,8 +189,9 @@ def main():
     check('every shade reproduces the value it was fitted to, exactly', not off)
     if off:
         print('       drifted: %s' % off)
-    check('six bases and the rest derived',
-          len(palette.BASE) - 3 == 6 and len(palette.SHADES) == 25)
+    check('six bases, twenty-five shades, eleven veils',
+          len(palette.BASE) - 2 == 6 and len(palette.SHADES) == 25
+          and len(palette.VEILS) == 11)
     house = palette.resolve(None, {'navy': '#5b2333'})
     check('one base recolours everything hanging off it',
           house['navy-deep'] != palette.TOKENS['navy-deep']
@@ -210,6 +228,26 @@ def main():
           palette.variant('caution') == palette.variant('note'))
     check('and so is a blockquote with no type at all',
           palette.variant(None) == palette.variant('note'))
+
+    print('translucency')
+    check('every veil names a token that exists',
+          all(base in palette.TOKENS for base, _ in palette.VEILS.values()))
+    rules = palette.veil_rules(palette.TOKENS)
+    check('each veil is written twice: a resolved value, then a color-mix',
+          len(rules) == 2 * len(palette.VEILS)
+          and rules[0].count('color-mix') == 0 and 'color-mix' in rules[1])
+    check('the fallback is the resolved colour, not an approximation of it',
+          '  --navy-veil: %sf7;' % palette.TOKENS['navy-dark'] in rules)
+    housed = palette.resolve(None, {'navy': '#5b2333'})
+    check('a veil follows its base rather than the shipped default',
+          '  --navy-veil: %sf7;' % housed['navy-dark']
+          in palette.veil_rules(housed))
+    check('and only the veils whose base moved are re-emitted',
+          [r for r in palette.veil_rules(housed, {'navy-dark'})
+           if r.startswith('  --amber')] == [])
+    check('and the shadow, which is two of them, follows too',
+          palette.shadow(housed) != palette.shadow(palette.TOKENS)
+          and housed['navy-dark'].lstrip('#') in palette.shadow(housed))
 
     print('the diagram theme')
     from paperforge import diagrams

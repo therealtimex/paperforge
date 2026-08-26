@@ -638,7 +638,7 @@ main ul, main ol { padding-left: 0; padding-right: 26px; }
 .anchor { margin-left: 0; margin-right: 10px; }
 thead th, tbody td { text-align: right; }
 .is-scrollable::after { right: auto; left: 1px; border-radius: 9px 0 0 9px;
-  background: linear-gradient(to right, rgba(11,37,69,.13), rgba(11,37,69,0)); }
+  background: linear-gradient(to right, var(--navy-film), transparent); }
 """
 
 
@@ -684,11 +684,18 @@ def theme_override(prof, brand=None):
     # profile first, brand second: the profile knows which faces carry the
     # script's glyphs, the project knows its own house type, and a project that
     # names one has taken responsibility for the coverage - see languages.md
-    tokens = {k: v for k, v in palette.resolve(prof, brand).items()
-              if palette.TOKENS.get(k) != v}
+    resolved = palette.resolve(prof, brand)
+    tokens = {k: v for k, v in resolved.items() if palette.TOKENS.get(k) != v}
     if tokens:
-        decl = ''.join('  --%s: %s;\n' % (k, v) for k, v in sorted(tokens.items()))
-        parts.append(':root {\n%s}' % decl)
+        decl = ['  --%s: %s;' % (k, v) for k, v in sorted(tokens.items())]
+        # a veil is a base shown through, so it moves when its base does; the
+        # shadow is two of them. Re-emitted here for the bases that changed,
+        # because the block in :root above was written from the defaults.
+        if any(k in tokens for k, _ in palette.VEILS.values()):
+            decl += palette.veil_rules(resolved, set(tokens))
+        if 'navy-dark' in tokens:
+            decl.append('  --shadow: %s;' % palette.shadow(resolved))
+        parts.append(':root {\n%s\n}' % '\n'.join(decl))
     if prof.get('direction') == 'rtl':
         parts.append(RTL_CSS)
     return '\n'.join(parts)

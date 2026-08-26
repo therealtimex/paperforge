@@ -72,7 +72,7 @@
 .reveal .anchor { display:none; }
 
 .reveal .progress { color:var(--amber); }
-.reveal .slide-number { background:rgba(11,37,69,.75); font-size:.5em; }
+.reveal .slide-number { background:var(--navy-screen); font-size:.5em; }
 
 @media print {
   .reveal .deck-title, .reveal thead th {

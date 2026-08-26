@@ -26,9 +26,14 @@ GITIGNORE = """# built artefacts are reproducible from the sources
 AGENTS = """# {title}
 
 Research project. Markdown is the source; every rendered artefact is **built**
-from it and must never be hand-edited.
+from it. Never hand-edit one: it goes stale against its markdown *silently*,
+which has already happened to somebody, and nothing in the output says so.
 
 ## Working here
+
+This project is a **consumer** of the pipeline, which lives in its own repo.
+Do not copy any part of it in here — a second copy in a research repo drifts
+from the first, and the drift is invisible until two documents disagree.
 
 The pipeline is not on PATH by default. Invoke it by path, or put it on PATH
 once as `paperforge`:
@@ -51,6 +56,39 @@ once as `paperforge`:
 Skeleton sections are marked `{{.part}}` so structure is explicit and does not
 depend on matching a heading pattern. Keep the marker when you rewrite them.
 """
+
+
+# Claude Code reads CLAUDE.md and nothing else; every other agent reads
+# AGENTS.md. One file, under both names, so there is nothing to keep in step.
+CLAUDE_IMPORT = """@AGENTS.md
+
+<!-- Claude Code reads this file; every other agent reads AGENTS.md. The line
+     above imports that one, because this filesystem would not take a link.
+     Put Claude-specific instructions below. -->
+"""
+
+
+def _claude_pointer(root):
+    """CLAUDE.md as a relative symlink to AGENTS.md.
+
+    Relative, so the project stays movable. Returns what a symlink could not be
+    used for, or None.
+
+    Windows needs Administrator or Developer Mode to create one at all, and git
+    there without core.symlinks checks an existing one out as a text file
+    holding the target path. The link is what this writes; when the filesystem
+    refuses outright, an import stands in rather than leaving init half done,
+    and says so instead of quietly producing a different project.
+    """
+    link = root / 'CLAUDE.md'
+    if link.exists() or link.is_symlink():
+        link.unlink()
+    try:
+        link.symlink_to('AGENTS.md')
+        return None
+    except (OSError, NotImplementedError) as exc:
+        link.write_text(CLAUDE_IMPORT, encoding='utf-8')
+        return str(exc)
 
 
 def _meta_block(prof, publisher, when):
@@ -280,7 +318,10 @@ def create(directory, slug, title, languages, profiles, publications,
     invocation = str(Path(sys.argv[0]).resolve()) if sys.argv and sys.argv[0] else 'paperforge'
     (root / 'AGENTS.md').write_text(AGENTS.format(title=title, invocation=invocation),
                                     encoding='utf-8')
-    written += ['figures.toml', '.gitignore', 'AGENTS.md']
+    refused = _claude_pointer(root)
+    written += ['figures.toml', '.gitignore', 'AGENTS.md',
+                'CLAUDE.md -> AGENTS.md' if refused is None else
+                'CLAUDE.md (an @AGENTS.md import: this filesystem refused a link)']
 
     for language in languages:
         prof = profiles[language]

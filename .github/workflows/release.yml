@@ -324,6 +324,22 @@ jobs:
       - name: A fresh project must pass the whole chain clean
         run: python3 -m coverage run bin/paperforge all --config "$RUNNER_TEMP/scaffolded/documents.toml"
 
+      # One file under both names: Claude Code reads CLAUDE.md and nothing else,
+      # every other agent reads AGENTS.md. The link is relative, so the project
+      # stays movable, and git records it as a link (mode 120000) rather than as
+      # a file holding the path.
+      - name: The agent files are written, and CLAUDE.md links to AGENTS.md
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/scaffolded"
+          test -f AGENTS.md
+          test -L CLAUDE.md
+          test "$(readlink CLAUDE.md)" = "AGENTS.md"
+          # reading through the link reaches the real file, not a path
+          grep -q 'consumer' CLAUDE.md
+          git init -q . && git add -A
+          test "$(git ls-files -s CLAUDE.md | cut -d" " -f1)" = "120000"
+
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-scaffold

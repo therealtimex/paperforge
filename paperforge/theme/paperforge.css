@@ -1,15 +1,13 @@
-/* Neutral defaults. A project overrides any of these in its manifest under
-   [brand]; the seven colour tokens are the whole brand surface, the remaining
-   ~290 lines of this stylesheet are structure and print behaviour. */
-:root {
-  --navy:#243b53; --navy-2:#334e68; --navy-3:#486581;
-  --amber:#8a6d1f; --amber-soft:#faf6ec; --red:#a4262c;
-  --ink:#1b2430; --ink-soft:#4a5568; --muted:#6b7789;
-  --bg:#eef1f6; --paper:#ffffff; --line:#dfe4ec; --line-soft:#eef1f6;
-  --shadow:0 1px 3px rgba(11,37,69,.06),0 12px 32px rgba(11,37,69,.08);
-  --sans:"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
-  --serif:Georgia,"Noto Serif","Times New Roman",Times,serif;
-}
+/* Neutral defaults, filled from paperforge/palette.py at build time. A project
+   overrides any of them in its manifest under [brand]; the thirteen colour
+   tokens are the whole brand surface, the remaining ~290 lines of this
+   stylesheet are structure and print behaviour.
+
+   The emitters read the same table, so a colour on a printed page or in a Word
+   file is one this stylesheet has heard of. It said "seven" here while
+   declaring thirteen, which is the smallest version of the same problem: a
+   count kept by hand beside the thing it counts. */
+{{TOKENS}}
 *,*::before,*::after { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
 body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);

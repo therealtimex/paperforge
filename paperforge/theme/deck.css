@@ -2,18 +2,13 @@
    Same tokens as the document theme; typography sized for a projector rather
    than a page. Fonts stay in the Vietnamese-safe stack: several common serifs
    silently drop tone marks on Ơ and Ư (see docs/DESIGN.md). */
-:root {
-  /* Neutral defaults, matching paperforge.css. This block used to carry one
-     project's brand colours, so every other project's slides came out in them
-     and nothing said so - the report stylesheet was neutralised and the deck
-     was missed. */
-  --navy:#243b53; --navy-2:#334e68; --navy-3:#486581;
-  --amber:#8a6d1f; --amber-soft:#faf6ec;
-  --ink:#1b2430; --ink-soft:#44506180; --muted:#6b7789;
-  --paper:#ffffff; --line:#dfe4ec;
-  --sans:"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,"Helvetica Neue",Arial,sans-serif;
-  --serif:Georgia,"Noto Serif","Times New Roman",Times,serif;
-}
+/* Filled from paperforge/palette.py at build time, the same table the document
+   theme is filled from. This block used to be a hand-kept copy carrying one
+   project's brand colours, so every other project's slides came out in them and
+   nothing said so - the report stylesheet was neutralised and the deck was
+   missed. A copy that has to be kept in step is the defect; there is now one
+   table and no copy. */
+{{TOKENS}}
 
 .reveal { font-family:var(--sans); font-size:30px; color:var(--ink); }
 .reveal .slides { text-align:left; }

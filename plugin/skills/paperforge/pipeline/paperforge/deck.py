@@ -17,7 +17,7 @@ import html as ihtml
 import re
 from pathlib import Path
 
-from . import profile
+from . import palette, profile
 from . import markdown as md
 from .markdown import FIG, SVGS, convert, inline, parse_head
 
@@ -136,7 +136,7 @@ def build(source, output, svgs=None, kind_fallback=None, prof=None, brand=None,
         'REVEAL_CSS': (VENDOR / 'reveal.css').read_text(encoding='utf-8'),
         # the project's palette, appended after the theme so it wins - without
         # this a branded project's slides silently used the shipped defaults
-        'THEME_CSS': ((THEME / 'deck.css').read_text(encoding='utf-8')
+        'THEME_CSS': (palette.stylesheet(THEME / 'deck.css')
                       + '\n' + md.theme_override(prof, brand)),
         'REVEAL_JS': (VENDOR / 'reveal.js').read_text(encoding='utf-8'),
         'SLIDES': '\n'.join(out),

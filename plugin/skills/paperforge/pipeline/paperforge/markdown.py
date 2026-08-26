@@ -8,7 +8,7 @@ from pathlib import Path
 from . import assemble
 from . import citations as cite_mod
 from . import maths as maths_mod
-from . import front as front_mod, profile, xref
+from . import front as front_mod, palette, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -796,7 +796,7 @@ def build(source, output, svgs=None, annex=None, pages=None,
         'ORGANISATION': ihtml.escape(organisation or 'Paperforge'),
         'PUBLISHER': ihtml.escape(publisher or organisation or 'Paperforge'),
         # the file keeps its POSIX trailing newline; the shell supplies its own
-        'CSS': (THEME / 'paperforge.css').read_text(encoding='utf-8').strip(),
+        'CSS': palette.stylesheet(THEME / 'paperforge.css').strip(),
         'TITLE': ihtml.escape(re.sub(r'\s+', ' ', title)),
         'SHORT': ihtml.escape(re.split(r'[:：]', title)[0].strip().title()),
         'KIND': ('<span class="kind">%s</span>' % inline(doc_kind)) if doc_kind else '',

@@ -112,6 +112,19 @@ jobs:
       - name: Column unit checks
         run: python3 -m coverage run tests/unit_columns.py
 
+      # the four book conventions and the crop that lets the cross-edition
+      # comparison tell a chapter opening from a running head. The book fixture
+      # below proves a bound edition builds; this proves it is bound correctly,
+      # and it has been running only on developer machines since it was written.
+      - name: Book unit checks
+        run: python3 -m coverage run tests/unit_book.py
+
+      # one palette across four surfaces. The measured half reads the colours
+      # back off a PDF and a .docx, because the shipped defaults and a project's
+      # palette look identical in the source and differ only on the page.
+      - name: Palette unit checks
+        run: python3 -m coverage run tests/unit_palette.py
+
       # .coverage.* files are hidden; upload-artifact v4 drops those unless told.
       - uses: actions/upload-artifact@v4
         with:

@@ -113,6 +113,22 @@ extended four times, once per feature, each time after a false report. When you
 fix one instance, write down what the general trap is and gate that. If you
 cannot state the general form, you have not understood the defect.
 
+## The defaults agreed, which is why nothing looked wrong
+
+The design tokens were written down four times: two stylesheet `:root` blocks, a
+`DEFAULTS` dict in the Word emitter, and eight colour literals through the Typst
+emitter. Every copy carried the same values, so every edition looked right and
+every gate passed. They disagreed only for a project that declared a palette of
+its own — three of thirteen tokens reached the print edition, two reached Word,
+and the most frequent non-black colour on the printed page, 818 of them, was one
+the project had overridden and could not change.
+
+A duplicated constant is invisible for as long as everyone is using the default.
+Nothing in the output says the value came from four places, and the first to
+find out is the first to exercise the feature. When you write a value down, ask
+who else has already written it down, and what would fail if the two drifted.
+Here the answer was nothing, which is the problem.
+
 ## A refusal has to be reachable
 
 `columns = 2` on a deck is meaningless, and the refusal for it was first written
@@ -148,6 +164,12 @@ down the middle of a page is not: content is entitled to cross a gutter, and two
 of three part banners came back unlocated when that was tried. "Crop before
 reading" is not a technique that is right or wrong — it depends entirely on
 whether the boundary you are cutting on is one the layout guarantees.
+
+Below the text it is the same again. pdfplumber reports both a fill colour and a
+stroke colour on every rectangle, line and curve, whichever the paint operator
+actually used, so counting both found 44 black objects on a page where every
+mark was a brand colour. The colours were real; the black was the unused slot.
+An artifact offers more values than it asserts — ask which ones it means.
 
 ## Conventions
 

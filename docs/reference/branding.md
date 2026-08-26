@@ -1,17 +1,22 @@
 # Branding and design tokens
 
-The stylesheet is `paperforge/theme/paperforge.css` in the pipeline package;
-the page shell beside it is `document.html`. Both are shared by every document, so a change made once
-applies across the corpus.
+The tokens are declared in `paperforge/palette.py`, and every surface is filled
+from that one table: the two stylesheets' `:root` blocks, the Typst emitter and
+the Word emitter. The stylesheet itself is `paperforge/theme/paperforge.css` and
+the page shell beside it is `document.html`. All of it is shared by every
+document, so a change made once applies across the corpus.
 
 This is a **document** design system — typography, print and page furniture for
 long-form research documents. It is deliberately not a component library.
 
 ## The palette
 
-The stylesheet ships neutral defaults; a project declares its own in the
-manifest, and the build emits them *after* the theme so they win. Every token
-the stylesheet consumes is overridable — not a fixed subset:
+Thirteen colour tokens, and they are the whole brand surface — the remaining
+~290 lines of the stylesheet are structure and print behaviour. The table ships
+neutral defaults; a project declares its own in the manifest, and the build
+emits them *after* the theme so they win. Every token the stylesheet consumes is
+overridable, and a token it does not know is carried through rather than
+dropped:
 
 ```toml
 [defaults.brand]
@@ -30,9 +35,6 @@ line   = "#e3ddd4"
 red    = "#8c2f39"      # reserved for warnings
 shadow = "0 1px 3px rgba(0,0,0,.06)"
 ```
-
-Report parts (`h2.part`) take navy; annex sections (`h2.annex-part`) take amber,
-so a reader can tell at a glance whether they are in the report or the annex.
 
 ## Type
 
@@ -66,19 +68,52 @@ the same way diagrams are; a project keeps one copy of its own mark.
 
 | | Reading | Print (Typst) | Deck | Word |
 |---|---|---|---|---|
-| Palette | every token | navy ×3, amber | every token | navy, amber, ink, muted |
+| Palette | all thirteen | nine | all thirteen | five |
 | Type | yes | yes | yes | first real family in the stack |
 | Logo | yes | yes | title slide | yes, rasterised |
+
+Print takes `navy` ×3, `amber`, `amber-soft`, `ink`, `ink-soft`, `muted` and
+`line`. Word takes `navy`, `ink`, `amber`, `muted` and `ink-soft`.
+
+Four colours are **screen-only**, and the reason is the paper rather than the
+emitter:
+
+- `bg` is the colour behind the sheet, and paper has no behind.
+- `paper` is the sheet, which a printer supplies — and most cannot full-bleed.
+- `shadow` is the lift under the sheet, the same absence.
+- `line-soft` is consumed only by rules the print edition does not draw.
+
+`red` is the exception, and it is ours: it colours the rule beside a warning
+callout, and the print emitter does not distinguish a warning from a note
+(#21). It is listed as screen-only pointing at that issue rather than described
+as a screen colour, which it is not.
 
 Word takes a single face rather than a fallback list, and CSS system keywords —
 `-apple-system`, `system-ui` — are skipped, because naming one in a `.docx`
 gives Word a font it cannot find and a document that renders differently on
 every machine.
 
+Diagrams take none of it: `diagrams.py` renders Mermaid in a third palette
+that no project can change (#22).
+
 > The deck used to receive **none** of this. `deck.css` shipped one project's
 > brand colours in its own `:root`, so every other project's slides came out
 > wearing them and nothing said so — the report stylesheet was neutralised
 > during the extraction and the deck was missed.
+>
+> That was fixed by appending the project's palette after the theme, which left
+> the copy in place. The copy is the defect: both `:root` blocks are now filled
+> from `palette.py` at build time and there is nothing left to keep in step.
+
+Until the same treatment reached the emitters, a branded document printed
+mostly in Paperforge's colours. Measured on the English fixture with all
+thirteen tokens declared, three reached the PDF and two reached the `.docx`;
+the most frequent non-black colour on the printed page, at 818 occurrences, was
+`#6b7789` — the shipped `muted`, in every running head and metadata label, on a
+document that had overridden it. A colour written as a literal in an emitter is
+correct by default and unbrandable forever, and it reads as finished code
+either way, which is why `tests/unit_palette.py` fails on the *form* — any hex
+literal in either emitter — rather than on a colour going missing.
 
 Report parts (`h2.part`) get a navy banner; annex sections (`h2.annex-part`) get
 amber, so a reader can tell at a glance whether they are in the report or the

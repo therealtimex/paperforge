@@ -7,7 +7,8 @@
    project's brand colours, so every other project's slides came out in them and
    nothing said so - the report stylesheet was neutralised and the deck was
    missed. A copy that has to be kept in step is the defect; there is now one
-   table and no copy. */
+   table and no copy, and the title slide takes the same cover shades the
+   document cover does. */
 {{TOKENS}}
 
 .reveal { font-family:var(--sans); font-size:30px; color:var(--ink); }
@@ -31,33 +32,33 @@
 .reveal ul li::marker { color:var(--amber); }
 .reveal ol li::marker { color:var(--navy-3); font-weight:700; }
 .reveal a { color:var(--navy-3); text-decoration:underline; }
-.reveal code { font-size:.82em; background:#eef2f8; border:1px solid var(--line);
-  border-radius:4px; padding:1px 5px; color:#8a4d09; }
+.reveal code { font-size:.82em; background:var(--line-soft); border:1px solid var(--line);
+  border-radius:4px; padding:1px 5px; color:var(--amber-deep); }
 
 /* title slide */
 .reveal .deck-title { display:flex; flex-direction:column; justify-content:center;
-  background:radial-gradient(1200px 420px at 50% -10%,#1c4a80 0%,transparent 60%),
-             linear-gradient(150deg,#071b36 0%,#0b2545 45%,#13315c 100%);
-  color:#fff; margin:-1px; padding:60px 70px; }
-.reveal .deck-title h1 { color:#fff; font-size:1.55em; max-width:22ch; }
-.reveal .deck-kind { color:#f4c77b; font-size:.5em; font-weight:700; letter-spacing:.2em;
+  background:radial-gradient(1200px 420px at 50% -10%,var(--navy-glow) 0%,transparent 60%),
+             linear-gradient(150deg,var(--navy-deep) 0%,var(--navy-dark) 45%,var(--navy-mid) 100%);
+  color:var(--paper); margin:-1px; padding:60px 70px; }
+.reveal .deck-title h1 { color:var(--paper); font-size:1.55em; max-width:22ch; }
+.reveal .deck-kind { color:var(--amber-bright); font-size:.5em; font-weight:700; letter-spacing:.2em;
   text-transform:uppercase; margin:0 0 .8em; }
 /* the title slide is dark: italics must not inherit the ink colour */
 .reveal .deck-title, .reveal .deck-lede, .reveal .deck-lede p,
-.reveal .deck-lede em, .reveal .deck-lede strong { color:#dbe6f5; }
+.reveal .deck-lede em, .reveal .deck-lede strong { color:var(--navy-soft); }
 .reveal .deck-lede { font-size:.56em; max-width:46ch; }
 .reveal .deck-lede p { margin:.2em 0; }
 .reveal .deck-meta { display:grid; grid-template-columns:auto 1fr; gap:4px 16px;
-  font-size:.42em; color:#8fa9cc; margin-top:1.6em; max-width:40ch; }
+  font-size:.42em; color:var(--navy-pale); margin-top:1.6em; max-width:40ch; }
 .reveal .deck-meta dt { font-weight:700; }
-.reveal .deck-meta dd { color:#e8eef8; margin:0; }
+.reveal .deck-meta dd { color:var(--navy-soft); margin:0; }
 
 /* tables: readable from a distance or not shown at all */
 .reveal table { font-size:.62em; border-collapse:collapse; width:100%; }
-.reveal thead th { background:var(--navy); color:#fff; padding:8px 10px; text-align:left;
+.reveal thead th { background:var(--navy); color:var(--paper); padding:8px 10px; text-align:left;
   font-weight:650; }
 .reveal tbody td { padding:7px 10px; border-top:1px solid var(--line); vertical-align:top; }
-.reveal tbody tr:nth-child(even) { background:#f6f9fd; }
+.reveal tbody tr:nth-child(even) { background:var(--navy-tint); }
 .reveal .table-frame, .reveal .table-wrap { border:0; margin:.3em 0; overflow:visible; }
 .reveal .scroll-hint { display:none; }
 

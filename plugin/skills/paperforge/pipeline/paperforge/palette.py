@@ -16,29 +16,78 @@ this module closes: `tests/unit_palette.py` fails on a colour literal appearing
 in either emitter, rather than on any particular colour going missing.
 """
 
-# The shipped defaults. Both stylesheets open with this block, filled in at
-# build time rather than typed into each of them, so `deck.css` cannot drift
-# from `paperforge.css` again. A project's palette is still layered *after* the
-# theme by markdown.theme_override, which is what lets it win.
-TOKENS = {
-    'navy': '#243b53', 'navy-2': '#334e68', 'navy-3': '#486581',
-    'navy-soft': '#e8eef8',
-    'amber': '#8a6d1f', 'amber-soft': '#faf6ec', 'amber-line': '#f0dcbb',
-    'red': '#a4262c', 'red-soft': '#fdf0f0', 'red-line': '#f0c9c9',
-    'green': '#1f7a4d', 'green-soft': '#eefaf3', 'green-line': '#c6e9d6',
-    'ink': '#1b2430', 'ink-soft': '#4a5568', 'muted': '#6b7789',
-    'bg': '#eef1f6', 'paper': '#ffffff', 'line': '#dfe4ec', 'line-soft': '#eef1f6',
+# The six colours a project actually chooses. Everything else is a shade of one
+# of them, computed below.
+BASE = {
+    'navy': '#243b53',      # structure: parts, table headers, links, the cover
+    'amber': '#8a6d1f',     # emphasis, annex material, note callouts
+    'red': '#a4262c',       # warning callouts
+    'green': '#1f7a4d',     # tip callouts
+    'ink': '#1b2430',       # body text, and every grey derived from it
+    'paper': '#ffffff',     # the sheet, which has no hue to shade
     'shadow': '0 1px 3px rgba(11,37,69,.06),0 12px 32px rgba(11,37,69,.08)',
     'sans': '"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,'
             '"Helvetica Neue",Arial,sans-serif',
     'serif': 'Georgia,"Noto Serif","Times New Roman",Times,serif',
 }
 
-# The tokens an emitter can put on a page. `shadow` is a CSS shadow, and the two
-# font stacks are resolved separately by each emitter: Word takes a single face
-# rather than a fallback list, and a profile's stack is a glyph-coverage
-# constraint rather than a preference - see docs/reference/languages.md.
-COLOURS = frozenset(k for k, v in TOKENS.items() if v.startswith('#'))
+# Every other token, as (base, lightness %, saturation factor, hue turn°).
+#
+# These numbers are *fitted from the palette as it was shipped*, not invented:
+# each one reproduces its hand-picked value to the byte, which is the finding
+# that produced this table. The design was already a shade system - a hue held
+# steady, a lightness ramp, saturation lifted in the darks - and nobody had
+# written the system down, so twenty-four values were maintained by eye and ten
+# more like them were loose in the stylesheets where no project could reach them.
+#
+# The hue turns are small and deliberate. The amber ramp warms as it darkens,
+# -12° by the deepest step, which is why fitting it on lightness and saturation
+# alone left it 26/255 out; the navy ramp holds its hue to within 7°.
+SHADES = {
+    'navy-2':       ('navy',   30.4, 0.87,  -1.2),   # h3 headings
+    'navy-3':       ('navy',   39.4, 0.72,  -1.2),   # h2 headings, links
+    'navy-strong':  ('navy',   18.8, 1.79,  +3.8),   # bold body text
+    'navy-deep':    ('navy',   12.0, 1.95,  +3.8),   # cover gradient start, code
+    'navy-dark':    ('navy',   15.7, 1.84,  +2.5),   # cover gradient middle
+    'navy-mid':     ('navy',   21.8, 1.67,  +4.7),   # cover gradient end
+    'navy-glow':    ('navy',   30.6, 1.62,  +1.8),   # the light over the cover
+    'navy-pale':    ('navy',   68.0, 0.95,  +3.8),   # metadata keys on the cover
+    'navy-wash':    ('navy',   85.7, 1.08,  +4.2),   # lede and topbar text
+    'navy-soft':    ('navy',   94.1, 1.35,  +6.9),   # diagram nodes, code text
+    'navy-tint':    ('navy',   98.2, 1.41,  +5.4),   # banded table rows
+    'amber-bright': ('amber',  72.0, 1.34,  -6.1),   # on the dark cover
+    'amber-lift':   ('amber',  36.1, 1.17, -10.7),   # annex banner, progress
+    'amber-deep':   ('amber',  28.8, 1.39, -12.1),   # links on light ground
+    'amber-line':   ('amber',  83.7, 1.01,  -6.4),   # note callout hairline
+    'amber-soft':   ('amber',  95.3, 0.92,  -0.9),   # note callout fill
+    'red-line':     ('red',    86.5, 0.91,  +2.9),   # warning callout hairline
+    'red-soft':     ('red',    96.7, 1.23,  +2.9),   # warning callout fill
+    'green-line':   ('green',  84.5, 0.74,  -2.9),   # tip callout hairline
+    'green-soft':   ('green',  95.7, 0.92,  -5.3),   # tip callout fill
+    'ink-soft':     ('ink',    34.9, 0.60,  +3.7),   # captions, affiliations
+    'muted':        ('ink',    47.8, 0.44,  +1.7),   # running heads, meta labels
+    'line':         ('ink',    90.0, 0.91,  +2.6),   # rules and table strokes
+    'line-soft':    ('ink',    94.9, 1.10,  +3.2),   # the softest rule
+    'bg':           ('ink',    94.9, 1.10,  +3.2),   # behind the sheet, on screen
+}
+
+
+def shade(value, light, sat=1.0, turn=0.0):
+    """A base colour at another lightness, on the same hue.
+
+    HSL rather than a perceptual space on purpose: HSL is what the values were
+    picked in, so it is what reproduces them, and a rule that cannot reproduce
+    the design it claims to describe is a different design.
+    """
+    import colorsys
+    r, g, b = (int(value.lstrip('#')[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+    hue, _, saturation = colorsys.rgb_to_hls(r, g, b)
+    hue = ((hue * 360 + turn) % 360) / 360.0
+    saturation = max(0.0, min(1.0, saturation * sat))
+    return '#%02x%02x%02x' % tuple(
+        round(c * 255) for c in colorsys.hls_to_rgb(hue, light / 100.0, saturation))
+
+
 
 # Screen-only by nature rather than by omission, and every one of them is about
 # the sheet rather than about anything printed on it:
@@ -80,16 +129,34 @@ MERMAID = {'primaryColor': 'navy-soft', 'primaryTextColor': 'navy',
 def resolve(prof=None, brand=None):
     """The palette this document is set in.
 
-    Defaults, then the profile's faces, then the project's own - the same order
-    the reading edition has always applied, so the editions cannot disagree
-    about type. A brand key the table does not know is carried through: the
-    stylesheet consumes a fixed set, but nothing is gained by dropping the rest
-    on the floor.
+    Bases, then the profile's faces, then the project's own - the same order the
+    reading edition has always applied, so the editions cannot disagree about
+    type. Then every shade the project did not name for itself is recomputed
+    from whichever base it hangs off, so a project that declares `navy` gets a
+    cover, a code block and a set of diagram nodes in its own colour without
+    having to know that those exist.
+
+    A shade the project *did* name wins outright: a house style with a specific
+    cover is not obliged to accept one derived from its structural navy.
+
+    A brand key the table does not know is carried through. The stylesheet
+    consumes a fixed set, but nothing is gained by dropping the rest.
     """
-    tokens = dict(TOKENS)
+    brand = brand or {}
+    tokens = dict(BASE)
     tokens.update((prof or {}).get('fonts') or {})
-    tokens.update(brand or {})
+    tokens.update(brand)
+    for name, (base, light, sat, turn) in SHADES.items():
+        if name not in brand:
+            tokens[name] = shade(tokens[base], light, sat, turn)
     return tokens
+
+
+# The palette as shipped: what the stylesheets are filled with, and what stands
+# in for the emitters until a document is built.
+TOKENS = resolve()
+
+COLOURS = frozenset(k for k, v in TOKENS.items() if v.startswith('#'))
 
 
 def root(tokens):

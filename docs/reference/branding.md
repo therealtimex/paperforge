@@ -11,41 +11,54 @@ long-form research documents. It is deliberately not a component library.
 
 ## The palette
 
-Twenty colour tokens. The table ships neutral defaults; a project declares its
-own in the manifest, and the build emits them *after* the theme so they win.
-Every token the stylesheet consumes is overridable, and a token it does not know
-is carried through rather than dropped:
-
-> **Not yet the whole brand surface.** The stylesheets also paint with 56 colour
-> literals across 33 distinct values that are not tokens, including the entire
-> cover — a fourth palette, darker than the document's. This page used to claim
-> the tokens *were* the whole surface, and that claim was wrong before the count
-> in it was. See #25.
+Thirty-one colour tokens, of which a project chooses **six**:
 
 ```toml
 [defaults.brand]
-navy   = "#5b2333"      # carries structure: parts, table headers, links
-"navy-2" = "#7a3145"
-"navy-3" = "#9a4058"
-"navy-soft" = "#efe2e6"   # diagram node fills
-amber  = "#2f6d5b"      # emphasis, annex material, note callouts
-"amber-soft" = "#eaf3f0"
-"amber-line" = "#bcd8cd"
-red    = "#8c2f39"      # warning callouts
-"red-soft" = "#f9ecee"
-"red-line" = "#e3c3c7"
-green  = "#3f6d2f"      # tip callouts
-"green-soft" = "#eef5e9"
-"green-line" = "#cfe0c4"
-ink    = "#231f20"      # body text
-"ink-soft" = "#4a5568"
-muted  = "#7a736b"
-bg     = "#f7f4ef"      # page behind the sheet
-paper  = "#fffdf9"      # the sheet
-line   = "#e3ddd4"
-"line-soft" = "#eef1f6"
-shadow = "0 1px 3px rgba(0,0,0,.06)"
+navy  = "#5b2333"      # structure: parts, table headers, links, the cover
+amber = "#2f6d5b"      # emphasis, annex material, note callouts
+red   = "#8c2f39"      # warning callouts
+green = "#3f6d2f"      # tip callouts
+ink   = "#231f20"      # body text, and every grey derived from it
+paper = "#fffdf9"      # the sheet
 ```
+
+That is a complete rebrand. The other twenty-five are **shades**: a base at
+another lightness, on the same hue, computed at build time from the table in
+`palette.SHADES`. Declaring `navy` recolours the cover gradient, the code block,
+the banded table rows and the diagram nodes, none of which a project should have
+to know about.
+
+A shade can still be named directly, and then it wins outright — a house style
+with a specific cover is not obliged to accept one derived from its structural
+navy:
+
+```toml
+[defaults.brand]
+navy = "#5b2333"
+"navy-deep" = "#1a0008"   # this cover, not the one the rule would give
+```
+
+A token the table does not know is carried through rather than dropped.
+
+### The shade table describes the design; it did not replace it
+
+Every one of the twenty-five rows was **fitted to the value it replaced**, and
+each reproduces that value exactly — `navy-2` is still `#334e68`, `amber-soft`
+is still `#faf6ec`. The palette was already a shade system: a hue held steady, a
+lightness ramp, saturation lifted in the darks. Nobody had written the system
+down, so twenty-four values were maintained by eye and thirty-three more like
+them were loose in the stylesheets where no project could reach them.
+
+Each row is `(base, lightness, saturation factor, hue turn)`. The hue turns are
+small and deliberate: the amber ramp warms as it darkens, by −12° at the deepest
+step, which is why fitting it on lightness and saturation alone left it 26/255
+out. The navy ramp holds its hue to within 7°.
+
+> Twelve translucent colours are still literal, the topbar among them. A
+> translucent colour cannot take a `var()` without `color-mix`, and whether a
+> published document may depend on that is a decision rather than a refactor —
+> see #27.
 
 ## Type
 
@@ -79,14 +92,15 @@ the same way diagrams are; a project keeps one copy of its own mark.
 
 | | Reading | Print (Typst) | Deck | Word |
 |---|---|---|---|---|
-| Palette | 19 of 20 | 16 | 8 | 7 |
+| Palette | all 31 | 16 | 19 | 7 |
 | Type | yes | yes | yes | first real family in the stack |
 | Logo | yes | yes | title slide | yes, rasterised |
 
-- **Reading** consumes every token but `navy-soft`, which only diagrams use.
+- **Reading** consumes every token, the cover included.
 - **Print** takes `navy` ×3, `ink`, `ink-soft`, `muted`, `line` and all nine
   callout colours.
-- **Deck** has fewer surfaces to paint: no tables, no callouts, no captions.
+- **Deck** shares the cover shades and the type, and has fewer surfaces to
+  paint besides: no callouts, no captions, no printed contents.
 - **Word** takes `navy`, `ink`, `ink-soft`, `muted` and the three callout rules.
   It cannot draw a callout's fill without fighting its own `Intense Quote`
   style, so it says the same thing in the text colour.

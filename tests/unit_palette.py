@@ -44,11 +44,13 @@ def check(label, condition):
 HEX = re.compile(r'#[0-9a-fA-F]{3,8}\b')
 
 EMITTERS = ('typst.py', 'docx.py', 'diagrams.py', 'markdown.py', 'deck.py')
+SHEETS = ('paperforge.css', 'deck.css')
 
-# The stylesheets are *not* checked yet, and that is stated rather than left to
-# be inferred: they carry 56 literals across 33 distinct values, including the
-# whole cover - github.com/therealtimex/paperforge/issues/25. A gate that
-# quietly skips a file reads as covering it.
+# `rgba()` is the one thing the stylesheet check does not cover, because a
+# translucent colour cannot take a var without color-mix and whether a published
+# document may depend on that is a decision rather than a refactor:
+# github.com/therealtimex/paperforge/issues/27. Stated, not skipped - a gate
+# that quietly passes over something reads as covering it.
 
 
 def literals(source):
@@ -75,6 +77,12 @@ def main():
         check('%s takes every colour from the palette' % name, not found)
         if found:
             print('       found: %s' % ', '.join(sorted(set(found))))
+
+    for sheet in SHEETS:
+        found = HEX.findall((root / 'theme' / sheet).read_text(encoding='utf-8'))
+        check('%s paints with tokens, not colours' % sheet, not found)
+        if found:
+            print('       found %d: %s' % (len(found), ', '.join(sorted(set(found)))))
 
     # the gate has to fail on the thing it was written for, so here is that
     # thing: the line as typst.py carried it until this commit
@@ -145,18 +153,49 @@ def main():
           palette.resolve(prof, {'sans': 'Palatino'})['sans'] == 'Palatino')
     check('a token the table does not know is carried through, not dropped',
           palette.resolve(prof, {'houseblue': '#010203'})['houseblue'] == '#010203')
-    check('twenty colour tokens, and the fonts are not among them',
-          len(palette.COLOURS) == 20 and 'sans' not in palette.COLOURS)
+    check('thirty-one colour tokens, and the fonts are not among them',
+          len(palette.COLOURS) == 31 and 'sans' not in palette.COLOURS)
+
+    print('the shade table')
+    # The finding that produced the table: the palette was already a shade
+    # system and nobody had written the system down. If a fitted row stops
+    # reproducing the value it was fitted to, the table has become a different
+    # design rather than a description of this one.
+    SHIPPED = {'navy-2': '#334e68', 'navy-3': '#486581', 'navy-soft': '#e8eef8',
+               'amber-soft': '#faf6ec', 'amber-line': '#f0dcbb',
+               'red-soft': '#fdf0f0', 'red-line': '#f0c9c9',
+               'green-soft': '#eefaf3', 'green-line': '#c6e9d6',
+               'ink-soft': '#4a5568', 'muted': '#6b7789', 'line': '#dfe4ec',
+               'line-soft': '#eef1f6', 'bg': '#eef1f6'}
+    off = {k: (v, palette.TOKENS[k]) for k, v in SHIPPED.items()
+           if palette.TOKENS[k] != v}
+    check('every shade reproduces the value it was fitted to, exactly', not off)
+    if off:
+        print('       drifted: %s' % off)
+    check('six bases and the rest derived',
+          len(palette.BASE) - 3 == 6 and len(palette.SHADES) == 25)
+    house = palette.resolve(None, {'navy': '#5b2333'})
+    check('one base recolours everything hanging off it',
+          house['navy-deep'] != palette.TOKENS['navy-deep']
+          and house['navy-tint'] != palette.TOKENS['navy-tint'])
+    check('and leaves the shades of other bases alone',
+          house['muted'] == palette.TOKENS['muted']
+          and house['amber-deep'] == palette.TOKENS['amber-deep'])
+    pinned = palette.resolve(None, {'navy': '#5b2333', 'navy-deep': '#010203'})
+    check('a shade the project names for itself wins over the rule',
+          pinned['navy-deep'] == '#010203' and pinned['navy-dark'] == house['navy-dark'])
+    check('a shade keeps its base hue', palette.shade('#5b2333', 90.0)[1:3] > '9')
 
     # This count has been written down by hand beside the thing it counts three
     # times and been wrong twice - "seven" while thirteen were declared, then
     # "thirteen" while twenty were. A number in prose next to the table it
     # describes is a copy, and copies drift; this is the same defect the whole
     # module exists for, in English rather than in CSS.
-    WORDS = {13: 'Thirteen', 20: 'Twenty', 21: 'Twenty-one', 24: 'Twenty-four'}
+    WORDS = {20: 'Twenty', 24: 'Twenty-four', 30: 'Thirty', 31: 'Thirty-one',
+             32: 'Thirty-two'}
     doc = (Path(__file__).resolve().parents[1]
            / 'docs/reference/branding.md').read_text(encoding='utf-8')
-    said = re.search(r'^(\w+(?:-\w+)?) colour tokens\.', doc, re.M)
+    said = re.search(r'^(\w+(?:-\w+)?) colour tokens\b', doc, re.M)
     check('branding.md states the number of tokens the table declares',
           said is not None and said.group(1) == WORDS.get(len(palette.COLOURS)))
     if said and said.group(1) != WORDS.get(len(palette.COLOURS)):
@@ -193,18 +232,17 @@ def _root_of(css):
     return sorted(re.findall(r'--([a-z0-9-]+):', m.group(1))) if m else []
 
 
-# Every value distinct from every shipped default, so a token that failed to
+# Six colours, which is all a project writes. Everything the editions are then
+# checked for is *derived* from these, so this is a test of the shade table and
+# not a list of values handed to the emitters one at a time.
+#
+# Every one is distinct from every shipped default, so a token that failed to
 # apply cannot be mistaken for one that applied and happened to match. An
 # earlier version of this file set `ink-soft` to the shipped `#4a5568` and could
 # not tell the two apart.
-BRAND = {'navy': '#5b2333', 'navy-2': '#7a3145', 'navy-3': '#9a4058',
-         'navy-soft': '#efe2e6',
-         'amber': '#2f6d5b', 'amber-soft': '#eaf3f0', 'amber-line': '#bcd8cd',
-         'red': '#8c2f39', 'red-soft': '#f9ecee', 'red-line': '#e3c3c7',
-         'green': '#3f6d2f', 'green-soft': '#eef5e9', 'green-line': '#cfe0c4',
-         'ink': '#231f20', 'ink-soft': '#7a5c00', 'muted': '#7a736b',
-         'bg': '#f7f4ef', 'paper': '#fffdf9', 'line': '#e3ddd4',
-         'line-soft': '#d8d2c8'}
+HOUSE = {'navy': '#5b2333', 'amber': '#2f6d5b', 'red': '#8c2f39',
+         'green': '#3f6d2f', 'ink': '#231f20', 'paper': '#fffdf9'}
+BRAND = {k: v for k, v in palette.resolve(None, HOUSE).items() if v.startswith('#')}
 BY_VALUE = {v: k for k, v in BRAND.items()}
 
 SOURCE = """# WORKING PAPER
@@ -304,17 +342,18 @@ def measured():
         src.write_text(SOURCE, encoding='utf-8')
 
         html_out = work / 'paper.html'
-        md.build(src, html_out, prof=prof, brand=BRAND, organisation='Paperforge',
+        md.build(src, html_out, prof=prof, brand=HOUSE, organisation='Paperforge',
                  contents_heading='CONTENTS')
         html = html_out.read_text(encoding='utf-8')
         missing = sorted(k for k, v in BRAND.items() if v not in html)
-        check('the reading edition carries all twenty tokens', not missing)
+        check('six declared colours reach the reading edition as thirty-one',
+              not missing)
         if missing:
             print('       missing: %s' % ', '.join(missing))
 
         pdf_out = work / 'paper.pdf'
         try:
-            typst.build(src, pdf_out, prof, brand=BRAND, organisation='Paperforge',
+            typst.build(src, pdf_out, prof, brand=HOUSE, organisation='Paperforge',
                         contents_heading='CONTENTS', cache=work)
         except (RuntimeError, FileNotFoundError) as exc:
             check('the print edition builds (typst present?): %s' % str(exc)[:40], False)
@@ -348,7 +387,7 @@ def measured():
               seen[BRAND['amber-soft']] >= 2)
 
         docx_out = work / 'paper.docx'
-        docx_mod.build(src, docx_out, prof, brand=BRAND, organisation='Paperforge',
+        docx_mod.build(src, docx_out, prof, brand=HOUSE, organisation='Paperforge',
                        contents_heading='CONTENTS')
         with zipfile.ZipFile(docx_out) as z:
             word = (z.read('word/document.xml') + z.read('word/styles.xml')).decode('utf-8')

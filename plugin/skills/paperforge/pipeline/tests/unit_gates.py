@@ -265,11 +265,20 @@ def main():
     from paperforge import markdown as md
     prof = profile.load('en')
     plain = md.theme_override(prof, None)
-    check('an unbranded project gets the profile fonts and no palette',
-          '--serif' in plain and '--navy' not in plain)
+    check('an unbranded project is given no palette at all',
+          '--navy' not in plain and '--navy-deep' not in plain)
+    # only what differs from the shipped defaults: the English profile's serif
+    # *is* the default, so re-declaring it would be a copy of the line above it
+    check("and only the faces that differ from the stylesheet's",
+          '--sans' in plain and '--serif' not in plain)
+    check('a profile whose faces both differ declares both',
+          all(tok in md.theme_override(profile.load('zh'), None)
+              for tok in ('--sans', '--serif')))
     branded = md.theme_override(prof, {'navy': '#5b2333', 'bg': '#f7f4ef'})
     check('a declared palette is emitted as tokens',
           '--navy: #5b2333' in branded and '--bg: #f7f4ef' in branded)
+    check('together with the shades derived from it, which were not declared',
+          '--navy-deep:' in branded and '--navy-tint:' in branded)
     housed = md.theme_override(prof, {'serif': 'Palatino, serif'})
     check('a project may name its own face, overriding the profile',
           '--serif: Palatino, serif' in housed)

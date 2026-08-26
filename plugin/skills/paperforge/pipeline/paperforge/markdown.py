@@ -670,13 +670,22 @@ def theme_override(prof, brand=None):
     A project declares its own palette under [brand] in the manifest; the
     stylesheet ships neutral defaults so an unbranded project does not come out
     wearing someone else's colours.
+
+    The *resolved* palette, not the declared one. A project writes six colours
+    and the shade table turns them into thirty-one, so emitting only what was
+    written would leave the cover, the code block and every callout on the
+    shipped defaults while the six bases changed around them.
+
+    Only what differs from those defaults is emitted, so an unbranded document
+    carries no palette block at all - which is also what keeps the profile's
+    faces, which do differ, from arriving alone in an empty rule.
     """
     parts = []
     # profile first, brand second: the profile knows which faces carry the
     # script's glyphs, the project knows its own house type, and a project that
     # names one has taken responsibility for the coverage - see languages.md
-    tokens = dict(prof.get('fonts') or {})
-    tokens.update(brand or {})
+    tokens = {k: v for k, v in palette.resolve(prof, brand).items()
+              if palette.TOKENS.get(k) != v}
     if tokens:
         decl = ''.join('  --%s: %s;\n' % (k, v) for k, v in sorted(tokens.items()))
         parts.append(':root {\n%s}' % decl)

@@ -25,7 +25,6 @@ BASE = {
     'green': '#1f7a4d',     # tip callouts
     'ink': '#1b2430',       # body text, and every grey derived from it
     'paper': '#ffffff',     # the sheet, which has no hue to shade
-    'shadow': '0 1px 3px rgba(11,37,69,.06),0 12px 32px rgba(11,37,69,.08)',
     'sans': '"Be Vietnam Pro","Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,'
             '"Helvetica Neue",Arial,sans-serif',
     'serif': 'Georgia,"Noto Serif","Times New Roman",Times,serif',
@@ -159,10 +158,64 @@ TOKENS = resolve()
 COLOURS = frozenset(k for k, v in TOKENS.items() if v.startswith('#'))
 
 
+# The translucent tokens: a base shown through, at a fixed strength.
+#
+# The strengths are structural rather than editorial - a topbar at 97% is a
+# topbar, not a decision - so a veil is not overridable on its own. Change its
+# base and it follows.
+VEILS = {
+    'navy-veil':    ('navy-dark', 97),      # the topbar over scrolling content
+    'navy-screen':  ('navy-dark', 75),      # a deck's slide number
+    'navy-shade':   ('navy-dark', 28),      # the lift under a raised card
+    'navy-film':    ('navy-dark', 13),      # the fade at a scrollable edge
+    'navy-ghost':   ('navy-dark',  4),      # the rest state of the same card
+    'navy-mark':    ('navy-glow', 35),      # the underline beneath a link
+    'amber-veil':   ('amber-bright', 50),   # the cover badge's edge
+    'amber-film':   ('amber-bright', 10),   # the cover badge's ground
+    'amber-shade':  ('amber-lift', 35),     # the annex badge's edge
+    'amber-wash':   ('amber-lift', 14),     # the annex badge's ground
+    'paper-film':   ('paper', 12),          # a hairline reversed out of navy
+}
+
+
+def alpha(value, percent):
+    """A token at a percentage, as eight-digit hex."""
+    return '%s%02x' % (value, round(percent * 255 / 100.0))
+
+
+def veil_rules(tokens, names=None):
+    """Each veil twice: a resolved value, then the same thing as a color-mix.
+
+    The fallback is not a compromise here and the color-mix is not load-bearing.
+    This stylesheet is *generated*, so the build already knows what `navy-dark`
+    resolved to for this project and can write the eight-digit hex itself -
+    correct under any brand, on any browser back to 2016. The color-mix line
+    restates it against the live custom property, which is what keeps the two
+    from parting company if a token is ever overridden after the sheet is
+    written. A browser that does not know color-mix drops that line and is left
+    holding the right colour rather than a fallback for one.
+    """
+    out = []
+    for name, (base, percent) in sorted(VEILS.items()):
+        if names is not None and base not in names:
+            continue
+        out.append('  --%s: %s;' % (name, alpha(tokens[base], percent)))
+        out.append('  --%s: color-mix(in oklab, var(--%s) %d%%, transparent);'
+                   % (name, base, percent))
+    return out
+
+
+def shadow(tokens):
+    """The lift under the sheet: the cover navy, twice, very faint."""
+    return '0 1px 3px %s,0 12px 32px %s' % (alpha(tokens['navy-dark'], 6),
+                                            alpha(tokens['navy-dark'], 8))
+
+
 def root(tokens):
     """The `:root` block both stylesheets open with."""
-    return ':root {\n%s}' % ''.join('  --%s: %s;\n' % (k, tokens[k])
-                                    for k in sorted(tokens))
+    lines = ['  --%s: %s;' % (k, tokens[k]) for k in sorted(tokens)]
+    lines.append('  --shadow: %s;' % shadow(tokens))
+    return ':root {\n%s\n}' % '\n'.join(lines + veil_rules(tokens))
 
 
 def stylesheet(path):

@@ -55,10 +55,32 @@ small and deliberate: the amber ramp warms as it darkens, by −12° at the deep
 step, which is why fitting it on lightness and saturation alone left it 26/255
 out. The navy ramp holds its hue to within 7°.
 
-> Twelve translucent colours are still literal, the topbar among them. A
-> translucent colour cannot take a `var()` without `color-mix`, and whether a
-> published document may depend on that is a decision rather than a refactor —
-> see #27.
+### Translucency
+
+Eleven more tokens are **veils**: a base shown through at a fixed strength — the
+topbar at 97% of the cover's dark navy, a link's underline at 35% of its glow, a
+badge's ground at 10% of its amber. The strengths are structural rather than
+editorial, so a veil is not overridable on its own; change its base and it
+follows. `--shadow` is two of them.
+
+Each is written twice:
+
+```css
+--navy-veil: #0b2545f7;
+--navy-veil: color-mix(in oklab, var(--navy-dark) 97%, transparent);
+```
+
+**The first line is not a compromise and the second is not load-bearing.** This
+stylesheet is generated, so the build already knows what `navy-dark` resolved to
+for this project and writes the eight-digit hex itself — correct under any
+brand, on any browser back to 2016. The `color-mix` line restates it against the
+live custom property, which is what keeps the two from parting company if a
+token is overridden after the sheet is written.
+
+Measured: rendering the same document with the `color-mix` lines and again with
+them stripped differs by 93 pixels at 1/255, which is rounding. A browser that
+has never heard of `color-mix` is left holding the right colour rather than a
+fallback for one.
 
 ## Type
 

@@ -72,8 +72,27 @@ one.
 
 ## What it writes
 
-`documents.toml`, `figures.toml`, `AGENTS.md`, `.gitignore`, skeleton sources
-for each requested publication in each requested language, and a git repo.
+`documents.toml`, `figures.toml`, `AGENTS.md`, `CLAUDE.md`, `.gitignore`,
+skeleton sources for each requested publication in each requested language, and
+a git repo.
+
+`CLAUDE.md` is a **relative symlink to `AGENTS.md`** — one file under both
+names, because Claude Code reads `CLAUDE.md` and nothing else while every other
+agent reads `AGENTS.md`. Relative, so the project stays movable; git records it
+as a link rather than as a file holding a path.
+
+Windows needs Administrator or Developer Mode to create a symlink, and git there
+without `core.symlinks` checks an existing one out as a text file holding the
+target. Where the filesystem refuses the link outright, `init` writes a
+`@AGENTS.md` import instead and says which it wrote, rather than leaving the
+project half made or quietly producing a different one.
+
+`AGENTS.md` says only what `init` actually knows: the invocation path it just
+wrote, what the manifest decides, that rendered artefacts are built and never
+hand-edited, and that the project is a consumer of a pipeline that lives
+elsewhere. It is deliberately not a general agent manual — a generated manual
+has slots the generator cannot fill, and `(not specified)` left in a file for
+long enough is read as a fact.
 
 **A fresh project passes `paperforge all` clean.** That is the acceptance
 criterion: a team whose first encounter with the gates is a wall of red on files

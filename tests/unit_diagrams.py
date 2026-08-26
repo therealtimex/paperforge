@@ -16,10 +16,12 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import browser, diagrams
+from paperforge import browser, diagrams, palette
 
 failures = []
 GOOD = '<svg viewBox="0 0 100 50" style="max-width:100px"><g/></svg>'
+RECOLOURED = '<svg viewBox="0 0 100 50"><g fill="#5b2333"/></svg>'
+HOUSE = {'navy': '#5b2333', 'navy-soft': '#efe2e6'}
 
 
 def check(label, condition):
@@ -39,6 +41,16 @@ def raises(label, fn, fragment):
         return
     print('  %-58s FAIL (no error)' % label)
     failures.append(label)
+
+
+def _stale(cache, srcs):
+    """Rewrite the cache in the old shape - sources and svgs, no theme - and
+    return what a build would serve from it, which must be nothing."""
+    cache.write_text(json.dumps({'sources': srcs, 'svgs': ['STALE', 'STALE']}),
+                     encoding='utf-8')
+    stub(json.dumps([GOOD, GOOD]))
+    served = diagrams.render(srcs, cache=cache)
+    return served if 'STALE' in served else None
 
 
 def stub(payload):
@@ -80,6 +92,24 @@ def main():
             stub(json.dumps([GOOD]))
             check('a changed source list re-renders rather than reusing the cache',
                   len(diagrams.render(srcs[:1], cache=cache)) == 1)
+
+            print('the palette is part of the cache key')
+            stub(json.dumps([GOOD, GOOD]))
+            plain = diagrams.render(srcs, cache=cache)
+            stub(json.dumps([RECOLOURED, RECOLOURED]))
+            # The key was the sources alone. Changing a palette and rebuilding
+            # served the diagrams back in the old colours, on a machine where
+            # everything else had changed, with the build reporting success.
+            branded = diagrams.render(srcs, cache=cache,
+                                      tokens=palette.resolve(None, HOUSE))
+            check('a changed palette re-renders rather than serving old colours',
+                  branded != plain and branded[0] == RECOLOURED)
+            stub('THIS SHOULD NOT BE READ EITHER')
+            check('and the branded result is itself cached',
+                  diagrams.render(srcs, cache=cache,
+                                  tokens=palette.resolve(None, HOUSE)) == branded)
+            check('a cache written before the theme was keyed is not trusted',
+                  _stale(cache, srcs) is None)
 
             print('refusals')
             stub('')

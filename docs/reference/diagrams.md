@@ -39,6 +39,33 @@ rather than embedded as SVG. Mermaid puts every node label inside
 `<foreignObject>`, which Typst does not draw: embedding the SVG directly
 produced boxes and arrows with no text at all.
 
+## Colour
+
+A diagram is drawn in the document's palette. Mermaid names its theme in its own
+vocabulary, so the mapping is written down once in `palette.MERMAID`: a node
+takes `navy-soft`, its border and every connector `navy-3`, labels and titles
+`navy`, clusters `line-soft` inside `line`, and a categorical scale runs navy,
+navy-3, amber. The font stack comes from the palette too.
+
+A node fill is `navy-soft` rather than `navy` because a flowchart node filled
+with a structural colour at full strength has unreadable text on it.
+
+> This was a module constant carrying twelve colours of its own — a third
+> palette, near enough the document's to look deliberate and far enough to be
+> visible beside it. `#0b2545` and `#1c4a80` are not navy tokens. A project that
+> declared a full brand got a branded cover, branded parts, branded tables and
+> Paperforge-blue flowcharts between them.
+
+**The cache keys on the palette as well as the sources.** It keyed on the
+sources alone, so changing a palette and rebuilding served the diagrams back in
+the old colours — on a machine where everything else had changed, with the build
+reporting success. A cache written before this carries no theme, compares
+unequal, and re-renders.
+
+The raster for the print edition has a **transparent** background rather than a
+white one. White is a colour chosen where it is written: correct on white paper
+and a white rectangle on any other.
+
 ## Sizing
 
 A wide diagram is never shrunk below ~70% of its natural width — it scrolls

@@ -8,7 +8,8 @@ import tomllib
 from pathlib import Path
 
 from . import (assemble, brief, deck, diagrams, editions, figures, lint, markdown,
-               pages, profile, publish as pub, runs, scaffold, typst, verify)
+               pages, palette, profile, publish as pub, runs, scaffold, typst,
+               verify)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -354,7 +355,10 @@ def do_build(docs, cache, measure=True):
         # section was allocated a figure number and a raster nobody had been
         # asked to render - see assemble.sources()
         srcs = diagrams.sources(*assemble.sources(d))
-        svgs = diagrams.render(srcs, cache=cache / ('%s.diagrams.json' % d['source']))
+        # the document's own palette and font stack, so a diagram is drawn in
+        # the same colours as the page around it; the cache keys on both
+        svgs = diagrams.render(srcs, cache=cache / ('%s.diagrams.json' % d['source']),
+                               tokens=palette.resolve(d['prof'], d.get('brand')))
         if d.get('format') == 'deck':
             stats = deck.build(d['source_path'], d['output_path'], svgs=svgs,
                                brand=d.get('brand'), logo=d.get('logo_path'),

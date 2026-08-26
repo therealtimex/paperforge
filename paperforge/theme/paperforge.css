@@ -1,12 +1,13 @@
 /* Neutral defaults, filled from paperforge/palette.py at build time. A project
-   overrides any of them in its manifest under [brand]; the thirteen colour
-   tokens are the whole brand surface, the remaining ~290 lines of this
-   stylesheet are structure and print behaviour.
+   overrides any of them in its manifest under [brand], and the emitters read
+   the same table, so a colour on a printed page or in a Word file is one this
+   stylesheet has heard of.
 
-   The emitters read the same table, so a colour on a printed page or in a Word
-   file is one this stylesheet has heard of. It said "seven" here while
-   declaring thirteen, which is the smallest version of the same problem: a
-   count kept by hand beside the thing it counts. */
+   This block used to claim the tokens were the whole brand surface. They are
+   not: this file still paints with 42 colour literals of its own, including the
+   entire cover - see issue #25. The claim survived two corrections to the
+   number in it, which is what a count kept by hand beside the thing it counts
+   is worth. tests/unit_palette.py now checks the number against the table. */
 {{TOKENS}}
 *,*::before,*::after { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
@@ -152,11 +153,17 @@ body.doc-review main > p::before { content: counter(para); position: absolute;
 .logo svg, .logo img { height:var(--logo-h,46px); width:auto; max-width:70%; }
 
 /* ---------- callout ---------- */
+/* Three colours per variant - rule, fill, hairline - and all nine are tokens.
+   The print and Word editions read the same three from palette.CALLOUTS, so a
+   warning is a warning in every edition; it used to be a note in two of them. */
 .callout { margin:24px 0 28px; padding:18px 22px; border-radius:10px; font-size:.93rem;
-  background:var(--amber-soft); border:1px solid #f0dcbb; border-left:5px solid var(--amber); }
+  background:var(--amber-soft); border:1px solid var(--amber-line);
+  border-left:5px solid var(--amber); }
 .callout p:last-child { margin-bottom:0; }
-.callout.warning { background:#fdf0f0; border-color:#f0c9c9; border-left-color:var(--red); }
-.callout.tip { background:#eefaf3; border-color:#c6e9d6; border-left-color:#1f7a4d; }
+.callout.warning { background:var(--red-soft); border-color:var(--red-line);
+  border-left-color:var(--red); }
+.callout.tip { background:var(--green-soft); border-color:var(--green-line);
+  border-left-color:var(--green); }
 
 /* ---------- diagrams ---------- */
 figure.diagram { margin:28px 0 34px; padding:22px 18px 12px; background:#fafcfe;

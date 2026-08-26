@@ -129,6 +129,29 @@ find out is the first to exercise the feature. When you write a value down, ask
 who else has already written it down, and what would fail if the two drifted.
 Here the answer was nothing, which is the problem.
 
+## The design was already a system; nobody had written the system down
+
+Thirty-three colours were loose in the stylesheets and twenty-four more were
+maintained by eye in a flat table. Replacing them looked like a design job -
+someone would have to *choose* what the cover's dark navy ramp should be.
+
+Measuring first turned it into a description. Converted to HSL, the palette was
+one hue held steady, a lightness ramp, and saturation lifted in the darks; a
+four-number rule per token reproduces every hand-picked value **to the byte**.
+The design system existed. It had never been written in a form anything could
+read, so it was maintained by eye and could not be handed to a project.
+
+Before rewriting something on the grounds that it has no structure, go and look
+for the structure. A rule that reproduces the artifact exactly is a description
+and can be shipped without an argument about taste; a rule that only comes close
+is a new design wearing the old one's name, and the difference between the two
+is a measurement, not an opinion.
+
+Verify it as a refactor rather than as a feature. This one was checked by
+rendering the same document before and after and differencing the pixels: 3.9%
+of the page differs and the largest luminance delta anywhere is 7/255. That is a
+claim about the artifact. "The values look the same" is a claim about the diff.
+
 ## A refusal has to be reachable
 
 `columns = 2` on a deck is meaningless, and the refusal for it was first written

@@ -194,6 +194,53 @@ actually used, so counting both found 44 black objects on a page where every
 mark was a brand colour. The colours were real; the black was the unused slot.
 An artifact offers more values than it asserts — ask which ones it means.
 
+## The tool may say what is there, never what it means
+
+Four modules arrived at this line independently and none of them wrote it down.
+`brief.py` emits "the half that is fact" and stops: it will not write the method
+or the role assignment, because "inventing them would be the tool pretending to
+author". `figures.py` reports a *disagreement* between two statements of a
+declared value, never that a sentence is badly put. `lint.py` names findings in
+the terms an author can fix, and every one of them is a thing that is or is not
+present in the file. The README says it in a line: renders and gates, does not
+author.
+
+So the rule was already being followed, and every new feature has had to derive
+it again from scratch. Written down:
+
+**A feature is in scope if Paperforge can measure it, and out of scope if
+Paperforge would have to compose it.**
+
+A dangling `@fig-density` is measured: the label is absent, and the author
+cannot reasonably disagree. A paragraph's one-line summary is composed, and two
+readers would write it differently. That does not make the summary worthless -
+it makes it the author's rather than the tool's. Store it, check that it has not
+gone stale against the block it describes, and never generate it. A generated
+summary has to be reviewed before it can be trusted, which is the work it
+claimed to remove.
+
+The test is not whether the output would be useful. It is whether a finding
+could be wrong in a way the author cannot adjudicate.
+
+## A citation is a call; "supports" is an opinion
+
+`@fig-density` and `[@author2024]` resolve or they do not, which is why
+`xref.dangling` and `xref.duplicates` are allowed to block on them: the answer
+is in the file, and there is exactly one. That is the honest half of the
+analogy between a document and a call graph, and it is what makes a reference
+graph extractable at all.
+
+The other half does not hold. "This claim supports that conclusion" is written
+nowhere in the source, has no resolution procedure, and is the thing reviewers
+are paid to disagree about. A check over inferred argument edges could fire on a
+correct document, which the conventions below already forbid.
+
+Extract def/use edges, because they are in the text. Let authors declare
+argument edges if they want them - a declaration is source, and can be checked
+like any other label. Never infer one. A tool that draws the argument has
+started having opinions about whether the paper is any good, and it will
+eventually be confidently wrong in front of a reviewer who is not.
+
 ## Conventions
 
 - No dependency the published document can see. Chrome and the Mermaid CDN are

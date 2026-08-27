@@ -19,6 +19,7 @@ from pathlib import Path
 
 from . import palette, profile
 from . import markdown as md
+from . import xref
 from .markdown import FIG, SVGS, convert, inline, parse_head
 
 THEME = Path(__file__).parent / 'theme'
@@ -100,6 +101,16 @@ def build(source, output, svgs=None, kind_fallback=None, prof=None, brand=None,
     SVGS[:] = svgs or []
     FIG.update(n=0, base=0, label=prof['labels']['figure'])
     lines = Path(source).read_text(encoding='utf-8').replace('\r\n', '\n').split('\n')
+
+    # Numbered here, from this deck's own source, for the reason in xref.py.
+    # The deck renders through markdown.py, whose XREF is a module global that
+    # only markdown.build ever filled - so a deck built alone printed `@fig-c`
+    # to the reader, and a deck built after a report in the same process
+    # resolved against *the report's* table and put its "Figure 1" on a slide
+    # with no figures. A wrong number that looks right is worse than a raw one.
+    md.XREF.clear()
+    md.XREF_MISSING[:] = []
+    md.XREF.update(xref.resolve(prof, lines))
 
     head_end = next((i for i, l in enumerate(lines) if re.fullmatch(r'-{3,}', l.strip())), 0)
     h1, subtitle, meta, lede = parse_head(lines[:head_end])

@@ -15,6 +15,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from . import require
+
 CITE_RE = re.compile(r'\[(@[A-Za-z][\w:.-]*(?:\s*;\s*@[A-Za-z][\w:.-]*)*)\]')
 KEY_RE = re.compile(r'@([A-Za-z][\w:.-]*)')
 
@@ -71,6 +73,8 @@ def render(keys, bib_path, style='apa', title='References', lang='en'):
         lines.append('#bibliography("%s", title: "%s", style: "%s")'
                      % (bib.name, title, style))
         (tmp / 'c.typ').write_text('\n\n'.join(lines) + '\n', encoding='utf-8')
+        require.demand('typst', 'this document has citations, whose bibliography '
+                                 'is formatted by typst')
         r = subprocess.run(['typst', 'compile', 'c.typ', 'c.html',
                             '--format', 'html', '--features', 'html'],
                            cwd=tmp, capture_output=True, text=True)

@@ -14,6 +14,8 @@ import subprocess
 from datetime import date
 from pathlib import Path
 
+from . import require
+
 GITIGNORE = """# built artefacts are reproducible from the sources
 .cache/
 *.pdf
@@ -52,6 +54,9 @@ once as `paperforge`:
 - A document becomes publishable by a deliberate edit to `publish`, which is
   also the moment someone decides it is ready.
 - If lint blocks, fix the markdown. Do not bypass the gate.
+- A missing tool is not yours to install. `{invocation} doctor` says what is
+  absent and what it was for; say so and ask. Installing software changes
+  somebody's machine, which is not a build step.
 
 Skeleton sections are marked `{{.part}}` so structure is explicit and does not
 depend on matching a heading pattern. Keep the marker when you rewrite them.
@@ -302,6 +307,7 @@ def create(directory, slug, title, languages, profiles, publications,
     multi = len(languages) > 1
     # %B is the C-locale month name, which put "August 2026" in a Vietnamese
     # document; the format belongs to the profile
+    have_git = bool(require.found('git'))
     written = []
     text = manifest(slug, title, languages, publications, organisation,
                     publisher, workspace, 'annex' in publications)
@@ -338,7 +344,13 @@ def create(directory, slug, title, languages, profiles, publications,
                 (root / chapter_name).write_text(chapter(prof, heading), encoding='utf-8')
                 written.append(chapter_name)
 
-    if git and not (root / '.git').exists() and not _inside_work_tree(root):
+    if git and not have_git:
+        # decided before the first file was written, and reported rather than
+        # raised: `--no-git` already makes a project without a repository a
+        # supported outcome, so an absent git is a skip and not a failure. It
+        # used to be a traceback from `git rev-parse`, after five files existed.
+        written.append('.git/ (skipped: %s)' % require.why('git'))
+    elif git and not (root / '.git').exists() and not _inside_work_tree(root):
         subprocess.run(['git', 'init', '-q'], cwd=root, capture_output=True)
         written.append('.git/')
     return written

@@ -394,6 +394,37 @@ def main():
     check('and two different headings do not collapse to one key',
           markdown.entry_keys('الملخص التنفيذي') != markdown.entry_keys('السياق'))
 
+    print('what this pipeline needs from the machine it runs on')
+    from paperforge import require
+    # Every binary the package shells out to is either in the table or is
+    # chrome, which is probed by application path rather than by name. A fourth
+    # cannot be added without an entry saying what it is for.
+    named = set(require.TOOLS) | {'chrome'}
+    invoked = set()
+    for path in sorted((Path(__file__).resolve().parents[1] / 'paperforge').glob('*.py')):
+        for m in re.finditer(r"subprocess\.run\(\['([\w.-]+)'", path.read_text(encoding='utf-8')):
+            invoked.add(m.group(1))
+    check('every external tool the code invokes is one the table describes',
+          invoked <= named)
+    if invoked - named:
+        print('          undescribed: %s' % ', '.join(sorted(invoked - named)))
+
+    for name in require.TOOLS:
+        said = require.why(name)
+        check('%s: the message says what it is for and where it comes from' % name,
+              require.TOOLS[name]['for'] in said and require.TOOLS[name]['from'] in said)
+        # deliberate: a copy-pasteable command invites an agent with shell access
+        # to run it, and a URL invites it to ask. Installing software changes the
+        # machine, which is not a build step - the scaffolded AGENTS.md says so.
+        check('%s: and offers no command to run' % name,
+              require.TOOLS[name]['from'].startswith('http'))
+
+    check('a tool that is present is not demanded away',
+          require.demand('git', 'x') == 'git' if require.found('git') else True)
+    raises('a tool this run cannot do without refuses in those terms',
+           lambda: require.demand('paperforge-no-such-tool', 'nothing would build'),
+           RuntimeError)
+
     print('the sets nothing may quietly join')
     # Each of these is a deliberate exception carried in a comment beside the
     # code that reads it, which works until somebody adds a fourth. Pinning the

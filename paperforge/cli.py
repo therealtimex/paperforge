@@ -8,6 +8,7 @@ import tomllib
 from pathlib import Path
 
 from . import (assemble, brief, claims, deck, diagrams, editions, figures, lint,
+               require,
                markdown, papermap,
                pages, palette, profile, publish as pub, runs, scaffold, typst,
                verify)
@@ -446,8 +447,17 @@ def do_build(docs, cache, measure=True):
                 print('      slide check: %s' % w)
             continue
         pages_map = None
-        stats = markdown.build(d['source_path'], d['output_path'], svgs=svgs,
-                               annex=d['annex_path'], pages=None, **opts(d))
+        try:
+            stats = markdown.build(d['source_path'], d['output_path'], svgs=svgs,
+                                   annex=d['annex_path'], pages=None, **opts(d))
+        except RuntimeError as err:
+            # a missing tool the reading edition cannot do without - maths or a
+            # bibliography, both of which go through typst. The other documents
+            # in the project are not affected by this one's needs, so report and
+            # carry on rather than ending the run in a traceback.
+            print('  %-38s REFUSED: %s' % (d['output'], str(err).splitlines()[0]))
+            failures.append(d['output'])
+            continue
         if measure and d.get('page_numbers'):
             from . import browser
             pdf = cache / (d['output'] + '.pdf')
@@ -490,7 +500,13 @@ def do_build(docs, cache, measure=True):
 
         # Typst produces the print edition the browser cannot: footnotes at the
         # foot of the page, running heads, and markedly denser typesetting
-        if d.get('pdf') == 'typst':
+        if d.get('pdf') == 'typst' and not require.found('typst'):
+            # optional work, so the run continues without it - loudly. A green
+            # `all` on this machine means less than one on a machine that has
+            # every tool, and saying so is the whole point of the skip.
+            print('      skip  %s'
+                  % require.why('typst', 'the print edition was not built'))
+        elif d.get('pdf') == 'typst':
             pdf_out = d['output_path'].with_suffix('.pdf')
             try:
                 info = typst.build(d['source_path'], pdf_out, d['prof'], svgs=svgs,
@@ -777,6 +793,14 @@ def do_publish(cfg, docs, expires=None):
             print('  %-38s not published: no `pdf =` in the manifest' % pdf.name)
 
         target = d.get('target', 'realtimex')
+        if target == 'realtimex' and not require.found('realtimex-pp-cli'):
+            # optional in the same sense as the print edition: everything built
+            # and verified, and the one step that needs a tool this machine does
+            # not have is reported rather than crashing the run
+            print('  %-38s skip  %s'
+                  % (d['output'], require.why('realtimex-pp-cli',
+                                              'nothing was published')))
+            continue
         for artefact in editions:
             if target == 'directory':
                 dest, how = pub.to_directory(artefact, cfg['_root'] / d.get('directory', 'dist'))
@@ -811,7 +835,7 @@ def main(argv=None):
     ap.add_argument('--diff', help='runs: compare two runs, comma separated')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
                                         'status', 'selftest', 'plugin', 'figures', 'init', 'runs',
-                                     'brief', 'claims', 'map'])
+                                     'brief', 'claims', 'map', 'doctor'])
     ap.add_argument('--json', action='store_true',
                     help='map: emit the map as JSON rather than for a reader')
     ap.add_argument('--accept', action='store_true',
@@ -890,6 +914,42 @@ def main(argv=None):
         for path in package_plugin.sync():
             print('  synced %s' % path)
         return 1 if broken else 0
+
+    if a.command == 'doctor':
+        # the tools are documented in SKILL.md and were never checked against
+        # the machine; discovering typst is missing used to mean running
+        # selftest, which builds a whole fixture and crashes
+        print('external tools:')
+        missing = 0
+        for name, path, what in require.report():
+            print('  %-18s %-9s %-52s %s'
+                  % (name, 'ok' if path else 'MISSING', what, path or ''))
+            missing += not path
+        # chrome is found by probing application paths rather than by name, so
+        # it is asked rather than looked up. Reporting it without asking would
+        # be a check that says ok without checking.
+        from . import browser
+        try:
+            found = browser.chrome()
+        except RuntimeError:
+            found = None
+        print('  %-18s %-9s %-52s %s'
+              % ('chrome', 'ok' if found else 'MISSING',
+                 'diagrams, page measurement, layout checks', found or ''))
+        missing += not found
+        if not missing:
+            print('\nnothing is missing.')
+        else:
+            print('')
+            for name, path, _ in require.report():
+                if not path:
+                    print('  %s' % require.why(name))
+            if not found:
+                print('  headless Chrome is not installed. Needed for diagrams, page '
+                      'measurement and layout checks. See https://www.google.com/chrome/')
+            print('\nInstalling these is not the pipeline\'s to do. Ask whoever '
+                  'owns this machine.')
+        return 0
 
     if a.command == 'selftest':
         fixture = Path(__file__).resolve().parents[1] / 'tests/fixtures/en-sample/documents.toml'

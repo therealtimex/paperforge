@@ -14,6 +14,8 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from . import require
+
 # $$...$$ is display, $...$ inline. The inline form requires non-space next to
 # the delimiters so that prices ("$5 and $10") are not mistaken for maths.
 DISPLAY_RE = re.compile(r'\$\$(.+?)\$\$', re.S)
@@ -58,6 +60,8 @@ def render(expressions, font='Georgia', size=11):
                '#set text(size: %dpt, font: "%s")\n' % (size, font)
                + '\n#pagebreak()\n'.join(pages) + '\n')
         (tmp / 'm.typ').write_text(src, encoding='utf-8')
+        require.demand('typst', 'this document has maths, which renders to SVG '
+                                 'through typst even in the reading edition')
         r = subprocess.run(['typst', 'compile', 'm.typ', 'm-{p}.svg', '--format', 'svg'],
                            cwd=tmp, capture_output=True, text=True)
         if r.returncode != 0:

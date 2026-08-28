@@ -9,7 +9,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from . import browser, citations as cite_mod, maths as maths_mod, xref
+from . import browser, citations as cite_mod, maths as maths_mod, matching, xref
 
 VOID = {'br', 'hr', 'meta', 'img', 'link', 'input', 'source', 'col', 'area', 'base',
         'wbr', 'embed', 'path', 'circle', 'line', 'rect', 'polygon', 'polyline',
@@ -116,14 +116,12 @@ def coverage(html, *sources):
                 words = [w.strip(':.,;()') for w in probe.split()]
                 words = [w for w in words if len(w) > 2]
                 # The floor was a flat max(2, len(words) - 1), which can demand
-                # more matches than there are words to match. Words of one or
-                # two characters are dropped above, so `**Prepared by:** Le`
-                # reduces to ["Prepared"] - one word against a threshold of two
-                # - and the line was reported missing however the document
-                # rendered. It needs a value of three characters to survive:
-                # "RTA" passes and "Le" does not, which is a fair way to lose a
-                # Vietnamese name. A check that cannot be satisfied is not one.
-                needed = min(len(words), max(2, len(words) - 1))
+                # more matches than there are words to match: `**Prepared by:**
+                # Le` reduces to ["Prepared"], one word against a threshold of
+                # two, and the line was reported missing however the document
+                # rendered. The rule is shared now - see matching.py, which
+                # records where else the same arithmetic went wrong.
+                needed = matching.quorum(len(words), 2)
                 if not words or sum(w in visible for w in words) < needed:
                     missing.append((Path(path).name, n, s[:60]))
     return missing

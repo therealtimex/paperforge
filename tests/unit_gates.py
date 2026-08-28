@@ -7,12 +7,14 @@ pack is an error, a project profile layers over a shipped one, a deck warns
 about a table nobody can read from the back of a room - reachable only by
 feeding it the input a fixture never contains.
 """
+import re
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from paperforge import (browser, citations, deck, docx, figures as fig_mod, lint,
+                        matching,
                         markdown, pages,
                         profile, typst, verify, xref)
 
@@ -335,6 +337,41 @@ def main():
     numbered = xr.resolve(profile.load('en'), block)
     check('the equation is numbered like any other labelled thing',
           numbered['eq-p']['label'] == 'Equation 1')
+
+    print('a threshold may never exceed the pool it draws from')
+    quorum = getattr(matching, 'quorum', lambda pool, floor: max(floor, pool - 1))
+    over = [(pool, floor) for pool in range(0, 30) for floor in range(1, 6)
+            if quorum(pool, floor) > pool]
+    # the property, not the three instances: this is what all three had wrong
+    check('no pool and floor produce a threshold nothing could meet', over == [])
+    check('and the floor is still respected where there is room',
+          quorum(9, 3) == 8 and quorum(2, 3) == 2)
+
+    # the regression that made it worth extracting: a two-word contents entry
+    # whose words are on the page but not adjacent, which is what pdfplumber
+    # produces from a two-column page - see "a check that reads an artifact"
+    def entry_verdict(label, text):
+        words = [w for w in label.split() if len(w) > 1 and not w.isdigit()][:5]
+        if len(' '.join(words)) < 10:
+            return 'skip'
+        if ' '.join(words) in text or sum(w in text for w in words) >= quorum(len(words), 3):
+            return 'confirmed'
+        return 'wrong'
+    check('a two-word entry present but split is confirmed, not reported wrong',
+          entry_verdict('Global demand', 'Global 12 demand rose') == 'confirmed')
+    check('and one that is genuinely half-absent is still wrong',
+          entry_verdict('Global demand', 'Global rose') == 'wrong')
+
+    # a source scan, so a fourth copy of the arithmetic cannot arrive quietly
+    unclamped = []
+    for path in sorted(Path(__file__).resolve().parents[1].glob('paperforge/*.py')):
+        if path.name == 'matching.py':
+            continue
+        for n, line in enumerate(path.read_text(encoding='utf-8').split('\n'), 1):
+            if re.search(r'max\(\s*\d+\s*,\s*len\(', line) and not line.lstrip().startswith('#'):
+                unclamped.append('%s:%d' % (path.name, n))
+    check('no module computes a bare max(n, len(...)) threshold of its own',
+          unclamped == [])
 
     print('what a finding is allowed to say')
     # resolved defensively so a regression reads as failing checks, not a

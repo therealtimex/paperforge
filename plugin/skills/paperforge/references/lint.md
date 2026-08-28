@@ -19,6 +19,7 @@ filename shown to a reader is wrong regardless of who wrote it:
 | `todo` | `TODO`, `TBD`, `FIXME`, `XXX`, `PLACEHOLDER` |
 | `lorem` | placeholder text |
 | `unsupported-footnote` | `[^1]` — see `unsupported-syntax.md` |
+| `claim-reference` | `@claim-x` in prose — a claim has no rendered form to point at |
 | `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
 | `duplicate-label` | the same id declared twice |
 | `no-bibliography` | citations with no `bibliography` declared — Typst would fail with an unhelpful "label does not exist" |

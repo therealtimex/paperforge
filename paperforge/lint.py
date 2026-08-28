@@ -35,6 +35,11 @@ CORE = [
     # it can go wrong instead.
     ('unsupported-footnote', 'block', r'^\[\^[^\]]+\]:|\[\^[^\]]+\](?!:)',
      'footnotes are not rendered; the definition would print as body text'),
+    # A claim is a node in the map, not a name to use in a sentence: `@sec-` and
+    # `@fig-` resolve to something a reader can find on the page, and a claim has
+    # no such form. Left unblocked it would print as its own source.
+    ('claim-reference', 'block', r'(?<![\w@])@claim-[\w-]+\b',
+     'a claim cannot be referred to in prose; refer to its section instead'),
 ]
 
 # Opt-in packs for a particular authoring system. These four exist because that

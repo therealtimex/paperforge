@@ -90,6 +90,26 @@ says — *Figure A1* is the annex's first, not the document's fourteenth.
 A label is **optional**. An unlabelled figure keeps the positional caption it
 has always had, so nothing already written needs changing.
 
+## Labelling a claim, which is not a cross-reference
+
+A paragraph can carry an id at its end:
+
+```markdown
+The estimator is consistent under A1-A3. {#claim-consistency}
+```
+
+This is the one labelled thing with **no rendered form**. It takes no number,
+`@claim-consistency` is not part of the reference syntax, and lint blocks it in
+prose (`claim-reference`) — because there is nothing on the page for such a
+reference to resolve to. A claim exists so the document can be mapped, not so
+it can be named in a sentence; to point a reader at one, refer to its section.
+
+The label is stripped from every edition. A paragraph that merely ends in
+braces — `the set {a, b}.` — is left alone: only an attribute that actually
+carries a `claim-` id is taken.
+
+An id declared twice is blocked, the same as any other label.
+
 ## Numbering happens once, not four times
 
 Four emitters render the same source, and each could number its own figures.

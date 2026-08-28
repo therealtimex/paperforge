@@ -338,6 +338,34 @@ def main():
     check('the equation is numbered like any other labelled thing',
           numbered['eq-p']['label'] == 'Equation 1')
 
+    print('a contents entry and the heading it names, in every script')
+    # `markdown._norm` was a second copy of the normaliser, and it was the
+    # ASCII-only one - `[^a-z0-9\\s.:]` erased Arabic and Chinese completely, so
+    # both sides of the match reduced to their punctuation and no entry could
+    # ever be numbered. `profile.normalise` had already been fixed for exactly
+    # this and says so in its docstring; this copy never heard, which is the
+    # same shape as the threshold in matching.py.
+    #
+    # Checked for every shipped profile rather than the two that broke, so a
+    # fifth language cannot arrive with the same hole.
+    named = {'ar': ('1. الملخص التنفيذي', 'الملخص التنفيذي'),
+             'en': ('1. Executive summary', 'Executive summary'),
+             'vi': ('1. Tóm tắt', 'Tóm tắt'),
+             'zh': ('1. 执行摘要', '执行摘要')}
+    shipped = sorted(q.stem for q in
+                     (Path(__file__).resolve().parents[1] / 'paperforge/profiles').glob('*.toml'))
+    check('every shipped profile has a case here', sorted(named) == shipped)
+    for lang in shipped:
+        entry, heading = named[lang]
+        markdown.PROF = profile.load(lang)
+        shared = markdown.entry_keys(entry) & markdown.entry_keys(heading)
+        check('%s: the contents entry and its heading share a key' % lang, bool(shared))
+    # not merely unmatched but indistinguishable: the ASCII-only signature
+    # collapsed every Arabic heading to the same empty key
+    markdown.PROF = profile.load('ar')
+    check('and two different headings do not collapse to one key',
+          markdown.entry_keys('الملخص التنفيذي') != markdown.entry_keys('السياق'))
+
     print('everything this pipeline says it supports, built by something')
     # Three defects this session were the same shape: a capability shipped, was
     # documented as supported, and was exercised by nothing. `deck.build` was

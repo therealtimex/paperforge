@@ -126,6 +126,11 @@ jobs:
       - name: Claim gist unit checks
         run: python3 -m coverage run tests/unit_claims.py
 
+      # the map of a document: everything on it is read from the source, and
+      # the claim nothing uses is reported there and refused nowhere
+      - name: Papermap unit checks
+        run: python3 -m coverage run tests/unit_papermap.py
+
       # manuscript front matter: parsed, validated, and refusing to guess
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py

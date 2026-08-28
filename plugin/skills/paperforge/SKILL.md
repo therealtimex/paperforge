@@ -50,6 +50,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Deliver something the reader can edit | [references/docx.md](references/docx.md) |
 | Keep a number consistent across documents | [references/figures.md](references/figures.md) |
 | Say what a paragraph is for, and keep it true | [references/claims.md](references/claims.md) |
+| See a document's structure and argument at a glance | [references/papermap.md](references/papermap.md) |
 | Understand why lint blocked a document | [references/lint.md](references/lint.md) |
 | Understand a verify failure | [references/verify.md](references/verify.md) |
 | Publish, or fix a stale artifact link | [references/publishing.md](references/publishing.md) |

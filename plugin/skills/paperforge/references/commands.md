@@ -11,6 +11,7 @@ paperforge publish     # hard-link into the artifacts dir and expose
 paperforge all         # the chain above, stopping on failure
 paperforge runs        # what each run produced — see provenance.md
 paperforge brief       # what this project declares — see brief.md
+paperforge map         # what a document declares, and what points at what
 ```
 
 The entry point is `bin/paperforge` in a Paperforge checkout, and
@@ -30,6 +31,7 @@ that *uses* Paperforge carries no pipeline of its own — only its sources, its
 | `--label <name>` | Name this run in the record |
 | `--diff <a>,<b>` | `runs`: compare two recorded runs |
 | `--accept` | `claims`: re-stamp every gist against its paragraph |
+| `--json` | `map`: emit the map as JSON rather than for a reader |
 
 With no `--config`, `$PAPERFORGE_CONFIG` is used, then the nearest
 `documents.toml` above the working directory. **Every run prints the manifest it

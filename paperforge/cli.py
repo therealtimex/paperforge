@@ -8,7 +8,7 @@ import tomllib
 from pathlib import Path
 
 from . import (assemble, brief, claims, deck, diagrams, editions, figures, lint,
-               markdown,
+               markdown, papermap,
                pages, palette, profile, publish as pub, runs, scaffold, typst,
                verify)
 
@@ -753,11 +753,13 @@ def do_publish(cfg, docs, expires=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(prog='paperforge', description='Paperforge document pipeline')
     ap.add_argument('--label', help='name this run in the record')
-    ap.add_argument('--out', help='brief: write to this file instead of stdout')
+    ap.add_argument('--out', help='brief, map: write to this file instead of stdout')
     ap.add_argument('--diff', help='runs: compare two runs, comma separated')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
                                         'status', 'selftest', 'plugin', 'figures', 'init', 'runs',
-                                     'brief', 'claims'])
+                                     'brief', 'claims', 'map'])
+    ap.add_argument('--json', action='store_true',
+                    help='map: emit the map as JSON rather than for a reader')
     ap.add_argument('--accept', action='store_true',
                     help='claims: re-stamp every gist against its paragraph')
     ap.add_argument('--only', help='limit to one document or collection')
@@ -874,6 +876,18 @@ def main(argv=None):
             print('  wrote %s' % out)
         else:
             print(text)
+        return 0
+
+    if a.command == 'map':
+        # what the document declares and what points at what. A report, not a
+        # gate: some of what it shows is only a defect a reader can recognise.
+        maps = [papermap.build(d, d['prof']) for d in docs]
+        text = papermap.as_json(maps) if a.json else papermap.render(maps)
+        if a.out:
+            Path(a.out).write_text(text, encoding='utf-8')
+            print('  wrote %s' % a.out)
+        else:
+            print(text, end='')
         return 0
 
     if a.command == 'runs':

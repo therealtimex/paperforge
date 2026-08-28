@@ -338,6 +338,34 @@ def main():
     check('the equation is numbered like any other labelled thing',
           numbered['eq-p']['label'] == 'Equation 1')
 
+    print('whether a PDF can be read back, as opposed to how much of it there is')
+    # This counted characters once, and a character count is a claim about
+    # volume being read as a claim about legibility. Measured across the
+    # fixtures, volume ran from 0.07 to 44 and separated nothing, while
+    # correspondence ran 0.75-0.97 for documents whose print checks work and
+    # 0.00-0.08 for those whose do not. The floor sits in that gap.
+    prose = ('The estimator is consistent under assumptions A1 to A3. Concentration '
+             'risk follows from refining capacity rather than extraction. Policy '
+             'attention should follow the midstream instead of the mine.')
+    good = pages.correspondence(prose, prose)
+    check('text that reads back as itself is usable', good['usable'] and good['ratio'] == 1.0)
+
+    # the Arabic case, verbatim: the whole document comes back, shaped into
+    # presentation forms and in visual order, so all of it is there and none
+    # of it matches. Volume said 103% and the old check waved it through.
+    shaped = 'يﺬﯿﻔﻨﺘﻟا ﺺﺨﻠﻤﻟا ' * 40
+    arabic = pages.correspondence('الملخص التنفيذي والسياق والنتائج والخاتمة ' * 8,
+                                  shaped, fold_diacritics=False)
+    check('text that is all there and matches nothing is refused',
+          not arabic['usable'])
+    check('and volume alone would have passed it', arabic['volume'] > 0.45)
+    check('the refusal says what is wrong', 'does not match' in (arabic['why'] or ''))
+
+    # untestable is never passed, and never quietly failed either
+    short = pages.correspondence('a b c. 12 34', 'anything at all')
+    check('a document with too few distinctive words declines, with a reason',
+          not short['usable'] and 'too few' in (short['why'] or ''))
+
     print('a contents entry and the heading it names, in every script')
     # `markdown._norm` was a second copy of the normaliser, and it was the
     # ASCII-only one - `[^a-z0-9\\s.:]` erased Arabic and Chinese completely, so

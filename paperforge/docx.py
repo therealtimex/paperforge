@@ -313,7 +313,11 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 not LIST_RE.match(lines[pos]):
             buf.append(lines[pos].strip())
             pos += 1
-        _runs(doc.add_paragraph(), xref.substitute(' '.join(buf), table or {}))
+        # A claim's label is not the reader's business. Strip it here or
+        # `{#claim-x}` prints at the end of the paragraph, which is the
+        # defect take_equation records for `{#eq-x}`.
+        text, _ = xref.take_claim(' '.join(buf))
+        _runs(doc.add_paragraph(), xref.substitute(text, table or {}))
     if landscape:
         _landscape(doc, False, columns)
 

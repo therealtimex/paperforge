@@ -461,7 +461,11 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             buf.append(lines[pos].strip())
             pos += 1
         if buf:
-            out.append(inline(' '.join(buf), notes))
+            # A claim's label is not the reader's business. Strip it here or
+            # `{#claim-x}` prints at the end of the paragraph, which is the
+            # defect take_equation records for `{#eq-x}`.
+            text, _ = xref.take_claim(' '.join(buf))
+            out.append(inline(text, notes))
     return '\n\n'.join(out)
 
 

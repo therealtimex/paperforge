@@ -181,6 +181,78 @@ def main():
               '{#sec-methods}' not in words and '{.no-part' not in words
               and resolved in words)
 
+    print('claim labels')
+    # resolved defensively so a regression reads as a failing check rather
+    # than a traceback that stops the rest of the suite from running
+    take_claim = getattr(xref, 'take_claim', lambda s: (s, None))
+    claim_lines = ['## Methods {#sec-m}', '',
+                   'The MLE is consistent under A1-A3. {#claim-mle}', '',
+                   'A paragraph that ends in braces {like this}.', '',
+                   'Stated again. {#claim-mle}']
+    ctable = xref.resolve(en, claim_lines)
+    check('a labelled paragraph enters the table as a claim',
+          ctable.get('claim-mle', {}).get('kind') == 'claim')
+    # a claim is the one labelled thing with no rendered form: not numbered,
+    # not in the reference syntax, nothing on the page to point at
+    check('a claim carries no number and no label to render',
+          ctable.get('claim-mle', {}).get('number', 0) is None
+          and ctable.get('claim-mle', {}).get('label') == '')
+    check('a claim id declared twice is reported',
+          xref.duplicates(claim_lines) == ['claim-mle'])
+    check('a claim is not accepted by the reference syntax',
+          not xref.REF_RE.match('@claim-mle')
+          and 'claim' in getattr(xref, 'LABELLED', ())
+          and 'claim' not in xref.KINDS)
+    check('take_claim returns the paragraph without its label',
+          take_claim('The MLE is consistent. {#claim-mle}')
+          == ('The MLE is consistent.', 'claim-mle'))
+    # a paragraph is entitled to end in braces, and stripping one that does
+    # would delete an author's words
+    check('a paragraph that merely ends in braces is left alone',
+          take_claim('ends in braces {like this}.')
+          == ('ends in braces {like this}.', None))
+
+    check('a claim referred to in prose is blocked',
+          'claim-reference' in rules_fired('As argued in @claim-mle, this holds.'))
+    check('the definition itself is not',
+          'claim-reference' not in rules_fired('The MLE is consistent. {#claim-mle}'))
+    check('and a section reference is still fine',
+          'claim-reference' not in rules_fired('As set out in @sec-methods.'))
+
+    # The label must not reach a reader in any edition. Same trap as `{#eq-x}`,
+    # which take_equation records printing on the page.
+    claim_src = ('# Doc\n\n## Methods {#sec-m}\n\n'
+                 'The MLE is consistent under A1-A3. {#claim-mle}\n\n'
+                 'A paragraph that ends in braces {like this}.\n')
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        (tmp / 'c.md').write_text(claim_src, encoding='utf-8')
+        markdown.build(tmp / 'c.md', tmp / 'c.html', prof=en)
+        html = (tmp / 'c.html').read_text(encoding='utf-8')
+        check('the reading edition strips the label and keeps the prose',
+              'claim-mle' not in html and 'consistent under A1-A3.</p>' in html
+              and 'braces {like this}.' in html)
+
+        (tmp / 'cd.md').write_text('# D\n\n---\n\n## S\n\n'
+                                   'The MLE is consistent. {#claim-mle}\n', encoding='utf-8')
+        deck.build(tmp / 'cd.md', tmp / 'cd.html', prof=en)
+        check('the deck strips the label',
+              'claim-mle' not in (tmp / 'cd.html').read_text(encoding='utf-8'))
+
+        typst.XREF.clear()
+        typst.XREF.update(xref.resolve(en, claim_src.split('\n')))
+        typ = typst.convert(claim_src.split('\n'), [], [], 'Figure %d', None)
+        check('the print edition strips the label and keeps the braces',
+              'claim-mle' not in typ and 'like this' in typ)
+
+        docx.build(tmp / 'c.md', tmp / 'c.docx', en)
+        import docx as _pd
+        words = '\n'.join(q.text for q in _pd.Document(str(tmp / 'c.docx')).paragraphs)
+        check('the Word edition strips the label and keeps the prose',
+              'claim-mle' not in words
+              and 'The MLE is consistent under A1-A3.' in words
+              and 'braces {like this}.' in words)
+
     print('display equations')
     from paperforge import xref as xr
     block = ['$$', 'a^2 + b^2 = c^2', '$$ {#eq-p}', '', 'after']

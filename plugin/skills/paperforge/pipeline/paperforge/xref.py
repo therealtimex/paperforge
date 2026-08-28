@@ -43,6 +43,7 @@ import re
 # a tuple that looks like the source of truth stops being one.
 NUMBERED = ('fig', 'tbl', 'eq')     # carry a number and a profile label
 KINDS = NUMBERED + ('sec',)         # everything the reference syntax accepts
+LABELLED = KINDS + ('claim',)       # everything that can carry an id at all
 
 CAPTION_RE = re.compile(r'^:\s+(.*?)\s*\{#((%s)-[\w-]+)\}\s*$' % '|'.join(NUMBERED))
 DISPLAY_LABEL_RE = re.compile(r'^\$\$\s*\{#((?:eq)-[\w-]+)\}\s*$')
@@ -56,6 +57,13 @@ REF_RE = re.compile(r'(?<![\w@])@((?:%s)-[\w-]+)\b' % '|'.join(KINDS))
 HEADING_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*$')
 ATTR_RE = re.compile(r'\s*\{([^{}]*)\}\s*$')
 SEC_ID_RE = re.compile(r'#(sec-[\w-]+)')
+
+# A claim labels itself at the end of its own paragraph, which is the only
+# place a paragraph has that it does not share with the next one. It is the
+# one labelled thing with no rendered form: it is not numbered, `@claim-x` is
+# not part of the reference syntax, and lint blocks it in prose. A claim is a
+# node in the map, not a name to use in a sentence.
+CLAIM_ID_RE = re.compile(r'#(claim-[\w-]+)')
 
 # Profile labels, with the shape every profile already uses for `figure`.
 FALLBACK = {'fig': 'Figure %d', 'tbl': 'Table %d', 'eq': 'Equation %d'}
@@ -74,6 +82,20 @@ def label_for(prof, kind, annex=False):
         base = labels.get(KEY[kind], FALLBACK[kind])
         return base.replace('%d', 'A%d')
     return labels.get(KEY[kind], FALLBACK[kind])
+
+
+def take_claim(text):
+    """A paragraph's trailing claim label, and the paragraph without it.
+
+    Returns `(text, id or None)`. Only an attribute that actually carries a
+    claim id is taken: a paragraph is entitled to end in braces, and stripping
+    one that does would delete an author's words.
+    """
+    m = ATTR_RE.search(text)
+    ident = CLAIM_ID_RE.search(m.group(1)) if m else None
+    if not ident:
+        return text, None
+    return text[:m.start()].rstrip(), ident.group(1)
 
 
 def scan(lines, annex=False):
@@ -107,6 +129,11 @@ def scan(lines, annex=False):
                 found.append({'line': i, 'id': ident.group(1), 'kind': 'sec',
                               'caption': m.group(2)[:attrs.start()].rstrip(),
                               'annex': annex})
+            continue            # a heading is a section; it is never a claim
+        _, ident = take_claim(stripped)
+        if ident:
+            found.append({'line': i, 'id': ident, 'kind': 'claim',
+                          'caption': '', 'annex': annex})
     return found
 
 
@@ -121,7 +148,13 @@ def resolve(prof, body, annex=()):
         if is_annex:
             counters = {}
         for entry in scan(lines, annex=is_annex):
-            if entry['kind'] == 'sec':
+            if entry['kind'] == 'claim':
+                # Nothing renders a claim, so it has no label to carry. What
+                # it says lives in the paragraph; storing that needs block
+                # boundaries this line scan does not have. See the map issue.
+                entry['number'] = None
+                entry['label'] = ''
+            elif entry['kind'] == 'sec':
                 # A section has no number to have - nothing in this pipeline
                 # numbers headings, and four emitters agreeing on a counter is
                 # the failure this module exists to prevent. A reference to a

@@ -145,9 +145,10 @@ def check(sources, root):
     """Findings about the project's claims, worst first.
 
     `stale` blocks: the paragraph moved under a gist that was once accepted
-    against it, which is a demonstrated contradiction. The rest warn - a claim
-    with no gist has not promised anything, and one never accepted has not
-    claimed to be current.
+    against it, which is a demonstrated contradiction. `unaccepted` is manual -
+    the answer is not the pipeline's to give, and the finding names the command
+    that settles it. The rest warn: a claim with no gist has not promised
+    anything, and a lock entry for a claim that is gone is untidy, not wrong.
     """
     present, lock, found = collect(sources), load(root), []
     for ident in sorted(present):
@@ -157,9 +158,13 @@ def check(sources, root):
                           'file': rec['file'], 'line': rec['line'],
                           'why': 'a labelled claim with nothing said about it'})
         elif not stamped:
-            found.append({'rule': 'unaccepted', 'severity': 'warn', 'id': ident,
+            # not a warning: nobody has ever vouched for this gist against this
+            # paragraph, so the pipeline has no verdict to give - only the
+            # person who can reread it does
+            found.append({'rule': 'unaccepted', 'severity': 'manual', 'id': ident,
                           'file': rec['file'], 'line': rec['line'],
-                          'why': 'a gist never accepted against its paragraph'})
+                          'why': 'a gist never accepted against its paragraph',
+                          'fix': 'paperforge claims --accept'})
         elif stamped.get('hash') != fingerprint(rec['text']):
             found.append({'rule': 'stale-gist', 'severity': 'block', 'id': ident,
                           'file': rec['file'], 'line': rec['line'],
@@ -168,7 +173,8 @@ def check(sources, root):
         found.append({'rule': 'orphan-gist', 'severity': 'warn', 'id': ident,
                       'file': LOCK, 'line': 0,
                       'why': 'accepted for a claim that no longer exists'})
-    found.sort(key=lambda f: (f['severity'] != 'block', f['id']))
+    order = {'block': 0, 'manual': 1, 'warn': 2, 'skip': 3}
+    found.sort(key=lambda f: (order.get(f['severity'], 9), f['id']))
     return found
 
 

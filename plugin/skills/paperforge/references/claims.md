@@ -93,7 +93,7 @@ rather than in a refusal.
 | Rule | Severity | Means |
 |---|---|---|
 | `stale-gist` | block | the paragraph changed and the gist was not accepted again |
-| `unaccepted` | warn | a gist that has never been accepted against its paragraph |
+| `unaccepted` | manual | a gist that has never been accepted against its paragraph; names `claims --accept` |
 | `no-gist` | warn | a labelled claim with nothing said about it |
 | `orphan-gist` | warn | a lock entry for a claim that no longer exists |
 | `dangling-uses` | block | a `uses=` naming a label that does not exist |
@@ -101,8 +101,12 @@ rather than in a refusal.
 | `unknown-attribute` | block | part of the attribute was not understood, so what it meant was dropped |
 
 Only `stale-gist` blocks, because only it is a demonstrated contradiction: the
-text moved out from under something a person signed off against it. The rest
-are incomplete rather than wrong.
+text moved out from under something a person signed off against it.
+
+`unaccepted` is `manual` rather than a warning — nobody has vouched for that
+gist against that paragraph, so the pipeline has no verdict to give, and the
+finding names the command that settles it. The rest are incomplete rather than
+wrong. See `lint.md` for what each severity means.
 
 ## Writing a gist
 

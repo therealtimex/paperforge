@@ -129,10 +129,28 @@ def check_publishable(source, declared, blocked, embedded=()):
     return []
 
 
+# What a finding is allowed to say. Two of these were one word before, and the
+# merge cost something: a reader could not tell "you may want to look at this"
+# from "I cannot answer this; you must", and a warning nobody can act on is how
+# people learn to ignore warnings.
+#
+#   block   a demonstrated contradiction; publication stops
+#   manual  the check ran and the verdict is a person's to give. It must name
+#           the act that settles it, in `fix`
+#   warn    worth a look; the author decides whether it matters
+#   skip    the check could not run, with the reason. Never "passed" - see the
+#           conventions in AGENTS.md
+SEVERITIES = ('block', 'manual', 'warn', 'skip')
+
+
 def summarise(findings):
-    blocking = [f for f in findings if f['severity'] == 'block']
-    return {'total': len(findings), 'blocking': len(blocking),
-            'rules': sorted({f['rule'] for f in findings})}
+    unknown = {f['severity'] for f in findings} - set(SEVERITIES)
+    if unknown:
+        raise ValueError('unknown severity %s; the set is %s'
+                         % (', '.join(sorted(unknown)), ', '.join(SEVERITIES)))
+    counts = {s: sum(1 for f in findings if f['severity'] == s) for s in SEVERITIES}
+    return {'total': len(findings), 'blocking': counts['block'],
+            'counts': counts, 'rules': sorted({f['rule'] for f in findings})}
 
 
 def check_citations(document, bibliography=None):

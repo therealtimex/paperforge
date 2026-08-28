@@ -336,6 +336,29 @@ def main():
     check('the equation is numbered like any other labelled thing',
           numbered['eq-p']['label'] == 'Equation 1')
 
+    print('what a finding is allowed to say')
+    # resolved defensively so a regression reads as failing checks, not a
+    # traceback that stops the rest of the suite
+    vocabulary = getattr(lint, 'SEVERITIES', ())
+    check('the vocabulary is exactly four words',
+          vocabulary == ('block', 'manual', 'warn', 'skip'))
+    graded = [{'severity': s, 'rule': s}
+              for s in vocabulary or ('block', 'warn')]
+    s = lint.summarise(graded)
+    check('every severity is counted',
+          s.get('counts') == {'block': 1, 'manual': 1, 'warn': 1, 'skip': 1})
+    # manual and skip are not softer blocks: neither stops publication, and the
+    # whole point of naming them is that they are not warnings either
+    check('and only a block blocks', s['blocking'] == 1)
+    raises('a severity outside the set is refused rather than counted as a warning',
+           lambda: lint.summarise([{'severity': 'urgent', 'rule': 'x'}]), ValueError)
+
+    # a count nobody can chase is not a report: an untestable entry carries the
+    # reason it could not be tested, which is what makes it a skip and not a pass
+    empty = pages.audit(__file__, __file__, 'nothing-here', '', '', '')
+    check('an entry that cannot be tested is a list of reasons, not a tally',
+          empty['untestable'] == [] and isinstance(empty['untestable'], list))
+
     print('the publication allowlist')
     declared, blocked, embedded = {'report.md'}, {'REVIEW.md'}, {'annex.md'}
     check('a declared document passes',

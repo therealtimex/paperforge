@@ -3,9 +3,33 @@
 Lint refuses to publish documents still carrying internal machinery. Every core
 rule exists because that exact thing reached a ministry-facing draft.
 
-Findings are `block` or `warn`. `publish` re-runs the gate and refuses anything
-blocking, so the allowlist says what *may* ship and lint says whether it is
-*fit* to.
+`publish` re-runs the gate and refuses anything blocking, so the allowlist says
+what *may* ship and lint says whether it is *fit* to.
+
+## What a finding is allowed to say
+
+| Severity | Means | Stops publication |
+|---|---|---|
+| `block` | a demonstrated contradiction | yes |
+| `manual` | the check ran and the verdict is a person's to give; the finding names the act that settles it | no |
+| `warn` | worth a look; you decide whether it matters | no |
+| `skip` | the check could not run, and says why | no |
+
+`manual` and `skip` were both `warn` once, and the merge cost something. A
+reader could not tell *"you may want to look at this"* from *"I cannot answer
+this; you must"* — and a warning nobody can act on is how people learn to ignore
+warnings.
+
+A `manual` finding is not useful without the act, so it always carries one:
+
+```
+manual  demo-report.md:43  claim-c  unaccepted
+    a gist never accepted against its paragraph
+    -> paperforge claims --accept
+```
+
+`skip` is the conventions rule given a name: a check that cannot run says so
+with a reason, and untestable is never *passed*.
 
 ## Three layers
 

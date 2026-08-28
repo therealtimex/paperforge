@@ -70,9 +70,18 @@ def main():
                        'Nothing said about this one. {#claim-b}\n', encoding='utf-8')
 
         found = claims.check([src], root)
-        check('a gist never accepted is reported, and does not block',
+        # not a warning: nobody has vouched for this gist against this paragraph,
+        # so there is no verdict to give - only a person who can reread it
+        check('a gist never accepted is manual, not a warning',
               ('claim-c', 'unaccepted') in rules(found)
-              and all(f['severity'] == 'warn' for f in found))
+              and [f['severity'] for f in found if f['id'] == 'claim-c'] == ['manual'])
+        check('and it names the act that settles it',
+              [f['fix'] for f in found if f['rule'] == 'unaccepted']
+              == ['paperforge claims --accept'])
+        # the form, not the instance: any manual finding is useless without one
+        check('every manual finding names an act',
+              all(f.get('fix') for f in found if f['severity'] == 'manual'))
+        check('nothing here blocks', not any(f['severity'] == 'block' for f in found))
         check('a claim with no gist is a hole, reported as one',
               ('claim-b', 'no-gist') in rules(found))
 
@@ -93,6 +102,8 @@ def main():
         check('moving the paragraph under an accepted gist blocks',
               ('claim-c', 'stale-gist') in rules(found)
               and any(f['severity'] == 'block' for f in found))
+        check('and the worst thing found is reported first',
+              found[0]['severity'] == 'block')
 
         # rewrapping is the edit an author makes without meaning anything by it
         src.write_text('The estimator is consistent\nonly under A1 and A2. '

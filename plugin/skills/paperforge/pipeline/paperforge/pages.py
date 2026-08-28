@@ -168,19 +168,19 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
     doc = open(html_path, encoding='utf-8').read()
     i = doc.find('<h2 id="%s"' % contents_anchor)
     if i < 0:
-        return {'entries': 0, 'confirmed': 0, 'untestable': 0, 'wrong': []}
+        return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': []}
     block = doc[i:doc.find('<h2 ', i + 10)]
     entries = [(norm(m.group(2)), int(m.group(1))) for m in re.finditer(
         r'<li><span class="toc-pg">(\d+)</span>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)',
         block, re.S)]
     if not entries:
-        return {'entries': 0, 'confirmed': 0, 'untestable': 0, 'wrong': []}
+        return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': []}
 
     with _pdfplumber().open(pdf_path) as pdf:
         pages = [norm(p.extract_text() or '') for p in pdf.pages]
     toc = _contents_pages(pages, [l for l, _ in entries])
 
-    confirmed = untestable = 0
+    confirmed, untestable = 0, []
     wrong, prev = [], 0
     for label, page in entries:
         if not 1 <= page <= len(pages):
@@ -214,7 +214,10 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
 
         words = [w for w in label.split() if len(w) > 1 and not w.isdigit()][:5]
         if len(' '.join(words)) < 10:
-            untestable += 1                      # too few distinctive words to test
+            # a skip, not a pass: the entry carries its reason out so the report
+            # can say which entries were not tested and why, rather than
+            # offering a count nobody can chase
+            untestable.append((label[:60], 'too few distinctive words to test'))
         elif ' '.join(words) in text or sum(w in text for w in words) >= max(3, len(words) - 1):
             confirmed += 1
         else:

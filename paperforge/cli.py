@@ -249,11 +249,17 @@ def do_claims(docs, accept=False, quiet=False):
         print('  %-38s %d claim(s), %s'
               % (root.name, total,
                  'all current' if not found else
-                 '%d blocking, %d to look at' % (len(blocked), len(found) - len(blocked))))
+                 '%d blocking, %d for you, %d to look at'
+                 % (len(blocked), sum(1 for f in found if f['severity'] == 'manual'),
+                    sum(1 for f in found if f['severity'] == 'warn'))))
         for f in found:
-            print('      %s:%s  %s  %s' % (f['file'], f['line'], f['id'], f['rule']))
+            print('      %-7s %s:%s  %s  %s'
+                  % (f['severity'], f['file'], f['line'], f['id'], f['rule']))
             if not quiet:
                 print('          %s' % f['why'])
+                # a manual finding is only useful if it says what settles it
+                if f.get('fix'):
+                    print('          -> %s' % f['fix'])
     return blocking
 
 
@@ -318,12 +324,16 @@ def do_lint(cfg, docs, quiet=False):
             d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         s = lint.summarise(findings)
         result[d['output']] = s['blocking']
-        state = 'BLOCKED' if s['blocking'] else ('warn' if s['total'] else 'ok')
+        state = next((name for name, key in (('BLOCKED', 'block'), ('manual', 'manual'),
+                                             ('warn', 'warn'), ('skip', 'skip'))
+                      if s['counts'][key]), 'ok')
         print('  %-38s %s' % (d['source'], state))
         if not quiet:
             for f in findings:
                 print('      %-8s L%-5s %-16s %s' %
                       (f['severity'], f['line'] or '-', f['rule'], f['context'][:76] or f['why']))
+                if f.get('fix'):
+                    print('      %-8s %-6s %-16s -> %s' % ('', '', '', f['fix']))
     return result
 
 
@@ -546,7 +556,7 @@ def do_build(docs, cache, measure=True):
     return failures
 
 
-def do_verify(docs, cache):
+def do_verify(docs, cache, quiet=False):
     failed = 0
     for d in docs:
         if not d['output_path'].exists():
@@ -713,7 +723,10 @@ def do_verify(docs, cache):
                     problems.append('%d wrong page numbers %s' % (len(a['wrong']), a['wrong'][:2]))
                 else:
                     print('      page numbers: %d confirmed, %d untestable, 0 wrong'
-                          % (a['confirmed'], a['untestable']))
+                          % (a['confirmed'], len(a['untestable'])))
+                    if not quiet:
+                        for label, why in a['untestable']:
+                            print('          skip  %-46s %s' % (label, why))
         print('  %-38s %s' % (d['output'], 'ok' if not problems else 'FAIL: ' + '; '.join(problems)))
         failed += bool(problems)
     return failed
@@ -967,7 +980,7 @@ def main(argv=None):
 
     if a.command in ('verify', 'all'):
         print('verify:')
-        problems = do_verify(docs, cache)
+        problems = do_verify(docs, cache, a.quiet)
         stages['verify'] = 'failed' if problems else 'ok'
         if problems:
             record_run(cfg, docs, stages, a.label)

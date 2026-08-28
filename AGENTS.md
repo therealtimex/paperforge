@@ -162,6 +162,32 @@ worse than no gate: it reads as coverage.
 Manifest errors belong in `load()`, where every document passes regardless of
 what it later becomes. Prove a refusal by triggering it, not by reading it.
 
+## An emitter nothing runs is not covered, it is unobserved
+
+`deck.build` was called by no test, no fixture and no CI job. No
+`documents.toml` under `tests/fixtures/` declares a deck, and the deck's unit
+tests exercise `slides()`, `_notes()`, `count_words()` and `audit()` - the
+parts that take a string and return a string. The emitter itself was reachable
+only by running the CLI by hand.
+
+It had been shipping three defects. A deck built alone printed `@tbl-t` to the
+reader; its own captions were silently dropped; and a deck built after a report
+in the same process resolved against *the report's* table, putting a plausible
+"Table 1" on a slide with no tables. Which numbers a deck got depended on
+manifest order.
+
+The unit tests were not wrong and they were not thin. They covered the
+functions that were easy to call, which is the shape of the trap: coverage
+gathers around the parts with simple signatures, and the entry point that wires
+them together is the one nothing calls, because calling it needs a file, a
+profile and an output path.
+
+Ask of every emitter and every command what runs it end to end, and where. If
+the answer is "the CLI, when someone remembers", it is not covered. This is the
+sibling of the section above: there, a gate that could not fire; here, a gate
+that fires perfectly at a door nobody uses. A count of green checks says
+nothing about which door they are standing at.
+
 ## A check that reads an artifact assumes a layout
 
 `editions.py` reads a printed page a line at a time. In two columns both columns

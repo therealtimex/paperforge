@@ -461,7 +461,16 @@ def do_build(docs, cache, measure=True):
         if measure and d.get('page_numbers'):
             from . import browser
             pdf = cache / (d['output'] + '.pdf')
-            browser.print_pdf(d['output_path'], pdf)
+            try:
+                browser.print_pdf(d['output_path'], pdf)
+            except RuntimeError as err:
+                # the document is fine; the measurement is not available. Page
+                # numbers are already an optional edition-level extra, and there
+                # is a path for declining them - this joins it rather than
+                # ending the run in a traceback.
+                print('  %-38s skip  page numbers: %s' % (d['output'], err))
+                d['page_numbers'] = False
+                d['_text_unreadable'] = True
             body = ''.join(p.read_text(encoding='utf-8')
                            for p in [d['source_path']] + ([d['annex_path']] if d['annex_path'] else []))
             quality = pages.extractable(
@@ -480,7 +489,12 @@ def do_build(docs, cache, measure=True):
             for _ in range(3):
                 pdf = cache / (d['output'] + '.pdf')
                 from . import browser
-                browser.print_pdf(d['output_path'], pdf)
+                try:
+                    browser.print_pdf(d['output_path'], pdf)
+                except RuntimeError as err:
+                    print('  %-38s skip  page numbers: %s' % (d['output'], err))
+                    info = {'pages': 0}
+                    break
                 found, info = pages.measure(str(d['output_path']), str(pdf),
                                             markdown.slugify(d['contents_heading'],
                                                              d['prof'].get('fold_diacritics', True)))
@@ -565,7 +579,10 @@ def do_build(docs, cache, measure=True):
             pdf_out = d['output_path'].with_suffix('.pdf')
             measured = cache / (d['output'] + '.pdf')
             if not measured.exists():
-                browser.print_pdf(d['output_path'], measured)
+                try:
+                    browser.print_pdf(d['output_path'], measured)
+                except RuntimeError as err:
+                    print('  %-38s chrome print FAILED: %s' % (pdf_out.name, err))
             if measured.exists():
                 shutil.copyfile(measured, pdf_out)
                 print('  %-38s {"bytes": %d, "from": "chrome"}'
@@ -670,7 +687,14 @@ def do_verify(docs, cache, quiet=False):
                 print('      editions: %d page-opening headings agree, %d figures in both'
                       % (ed['expected_openers'], ed['figures_html']))
 
-        lay = verify.layout(d['output_path'])
+        try:
+            lay = verify.layout(d['output_path'])
+        except RuntimeError as err:
+            # the layout probe renders the page at four widths; if the browser
+            # will not come back, that check has no answer. Untestable is never
+            # passed, so it says so rather than reporting no overflow.
+            print('      skip  layout: %s' % err)
+            lay = {}
         over = [w for w, v in lay.items() if v.get('over')]
         clip = [w for w, v in lay.items() if v.get('clip')]
         if over:

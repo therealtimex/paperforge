@@ -33,10 +33,25 @@ CI_FLAGS = ['--no-sandbox', '--disable-dev-shm-usage']
 
 
 def run(args, timeout=180):
+    """One headless invocation.
+
+    A print that never returns used to surface as a `TimeoutExpired` traceback
+    and end the run - observed twice, both times on a document that had built
+    in half a minute on the previous attempt. Whatever the cause, a tool that
+    does not come back is the same class as one that is not installed: the
+    pipeline cannot do that piece of work and should say so, not stack-trace.
+    Callers that can proceed without it skip; the ones that cannot refuse.
+    """
     import os
     extra = CI_FLAGS if os.environ.get('PAPERFORGE_CHROME_NO_SANDBOX') else []
     cmd = [chrome(), '--headless=new', '--disable-gpu', '--no-first-run'] + extra + args
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    try:
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        target = next((a.split('=', 1)[1] for a in args if a.startswith('--print-to-pdf=')),
+                      args[-1] if args else '?')
+        raise RuntimeError('headless Chrome did not finish within %gs on %s'
+                           % (timeout, Path(target).name))
 
 
 def dump_dom(url, budget=40000, extra=()):

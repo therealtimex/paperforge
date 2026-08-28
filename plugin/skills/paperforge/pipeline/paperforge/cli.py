@@ -302,6 +302,7 @@ def do_lint(cfg, docs, quiet=False):
         findings += lint.check_front_matter(d['source_path'])
         findings += lint.check_claims(d)
         findings += lint.check_orphans(d, d['prof'])
+        findings += lint.check_uses(d, d['prof'])
         findings += lint.check_citations(
             d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         s = lint.summarise(findings)

@@ -28,10 +28,37 @@ LOCK = '.paperforge/claims.json'
 
 GIST_RE = re.compile(r'gist\s*=\s*"([^"]*)"')
 
+# `uses=claim-a,claim-b`. Bare rather than quoted: a label id is [\w-]+ and
+# cannot hold a space, a comma or a quote, so quoting would buy nothing and add
+# the failure mode `truncated-gist` exists to catch. A gist needs quotes because
+# prose does.
+USES_RE = re.compile(r'uses\s*=\s*([\w-]+(?:\s*,\s*[\w-]+)*)')
+ID_RE = re.compile(r'#[\w-]+')
+CLASS_RE = re.compile(r'\.[\w-]+')
+
 # The same condition the emitters' paragraph loops use. A claim's paragraph is
 # the run of lines ending on its label, so this has to stop where they stop or
 # the hash would cover text the reader sees as a different block.
 STOP_RE = re.compile(r'^(?:```|>|\||#)|^\s*(?:[-*+]\s|\d+[.)]\s)|^(?:-{3,}|\*{3,}|_{3,})$')
+
+
+def parse(attrs):
+    """(gist, uses, leftover) for a claim's attribute block.
+
+    `leftover` is everything the parser did not understand. It is returned
+    rather than ignored because the quiet failures here all look like success:
+    `uses=a b` reads one edge and drops the other, `use=a` reads none, and
+    neither says anything. Lint refuses a claim with anything left over.
+    """
+    rest, gist = attrs, GIST_RE.search(attrs)
+    if gist:
+        rest = GIST_RE.sub(' ', rest, count=1)
+    uses = USES_RE.search(rest)
+    names = [u.strip() for u in uses.group(1).split(',') if u.strip()] if uses else []
+    if uses:
+        rest = USES_RE.sub(' ', rest, count=1)
+    rest = CLASS_RE.sub(' ', ID_RE.sub(' ', rest))
+    return (gist.group(1) if gist else None, names, rest.strip())
 
 
 def _prose(text):
@@ -59,7 +86,7 @@ def find(lines):
         if not ident:
             continue
         attrs = xref.ATTR_RE.search(stripped)
-        gist = GIST_RE.search(attrs.group(1)) if attrs else None
+        gist, uses, leftover = parse(attrs.group(1)) if attrs else (None, [], '')
         start = i
         while start > 0:
             above = lines[start - 1].strip()
@@ -67,9 +94,23 @@ def find(lines):
                 break
             start -= 1
         text = ' '.join([l.strip() for l in lines[start:i]] + [body])
-        found[ident] = {'gist': gist.group(1) if gist else None,
+        found[ident] = {'gist': gist, 'uses': uses, 'leftover': leftover,
                         'text': _prose(text), 'line': i + 1}
     return found
+
+
+def edges(rec):
+    """What a claim draws on: what it says, plus what it was told.
+
+    The references and citations inside the paragraph are *in the paragraph* -
+    reading them is measurement, the same operation `xref.dangling` does,
+    scoped to one block. Only a claim-to-claim edge has to be declared, because
+    `@claim-x` is blocked in prose and there is nothing on the page to resolve.
+    """
+    from . import citations as cite_mod
+    drawn = {m.group(1) for m in xref.REF_RE.finditer(rec['text'])}
+    drawn |= {'@' + key for key in cite_mod.find(rec['text'])}
+    return sorted(drawn | set(rec.get('uses') or []))
 
 
 def collect(sources):

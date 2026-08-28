@@ -113,6 +113,63 @@ def main():
         check('a lock nobody can read vouches for nothing, rather than crashing',
               claims.load(root) == {})
 
+    print('what a claim draws on')
+    # resolved defensively so a regression reads as failing checks rather than
+    # a traceback that stops the rest of the suite
+    edges = getattr(claims, 'edges', lambda r: [])
+    rec = claims.find(['Consistent, as @fig-s shows [@w2019].',
+                       '{#claim-mle gist="c" uses=claim-lik, claim-reg}'])['claim-mle']
+    check('a declared edge list is read, spaces and all',
+          rec.get('uses') == ['claim-lik', 'claim-reg'])
+    # the references and citations are *in* the paragraph; reading them is
+    # measurement, not inference, so they need no syntax of their own
+    check('references and citations in the paragraph are edges too',
+          edges(rec) == ['@w2019', 'claim-lik', 'claim-reg', 'fig-s'])
+    check('a claim with no uses has only what its prose says',
+          edges(claims.find(['Says @fig-a. {#claim-p}'])['claim-p']) == ['fig-a'])
+
+    # the quiet failures here all look like success
+    check('uses=a b reads one edge and leaves the other over',
+          claims.find(['T. {#claim-b uses=a b}'])['claim-b'].get('leftover') == 'b')
+    check('a misspelled key is left over rather than ignored',
+          claims.find(['T. {#claim-c use=a}'])['claim-c'].get('leftover') == 'use=a')
+    check('a well-formed attribute leaves nothing over',
+          claims.find(['T. {#claim-d gist="g" uses=claim-a}'])['claim-d'].get('leftover') == '')
+
+    print('edges that point nowhere, and arguments that rest on themselves')
+    from paperforge import lint, profile
+    checker = getattr(lint, 'check_uses', lambda *a, **k: [])
+    with tempfile.TemporaryDirectory() as tmp:
+        u = Path(tmp) / 'r.md'
+        u.write_text('```mermaid\ngraph LR\nA-->B\n```\n\n: Chart {#fig-s}\n\n'
+                     '## Methods {#sec-m}\n\nBase. {#claim-a}\n\n'
+                     'On a figure and a section. {#claim-b uses=fig-s,sec-m,claim-a}\n\n'
+                     'Nowhere. {#claim-c uses=claim-zz}\n\n'
+                     'Loop one. {#claim-x uses=claim-y}\n\n'
+                     'Loop two. {#claim-y uses=claim-x}\n\n'
+                     'Self. {#claim-s uses=claim-s}\n', encoding='utf-8')
+        found = checker({'source_path': u, 'annex_path': None}, profile.load('en'))
+        by = {(f['match'], f['rule']) for f in found}
+        check('an edge naming no label blocks', ('claim-zz', 'dangling-uses') in by)
+        check('a two-claim cycle blocks',
+              ('claim-x', 'circular-uses') in by and ('claim-y', 'circular-uses') in by)
+        check('a claim that uses itself blocks', ('claim-s', 'circular-uses') in by)
+        # a claim may rest on a figure or a section, not only on another claim
+        check('edges to a figure and a section are not dangling',
+              not any(m in ('fig-s', 'sec-m') for m, _ in by))
+        check('a valid chain is not reported',
+              not any(m in ('claim-a', 'claim-b') for m, _ in by))
+        check('every one of these blocks rather than warns',
+              all(f['severity'] == 'block' for f in found))
+
+        # a long chain is not a cycle, and must not exhaust the stack
+        deep = Path(tmp) / 'deep.md'
+        deep.write_text('Base. {#claim-n0}\n\n' + ''.join(
+            'Step %d. {#claim-n%d uses=claim-n%d}\n\n' % (i, i, i - 1)
+            for i in range(1, 400)), encoding='utf-8')
+        check('a 400-deep chain of claims is not a cycle',
+              checker({'source_path': deep, 'annex_path': None}, profile.load('en')) == [])
+
     print('labels that would reach a reader')
     from paperforge import lint
     with tempfile.TemporaryDirectory() as tmp:

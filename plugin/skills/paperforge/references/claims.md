@@ -52,6 +52,42 @@ and whitespace collapsed.
 | Rewrapping the lines, or extra spaces | no — whitespace is not a change |
 | Deleting the claim | no — the lock entry is reported as orphaned, and `--accept` drops it |
 
+## What a claim draws on
+
+```markdown
+The estimator is consistent under A1-A3, given the likelihood in @eq-l.
+{#claim-mle gist="MLE is consistent under A1-A3" uses=claim-likelihood,claim-regularity}
+```
+
+Most edges need no syntax. A `@fig-`, `@tbl-`, `@eq-`, `@sec-` reference or a
+`[@citation]` **inside the paragraph** is already an edge — reading it is the
+same measurement `dangling()` does, scoped to one block.
+
+`uses=` exists for the one edge that cannot be read: **claim to claim**.
+`@claim-x` is blocked in prose, because a claim has no rendered form to point
+at, so nothing on the page records that one claim rests on another. Per the
+doctrine in `AGENTS.md`, an argument edge is declared by the author or it is
+absent — Paperforge never infers one.
+
+`uses=` is bare and comma-separated. A label id cannot hold a space, a comma or
+a quote, so quoting would buy nothing and add the failure mode `truncated-gist`
+exists to catch. It may name any label, not only a claim: a claim may rest on a
+figure the paragraph does not textually cite.
+
+Editing `uses=` does not make a gist stale. The fingerprint covers the prose
+with the whole attribute stripped, and an edge is not a claim about the wording.
+
+**`used-by` is not written.** It is the inverse of `uses`, computed, together
+with the section each user sits in.
+
+## What is not checked: a claim nothing uses
+
+Deliberately. A claim nothing uses is usually the **finding** — the thing the
+paper exists to state, resting on everything below it and supporting nothing
+above it. Every well-formed argument has one, so a gate for it would report a
+defect on every correct paper. It is worth *showing*, and belongs in the map
+rather than in a refusal.
+
 ## Findings
 
 | Rule | Severity | Means |
@@ -60,6 +96,9 @@ and whitespace collapsed.
 | `unaccepted` | warn | a gist that has never been accepted against its paragraph |
 | `no-gist` | warn | a labelled claim with nothing said about it |
 | `orphan-gist` | warn | a lock entry for a claim that no longer exists |
+| `dangling-uses` | block | a `uses=` naming a label that does not exist |
+| `circular-uses` | block | a claim reachable from itself; an argument resting on itself |
+| `unknown-attribute` | block | part of the attribute was not understood, so what it meant was dropped |
 
 Only `stale-gist` blocks, because only it is a demonstrated contradiction: the
 text moved out from under something a person signed off against it. The rest

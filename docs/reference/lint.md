@@ -22,6 +22,9 @@ filename shown to a reader is wrong regardless of who wrote it:
 | `claim-reference` | `@claim-x` in prose — a claim has no rendered form to point at |
 | `malformed-claim` | a claim label with braces inside its gist — it would print on the page |
 | `truncated-gist` | a quote inside a gist — what is stored would stop at it |
+| `dangling-uses` | a `uses=` edge naming a label that does not exist — see `claims.md` |
+| `circular-uses` | a claim reachable from itself through `uses=` |
+| `unknown-attribute` | part of a claim's attribute was not understood, so it was dropped |
 | `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
 | `duplicate-label` | the same id declared twice |
 | `no-bibliography` | citations with no `bibliography` declared — Typst would fail with an unhelpful "label does not exist" |

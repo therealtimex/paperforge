@@ -24,6 +24,12 @@ Any language: profiles for `vi`, `en`, `zh` and `ar` ship, and a project can
 supply its own without a release. Script behaviour — diacritic folding,
 combining marks, direction, font glyph coverage — stays with the pipeline.
 
+All four are built end to end on every run. One print check is calibrated per
+script, and no floor has been measured for Arabic: it **skips** for `ar` and
+says so, rather than borrowing the number derived from Latin documents.
+Calibrating it needs a body of Arabic documents to measure against, which this
+project does not have.
+
 ## Quick start
 
 ```bash

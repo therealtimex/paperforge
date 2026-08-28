@@ -15,6 +15,15 @@ profile_file = "profile.toml"    # the team supplies the whole declaration
   page_numbers = true
   publish = false
 
+  # `note` is a brief that does not number its pages. It is a thin composition
+  # of two covered types, which is exactly why nothing exercised it until the
+  # capability gate asked - see unit_gates.
+  [[collection.document]]
+  source = "report.md"
+  type = "note"
+  output = "note.html"
+  publish = false
+
 [internal]
 files = []
 reason = "demo"

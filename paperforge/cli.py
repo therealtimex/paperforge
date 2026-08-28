@@ -705,7 +705,9 @@ def do_verify(docs, cache, quiet=False):
                 exempt |= {tail}
             pg = verify.pagination(pdf, exempt=exempt,
                                   script=d['prof'].get('script', 'latin'))
-            if pg['thin']:
+            if pg.get('skipped'):
+                print('      skip  near-empty pages: %s' % pg['skipped'])
+            elif pg['thin']:
                 problems.append('%d near-empty printed page(s): %s'
                                 % (len(pg['thin']), [t['page'] for t in pg['thin']]))
         if d.get('page_numbers') and readable:

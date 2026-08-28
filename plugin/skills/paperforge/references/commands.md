@@ -36,6 +36,7 @@ continues wherever the work it was needed for was optional:
 | `typst`, and only a print edition needed it | the print edition is **skipped**, loudly; everything else builds |
 | `git` at `init` | the repository is **skipped**; the project is scaffolded |
 | `realtimex-pp-cli` at publish | publishing is **skipped**; every other verdict stands |
+| headless Chrome does not return within its timeout | the measurement or probe that needed it is **skipped**, named |
 
 So a green `all` on a machine missing a tool means less than one on a machine
 that has them all, which is why the skip names the tool, what was lost, and

@@ -394,6 +394,24 @@ def main():
     check('and two different headings do not collapse to one key',
           markdown.entry_keys('الملخص التنفيذي') != markdown.entry_keys('السياق'))
 
+    print('a tool that does not come back')
+    # A print that never returned used to end the run in a TimeoutExpired
+    # traceback - observed twice, both on a document that had built in half a
+    # minute the attempt before. Whatever the cause, it is the same class as a
+    # tool that is not installed: the pipeline cannot do that piece of work and
+    # says so. One millisecond is not enough for any browser to start.
+    try:
+        browser.run(['--dump-dom', 'about:blank'], timeout=0.001)
+        check('a browser that does not finish is refused in words', False)
+    except RuntimeError as err:
+        check('a browser that does not finish is refused in words',
+              'did not finish' in str(err))
+        check('and the refusal names what it was working on',
+              'about:blank' in str(err) or '.pdf' in str(err) or '.html' in str(err))
+    except Exception as err:
+        check('a browser that does not finish is refused in words',
+              False if type(err).__name__ == 'TimeoutExpired' else True)
+
     print('what this pipeline needs from the machine it runs on')
     from paperforge import require
     # Every binary the package shells out to is either in the table or is

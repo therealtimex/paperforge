@@ -113,6 +113,20 @@ extended four times, once per feature, each time after a false report. When you
 fix one instance, write down what the general trap is and gate that. If you
 cannot state the general form, you have not understood the defect.
 
+The sharpest version of this in the codebase is an arithmetic one. Three places
+asked a page whether enough of a line's words were on it, and all three wrote
+the threshold as `max(floor, len(words) - 1)` — which can ask for more matches
+than there are words, so a correct document is reported as missing a line it
+printed. `pages.py` found it, fixed it locally, and wrote a comment explaining
+the arithmetic perfectly; the copy twelve lines below it stayed wrong, and so
+did `verify.py` in another file. Each was fixed as an instance, twice.
+
+The rule lives in `matching.py` now, and the gate is over the *shape*: no
+threshold may exceed the pool it draws from, checked as a property across every
+pool and floor, plus a scan refusing a bare `max(n, len(...))` anywhere in the
+package. A comment explaining a defect protects the lines a reader happens to
+read. Only a check protects the ones they do not.
+
 ## The defaults agreed, which is why nothing looked wrong
 
 The design tokens were written down four times: two stylesheet `:root` blocks, a

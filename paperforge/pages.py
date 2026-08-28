@@ -15,7 +15,7 @@ import logging
 import re
 import warnings
 
-from . import profile
+from . import matching, profile
 
 
 
@@ -204,7 +204,7 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
             # Scale the requirement to the words available: a short title such as
             # "PART I: CONTEXT" reduces to ['part','context'] and could never
             # reach a fixed threshold of four.
-            need = len(want) if len(want) <= 3 else max(3, len(want) - 1)
+            need = matching.quorum(len(want), 3)
             if (want and sum(w in head for w in want) >= need) or \
                (m and head.startswith(m.group(1) + ' ')):
                 confirmed += 1
@@ -218,7 +218,8 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
             # can say which entries were not tested and why, rather than
             # offering a count nobody can chase
             untestable.append((label[:60], 'too few distinctive words to test'))
-        elif ' '.join(words) in text or sum(w in text for w in words) >= max(3, len(words) - 1):
+        elif ' '.join(words) in text or \
+                sum(w in text for w in words) >= matching.quorum(len(words), 3):
             confirmed += 1
         else:
             wrong.append((label[:60], page, 'wording not found on this page'))

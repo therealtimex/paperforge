@@ -61,12 +61,15 @@ appraised.
 
 ## PART II: FINDINGS
 
-### 2.1. Concentration risk
+### 2.1. Concentration risk {#sec-concentration}
 
-A single jurisdiction refines the majority of several critical inputs.
+A single jurisdiction refines the majority of several critical inputs, which is
+what @fig-pipeline sets out end to end.
+{#claim-concentration gist="One jurisdiction refines most critical inputs"}
 
 ---
 
 ## PART III: CONCLUSION
 
 Policy attention should follow the midstream rather than the mine./.
+{#claim-midstream gist="Policy should follow the midstream, not the mine" uses=claim-concentration}

@@ -43,8 +43,9 @@ def check(label, condition):
 # colour is not to paint it.
 HEX = re.compile(r'#[0-9a-fA-F]{3,8}\b')
 
-EMITTERS = ('typst.py', 'docx.py', 'diagrams.py', 'markdown.py', 'deck.py')
-SHEETS = ('paperforge.css', 'deck.css')
+EMITTERS = ('typst.py', 'docx.py', 'diagrams.py', 'markdown.py', 'deck.py',
+            'papermap.py')
+SHEETS = ('paperforge.css', 'deck.css', 'map.css')
 
 # Translucency counts. A stylesheet free of hex and full of rgba() is a
 # stylesheet whose topbar still does not follow the brand, which was true of

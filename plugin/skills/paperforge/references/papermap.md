@@ -55,6 +55,38 @@ one who can tell a conclusion from a leftover.
 `never-referred-to` and `no-gist` also appear as `lint` warnings, where they
 belong to a document. Here they belong to a map.
 
+## The map as a published page
+
+`paperforge map` prints. To publish one, declare it — it is an edition, the same
+road the deck takes, and it is built from the source of the document it
+describes rather than one of its own:
+
+```toml
+[[collection.document]]
+source = "report.md"
+include = ["ch-findings.md"]
+annex = "annex.md"
+type = "map"
+output = "report-map.html"
+publish = false
+```
+
+Self-contained, like every other artefact here: no network at view time, and
+filled from the project's own palette, so a branded project's map matches its
+document. `uses` and `used-by` are links, followable in both directions.
+
+**Publish it deliberately.** `publish = false` is the default for any document,
+and a map deserves it more than most: it shows the shape of an argument,
+including its gaps, before a paper is finished. Turning it on is the same
+deliberate edit that says any other document is ready.
+
+A map is not a page. It refuses `columns` and `binding`, for the same reason a
+deck does — there is nothing there to divide or to bind.
+
+**A document with no claims still gets a map.** Most have none yet, and sections,
+floats and citations are still a map of the document's machinery. What it is not
+is a reason to publish one.
+
 ## Related
 
 `claims.md` · `cross-references.md` · `brief.md` · `commands.md`

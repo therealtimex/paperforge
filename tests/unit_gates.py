@@ -394,6 +394,34 @@ def main():
     check('and two different headings do not collapse to one key',
           markdown.entry_keys('الملخص التنفيذي') != markdown.entry_keys('السياق'))
 
+    print('reading a right-to-left page back out of a PDF')
+    # A PDF extracts an RTL page in *visual* order: an Arabic word arrives with
+    # its characters reversed and a line's words in the reverse of the order
+    # they were written. Nothing matched anything, so no contents entry could
+    # ever be numbered and the check that decides whether a PDF is readable
+    # reported 0 of 60 words findable on a document that was entirely there.
+    logical = 'الملخص التنفيذي'
+    visual = 'يﺬﯿﻔﻨﺘﻟا ﺺﺨﻠﻤﻟا'          # the same words, as pdfplumber returns them
+    check('a visually ordered page reads back to the same words',
+          pages.canonical(logical) == pages.canonical(visual, visual=True))
+    check('and is not mistaken for them without the direction rule',
+          pages.canonical(logical) != pages.canonical(visual))
+    # deterministic, not "whichever form sorts first": that would make every
+    # word equal to its own reversal and let two different words collide
+    words = ['الملخص', 'التنفيذي', 'السياق', 'النتائج', 'الخاتمة', 'المحتويات']
+    check('different words keep different canonical forms',
+          len({tuple(pages.canonical(w)) for w in words}) == len(words))
+    check('a latin word is left alone whichever way the page runs',
+          pages.canonical('Methods', visual=True) == pages.canonical('Methods'))
+    # readable means readable once direction is accounted for
+    src = ' '.join(words)
+    check('correspondence sees an rtl page as readable',
+          pages.correspondence(src, ' '.join(w[::-1] for w in words),
+                               fold_diacritics=False, rtl=True)['found'] > 0)
+    check('and does not see it as readable without the rule',
+          pages.correspondence(src, ' '.join(w[::-1] for w in words),
+                               fold_diacritics=False)['found'] == 0)
+
     print('a tool that does not come back')
     # A print that never returned used to end the run in a TimeoutExpired
     # traceback - observed twice, both on a document that had built in half a

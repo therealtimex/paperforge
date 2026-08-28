@@ -78,6 +78,37 @@ The presence and the shape of all four fields are gated. **The age is
 deliberately not** — a profile does not stop being correct on a Tuesday, and a
 check that fires on the calendar rather than on a change fires on correct work.
 
+## A right-to-left page is read back in visual order
+
+A PDF gives up its text in the order the glyphs were drawn. On a right-to-left
+page that is *visual* order: an Arabic word comes back with its characters
+reversed, and a line's words in the reverse of the order they were written.
+
+```
+written   الملخص التنفيذي
+extracted يﺬﯿﻔﻨﺘﻟا ﺺﺨﻠﻤﻟا
+```
+
+So nothing matched anything. No contents entry could be numbered, and the check
+that decides whether a PDF is readable at all reported **0 of 60** words
+findable in a document that was entirely there.
+
+Comparison now goes through a canonical form: NFKC to unshape the presentation
+forms, a fold for the letters a font maps differently — `ی`/`ى` to `ي`, `ک` to
+`ك`, the hamza forms to `ا` — and a reversal of Arabic-script tokens when the
+text came from a visually ordered extraction.
+
+The direction rule is **deterministic**. An earlier version took whichever of
+the two forms sorted first, which is direction-agnostic and wrong: it makes
+every word equal to its own reversal, so two different words can collide.
+
+Because a line's word order is not restored, matching on this path compares
+token **sets** rather than substrings, and a heading is only located when
+exactly one page can hold it. A page number printed in a contents is worse wrong
+than absent.
+
+The form is for comparison only. Nothing rendered ever comes from it.
+
 ## A check is calibrated per script, or it does not run
 
 The near-empty page check compares a printed page's extracted text against a

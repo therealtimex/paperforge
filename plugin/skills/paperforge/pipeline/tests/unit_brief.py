@@ -77,6 +77,14 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         text = build(tmp, '')
 
+        print('what the profile brings, and what it does not claim')
+        check('the brief says what the profile is',
+              'Label and structure conventions for English research documents' in text)
+        # the half a project cannot get from anywhere else
+        check('and what it does not claim',
+              "Not a publisher's template" in text)
+        check('and when that was last looked at', 'Last reviewed' in text)
+
         print('what the project declares')
         check('the invocation is the real one, not a placeholder',
               '/usr/local/bin/paperforge status' in text and '<paperforge>' not in text)

@@ -58,3 +58,13 @@ section_two = "Findings"
 conclusion  = "Conclusion"
 sources     = "Sources and method"
 prose       = "Replace this paragraph with the substance of the section."
+
+[provenance]
+# What a project inherits by naming this profile, and what it does not
+# claim. A default that says nothing about itself is one nobody can
+# tell apart from a considered decision - see AGENTS.md, "The defaults
+# agreed, which is why nothing looked wrong".
+what     = "Label and structure conventions for English research documents"
+not      = "Not a publisher's template and not any journal's requirements"
+basis    = "Written alongside the en-sample fixture, whose stated purpose is to show the pipeline carries no Vietnamese assumptions. Built end to end on every run, printed page numbers included."
+reviewed = "2026-08-28"

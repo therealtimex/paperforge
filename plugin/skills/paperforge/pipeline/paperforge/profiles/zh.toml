@@ -62,3 +62,13 @@ section_two = "主要发现"
 conclusion  = "结论"
 sources     = "来源与方法"
 prose       = "请用本节的实质内容替换本段。"
+
+[provenance]
+# What a project inherits by naming this profile, and what it does not
+# claim. A default that says nothing about itself is one nobody can
+# tell apart from a considered decision - see AGENTS.md, "The defaults
+# agreed, which is why nothing looked wrong".
+what     = "Label and structure conventions for Chinese research documents"
+not      = "Not a publisher's template; section numbering follows the language rather than a house rule"
+basis    = "Measured where it differs structurally from Latin: no word spaces, so slide length is counted per character, and the near-empty page floor was measured separately. Its printed text cannot be read back - the CJK face is embedded without a usable ToUnicode map - so the print checks decline."
+reviewed = "2026-08-28"

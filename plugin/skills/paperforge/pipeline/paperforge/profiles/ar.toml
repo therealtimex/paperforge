@@ -61,3 +61,13 @@ section_two = "النتائج"
 conclusion  = "الخاتمة"
 sources     = "المصادر والمنهجية"
 prose       = "استبدل هذه الفقرة بمضمون القسم."
+
+[provenance]
+# What a project inherits by naming this profile, and what it does not
+# claim. A default that says nothing about itself is one nobody can
+# tell apart from a considered decision - see AGENTS.md, "The defaults
+# agreed, which is why nothing looked wrong".
+what     = "Right-to-left script behaviour for Arabic documents: mirrored layout, no diacritic folding"
+not      = "Not checked against any body of real Arabic documents, and not a publisher's template"
+basis    = "Built end to end by the ar-sample fixture. Two print checks do not run for it: no near-empty floor has been measured for Arabic, and its PDF text comes back shaped into presentation forms and in visual order, so none of it matches the source."
+reviewed = "2026-08-28"

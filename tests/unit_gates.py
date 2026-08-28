@@ -416,6 +416,31 @@ def main():
     check('and the reference syntax accepts exactly four kinds',
           set(xref.KINDS) == {'fig', 'tbl', 'eq', 'sec'})
 
+    print('what a shipped default says about itself')
+    # A project inherits a profile without choosing it. `en.toml` opened with
+    # one comment line, so nothing told a project whether its label set was a
+    # considered rendering of English publishing practice or a best-effort
+    # default that happened to fit one corpus. Both are honourable and they are
+    # not the same thing - see "The defaults agreed, which is why nothing looked
+    # wrong". Checked as a form so a fifth profile cannot arrive without one.
+    from datetime import date
+    for name in profile.available():
+        prov = profile.load(name).get('provenance') or {}
+        check('%s: says what it is, what it is not, and on what basis' % name,
+              all((prov.get(k) or '').strip() for k in ('what', 'not', 'basis')))
+        stamped = prov.get('reviewed')
+        try:
+            # `is not None` rather than a truthiness test: an absent date and a
+            # malformed one both have to fail, and comparing two Nones passed
+            iso = date.fromisoformat(stamped).isoformat() if stamped else None
+        except (ValueError, TypeError):
+            iso = None
+        check('%s: carries a review date that parses' % name,
+              iso is not None and iso == stamped)
+    # deliberately not gated: whether the date is recent. A profile does not
+    # stop being correct on a Tuesday, and a check that fails on the calendar
+    # rather than on a change fires on correct work.
+
     print('everything this pipeline says it supports, built by something')
     # Three defects this session were the same shape: a capability shipped, was
     # documented as supported, and was exercised by nothing. `deck.build` was

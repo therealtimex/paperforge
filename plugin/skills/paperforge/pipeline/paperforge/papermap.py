@@ -18,10 +18,13 @@ usually the finding - resting on everything below it, supporting nothing above
 - so a refusal for it would fire on every correct paper. It is a line in a
 report instead, where a reader decides what it means.
 """
+import html as ihtml
 import json
 from pathlib import Path
 
-from . import assemble, citations as cite_mod, claims as claims_mod, xref
+from . import assemble, citations as cite_mod, claims as claims_mod, palette, xref
+
+THEME = Path(__file__).parent / 'theme'
 
 
 def _headings(lines):
@@ -147,3 +150,109 @@ def render(maps):
 
 def as_json(maps):
     return json.dumps(maps, indent=2, ensure_ascii=False) + '\n'
+
+
+def _link(ident):
+    """An edge as something a reader can follow. A citation key has no anchor
+    on this page - there is no entry here to jump to - so it stays plain."""
+    if ident.startswith('@'):
+        return '<span class="cite">%s</span>' % ihtml.escape(ident)
+    return '<a class="ref" href="#%s">%s</a>' % (ihtml.escape(ident), ihtml.escape(ident))
+
+
+def _edges(claim):
+    out = []
+    for key, name in (('uses', 'uses'), ('used_by', 'used by')):
+        if claim[key]:
+            out.append('<span class="edge"><b>%s</b> %s</span>'
+                       % (name, ', '.join(_link(i) for i in claim[key])))
+    return ''.join(out)
+
+
+def _claim(claim):
+    """One claim, wherever it sits. Both callers go through here: the first
+    version rendered the gist only for claims under a heading, so a claim
+    written before the first one silently lost the sentence a person wrote."""
+    gist = ('<span class="gist">%s</span>' % ihtml.escape(claim['gist'])
+            if claim['gist'] else
+            '<span class="gist absent">nothing said about this one</span>')
+    return ('<div class="claim" id="%s"><span class="id">%s</span>%s%s</div>'
+            % (ihtml.escape(claim['id']), ihtml.escape(claim['id']),
+               gist, _edges(claim)))
+
+
+def page(m, prof=None, brand=None, subtitle='', footer=''):
+    """The map as a self-contained page.
+
+    Structure is rendered whether or not the document has any claims. Most do
+    not yet, and a map of sections, floats and citations is still a map of the
+    document's machinery - what it would not be is a reason to publish one.
+    """
+    from . import markdown as md
+    prof = prof or {}
+    body, by_section = [], {}
+    for claim in m['claims']:
+        by_section.setdefault(claim['section'], []).append(claim)
+
+    body.append('<h2>Structure</h2>')
+    for section in m['sections']:
+        key = section['id'] or section['title']
+        ident = ' id="%s"' % ihtml.escape(section['id']) if section['id'] else ''
+        name = ihtml.escape(section['id'] or section['title'])
+        said = ('<span class="words">%s</span>' % ihtml.escape(section['title'])
+                if section['id'] else '')
+        body.append('<p class="section depth-%d"%s><a href="#%s">%s</a> %s</p>'
+                    % (min(section['depth'], 4), ident, ihtml.escape(key), name, said))
+        for claim in by_section.get(key, ()):
+            body.append(_claim(claim))
+
+    orphaned = by_section.get(None, [])
+    if orphaned:
+        body.append('<h2>Before any heading</h2>')
+        for claim in orphaned:
+            body.append(_claim(claim))
+
+    if m['floats']:
+        body.append('<h2>Figures, tables and equations</h2>')
+        for entry in m['floats']:
+            used = ('<span class="edge">used by %s</span>'
+                    % ', '.join(_link(i) for i in entry['used_by'])) if entry['used_by'] else ''
+            body.append('<div class="float" id="%s"><span class="label">%s</span>'
+                        '<span class="caption">%s</span>%s</div>'
+                        % (ihtml.escape(entry['id']), ihtml.escape(entry['label']),
+                           ihtml.escape(entry['caption']), used))
+
+    if m['citations']:
+        body.append('<h2>Cited</h2><p class="cites">%s</p>'
+                    % ', '.join(ihtml.escape(c) for c in m['citations']))
+
+    if m['notes']:
+        body.append('<h2>Worth a look</h2>')
+        for note in m['notes']:
+            body.append('<div class="note"><span class="rule">%s</span> %s '
+                        '<span class="why">%s</span></div>'
+                        % (ihtml.escape(note['rule']), _link(note['id']),
+                           ihtml.escape(note['why'])))
+
+    shell = (THEME / 'map.html').read_text(encoding='utf-8')
+    filled = {
+        'LANG': prof.get('lang', 'en'),
+        'DIR': prof.get('direction', 'ltr'),
+        'TITLE': ihtml.escape(m['document']),
+        'SUBTITLE': ihtml.escape(subtitle),
+        'FOOTER': ihtml.escape(footer),
+        'THEME_CSS': (palette.stylesheet(THEME / 'map.css')
+                      + '\n' + md.theme_override(prof, brand)),
+        'BODY': '\n'.join(body),
+    }
+    for key, value in filled.items():
+        shell = shell.replace('{{%s}}' % key, value)
+    return shell
+
+
+def emit(document, output, prof=None, brand=None, subtitle='', footer=''):
+    """Build the map and write it. Returns what it put on the page."""
+    m = build(document, prof)
+    Path(output).write_text(page(m, prof, brand, subtitle, footer), encoding='utf-8')
+    return {'sections': len(m['sections']), 'floats': len(m['floats']),
+            'claims': len(m['claims']), 'notes': len(m['notes'])}

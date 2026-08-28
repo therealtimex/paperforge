@@ -20,6 +20,18 @@ profile = "en"
   docx = true          # covers the annex and diagram paths of the Word emitter
   publish = false
 
+  # The map of the document above, declared against the same source. It is the
+  # only artefact here built from another document's source rather than its own,
+  # which is the point: it describes that document. Unpublished, like a map
+  # should be until somebody decides the argument is ready to show.
+  [[collection.document]]
+  source = "report.md"
+  include = ["ch-findings.md"]
+  annex = "annex.md"
+  type = "map"
+  output = "report-map.html"
+  publish = false
+
 [internal]
 files = []
 reason = "fixture"

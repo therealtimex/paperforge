@@ -13,4 +13,7 @@ tests/**/published/
 .coverage
 .coverage.*
 coverage-report.json
-tests/**/.paperforge/
+# run records churn on every build; a claims lock does not - it is what an
+# author accepted a gist against, and a lock only one machine has vouches
+# for nothing anywhere else
+tests/**/.paperforge/runs/

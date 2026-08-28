@@ -37,6 +37,9 @@ BUILTIN_TYPES = {
     'report': {'layout': 'report'},
     'brief': {'layout': 'brief'},
     'deck': {'format': 'deck'},
+    # a map of another document, not a document of its own: it is built from
+    # that document's source and says what it declares and what points at what
+    'map': {'format': 'map'},
     'note': {'layout': 'brief', 'page_numbers': False},
     # A book is a report that has been made into an object: it is bound, so it
     # has an inside edge and two sides to a leaf, and it is not A4.
@@ -90,6 +93,10 @@ def columns_of(d):
     if n not in (1, 2):
         raise SystemExit('document %r sets columns = %r; only 1 or 2 are set'
                          % (d.get('source', '?'), n))
+    if n > 1 and d.get('format') == 'map':
+        raise SystemExit('document %r is a map and sets columns = %d; a map is a '
+                         'description of a document, not a page of one'
+                         % (d.get('source', '?'), n))
     if n > 1 and d.get('format') == 'deck':
         raise SystemExit('document %r is a deck and sets columns = %d; a slide is '
                          'not a page and has no measure to divide'
@@ -110,6 +117,10 @@ def binding_of(d):
                          % (d.get('source', '?'), trim, ', '.join(sorted(typst.TRIM))))
     if not d.get('binding'):
         return False
+    if d.get('format') == 'map':
+        raise SystemExit('document %r is a map and is bound; a map is read on a '
+                         'screen beside the document and has no leaf to turn'
+                         % d.get('source', '?'))
     if d.get('format') == 'deck':
         raise SystemExit('document %r is a deck and is bound; a slide is one side '
                          'of nothing and has no gutter to leave room for'
@@ -306,7 +317,7 @@ def do_lint(cfg, docs, quiet=False):
         findings += lint.check_citations(
             d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         s = lint.summarise(findings)
-        result[d['source']] = s['blocking']
+        result[d['output']] = s['blocking']
         state = 'BLOCKED' if s['blocking'] else ('warn' if s['total'] else 'ok')
         print('  %-38s %s' % (d['source'], state))
         if not quiet:
@@ -401,6 +412,15 @@ def do_build(docs, cache, measure=True):
         # emitters read the assembled text, so a diagram in an included
         # section was allocated a figure number and a raster nobody had been
         # asked to render - see assemble.sources()
+        if d.get('format') == 'map':
+            # built from the source, so it needs no diagrams rendered and no
+            # page numbers measured; it describes the document, it is not one
+            stats = papermap.emit(d, d['output_path'], prof=d['prof'],
+                                  brand=d.get('brand'),
+                                  subtitle=d.get('organisation') or '',
+                                  footer=d.get('footer_note') or '')
+            print('  %-38s %s' % (d['output'], json.dumps(stats, ensure_ascii=False)))
+            continue
         srcs = diagrams.sources(*assemble.sources(d))
         # the document's own palette and font stack, so a diagram is drawn in
         # the same colours as the page around it; the cache keys on both
@@ -532,6 +552,19 @@ def do_verify(docs, cache):
         if not d['output_path'].exists():
             print('  %-38s NOT BUILT' % d['output']); failed += 1; continue
         r = verify.check(d['output_path'], *assemble.sources(d))
+        if d.get('format') == 'map':
+            # a map is not the document's prose, so the coverage check does not
+            # apply: every line would read as missing. What must hold is that it
+            # opens offline, like every other artefact here.
+            problems = (['external assets %s' % r['external_assets'][:2]]
+                        if r['external_assets'] else [])
+            claims_on_it = Path(d['output_path']).read_text(
+                encoding='utf-8').count('class="claim"')
+            print('  %-38s %s (%d claim(s) mapped)' %
+                  (d['output'], 'ok' if not problems else 'FAIL: ' + '; '.join(problems),
+                   claims_on_it))
+            failed += bool(problems)
+            continue
         if d.get('format') == 'deck':
             problems = []
             if r['external_assets']:
@@ -919,8 +952,8 @@ def main(argv=None):
         if a.command == 'lint':
             return 1 if any(blocking.values()) else 0
         # carry on with the documents that passed; a blocked one must not stop the rest
-        held = [d['output'] for d in docs if blocking.get(d['source'])]
-        docs = [d for d in docs if not blocking.get(d['source'])]
+        held = [d['output'] for d in docs if blocking.get(d['output'])]
+        docs = [d for d in docs if not blocking.get(d['output'])]
         if held:
             failed = 1
             print('  held back: %s' % ', '.join(held))

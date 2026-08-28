@@ -9,6 +9,7 @@ manifest names the kind of thing rather than repeating layout mechanics.
 | `brief` | Masthead, tighter scale, no contents |
 | `note` | A brief without page numbers |
 | `deck` | reveal.js slides, speaker notes, landscape PDF |
+| `map` | a map of another document, built from that document's source — see `papermap.md` |
 | `book` | bound: recto chapters, mirrored margins, running heads, roman front matter |
 
 ## Scale is not cosmetic

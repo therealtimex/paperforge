@@ -7,6 +7,7 @@ rest is the deliberate omission: a claim nothing uses is reported here and
 refused nowhere, because it is usually the paper's finding.
 """
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -109,6 +110,54 @@ def main():
               not any(l.rstrip() != l for l in text.split('\n')))
         loaded = json.loads(papermap.as_json([m]))
         check('the machine form is the same map', loaded == [m])
+
+        print('the map as a published page')
+        html = papermap.page(m, profile.load('en'))
+        check('it opens offline, like every other artefact here',
+              not re.search(r'(?:src|href)="https?://', html))
+        check('it is filled from the palette, not from literals',
+              '--navy:' in html and '--amber:' in html)
+        check('a claim is an anchor, and an edge is a link to it',
+              'id="claim-mle"' in html and 'href="#claim-mle"' in html)
+        check('the gist a person wrote is on the page',
+              'MLE is consistent under A1-A3' in html)
+        check('and a claim with none says so rather than showing nothing',
+              'nothing said about this one' in html)
+        check('a float carries its number and caption',
+              'Figure 1' in html and 'bias vs n for the two estimators' in html)
+        check('citations and notes are on it',
+              'white2019' in html and 'nothing-uses-it' in html)
+
+        # a gist is prose a person wrote, so it can contain anything
+        sharp = Path(tmp) / 'sharp.md'
+        sharp.write_text('A claim. {#claim-x gist="a < b & <script>alert(1)</script>"}\n',
+                         encoding='utf-8')
+        page = papermap.page(papermap.build({'source_path': sharp, 'annex_path': None},
+                                            profile.load('en')), profile.load('en'))
+        check('a gist is escaped, not injected',
+              '<script>' not in page and '&lt;script&gt;' in page)
+
+        # most documents have no claims yet, and a map of sections and floats is
+        # still a map of the document's machinery
+        plain = Path(tmp) / 'plain.md'
+        plain.write_text('## Only headings {#sec-only}\n\nSome prose.\n', encoding='utf-8')
+        bare = papermap.build({'source_path': plain, 'annex_path': None}, profile.load('en'))
+        rendered = papermap.page(bare, profile.load('en'))
+        check('a document with no claims still gets its structure',
+              bare['claims'] == [] and 'sec-only' in rendered)
+
+        print('what a map cannot be')
+        from paperforge import cli
+        for label, fn, doc in (
+                ('a map has no page to divide into columns', cli.columns_of,
+                 {'source': 'r.md', 'format': 'map', 'columns': 2}),
+                ('and no leaf to bind', cli.binding_of,
+                 {'source': 'r.md', 'format': 'map', 'binding': True})):
+            try:
+                fn(doc)
+                check(label, False)
+            except SystemExit as e:
+                check(label, 'map' in str(e))
 
         print('an annex is part of the same work')
         body, annex = Path(tmp) / 'b.md', Path(tmp) / 'a.md'

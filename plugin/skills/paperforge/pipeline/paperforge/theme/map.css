@@ -1,0 +1,79 @@
+/* Paperforge map theme.
+   The same tokens the document and deck themes are filled from. A map is read
+   on a screen beside the document it describes, so it is set narrow and quiet:
+   the structure is the content, and nothing here should compete with it. */
+/* Filled from paperforge/palette.py at build time. No colour is written here
+   as a literal - see tests/unit_palette.py, which fails on any hex, rgba or
+   hsla in a stylesheet, because a colour written as a literal is correct by
+   default and unbrandable forever. */
+{{TOKENS}}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 2.5rem 1.5rem 6rem;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+main { max-width: 52rem; margin: 0 auto; }
+
+header { border-bottom: 2px solid var(--navy); padding-bottom: 1rem; margin-bottom: 2rem; }
+header h1 { font-family: var(--serif); font-size: 1.6rem; margin: 0 0 .25rem; color: var(--navy); }
+header p { margin: 0; color: var(--muted); font-size: .85rem; }
+
+h2 {
+  font-size: .78rem; text-transform: uppercase; letter-spacing: .09em;
+  color: var(--muted); margin: 2.5rem 0 .75rem; font-weight: 600;
+}
+
+.section { margin: 0 0 .35rem; }
+.section > a { font-weight: 600; color: var(--navy); text-decoration: none; }
+.section > a:hover { text-decoration: underline; }
+.section .words { color: var(--ink-soft); }
+.depth-2 { margin-left: 1.25rem; }
+.depth-3 { margin-left: 2.5rem; }
+.depth-4 { margin-left: 3.75rem; }
+
+.claim {
+  margin: .5rem 0 .9rem 1.25rem; padding: .55rem .8rem;
+  background: var(--paper); border: 1px solid var(--line);
+  border-left: 3px solid var(--amber); border-radius: 3px;
+}
+.claim .id { font-family: var(--mono, var(--sans)); font-size: .82rem; color: var(--amber-deep); }
+.claim .gist { display: block; margin: .15rem 0 .35rem; }
+.claim .gist.absent { color: var(--muted); font-style: italic; }
+.claim .edge { display: block; font-size: .8rem; color: var(--ink-soft); }
+.claim .edge b { font-weight: 600; color: var(--muted); }
+
+.float {
+  display: flex; gap: .6rem; align-items: baseline;
+  padding: .3rem 0; border-bottom: 1px solid var(--line-soft);
+}
+.float .label { color: var(--navy-3); font-weight: 600; white-space: nowrap; }
+.float .caption { color: var(--ink-soft); }
+.float .edge { margin-left: auto; font-size: .8rem; color: var(--muted); white-space: nowrap; }
+
+a.ref { color: var(--navy-3); text-decoration: none; border-bottom: 1px solid var(--line); }
+a.ref:hover { border-bottom-color: var(--navy-3); }
+
+.cites { color: var(--ink-soft); font-size: .85rem; }
+
+.note {
+  padding: .35rem .7rem; margin: .25rem 0; border-radius: 3px;
+  background: var(--amber-soft); border-left: 3px solid var(--amber-line);
+  font-size: .85rem;
+}
+.note .rule { font-weight: 600; color: var(--amber-deep); }
+.note .why { color: var(--ink-soft); }
+
+footer { margin-top: 3rem; color: var(--muted); font-size: .8rem; }
+
+@media (prefers-color-scheme: dark) {
+  /* left to the document theme's own handling; a map inherits nothing here
+     rather than inventing a second palette nobody declared */
+}

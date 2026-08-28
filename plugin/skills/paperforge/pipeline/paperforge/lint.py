@@ -154,6 +154,40 @@ def check_citations(document, bibliography=None):
     return []
 
 
+def check_claims(document):
+    """Claim labels that would reach a reader, or store the wrong gist.
+
+    Both are silent. A brace inside a gist - `gist="the set {a,b}"` - is not
+    matched by the attribute pattern at all, so nothing registers the claim and
+    nothing strips it: `{#claim-y ...}` prints on the page, which is the defect
+    `xref.take_equation` records for `{#eq-x}`. A quote inside one is the
+    quieter version: the attribute parses, and the gist is truncated at the
+    inner quote without anything saying so.
+    """
+    from . import assemble, claims as claims_mod, xref
+    findings = []
+    for path in assemble.sources(document):
+        for n, line in enumerate(Path(path).read_text(encoding='utf-8').split('\n'), 1):
+            s = line.strip()
+            if '{#claim-' not in s:
+                continue
+            if not xref.take_claim(s)[1]:
+                findings.append({'rule': 'malformed-claim', 'severity': 'block',
+                                 'line': n, 'match': '{#claim-',
+                                 'why': 'a claim label the attribute pattern cannot read; '
+                                        'it would print on the page. Braces are not allowed '
+                                        'inside a gist', 'context': s[:80]})
+                continue
+            attrs = xref.ATTR_RE.search(s)
+            body = attrs.group(1) if attrs else ''
+            if claims_mod.GIST_RE.search(body) and body.count('"') > 2:
+                findings.append({'rule': 'truncated-gist', 'severity': 'block',
+                                 'line': n, 'match': 'gist=',
+                                 'why': 'a quote inside a gist; what is stored would stop '
+                                        'at it', 'context': s[:80]})
+    return findings
+
+
 def check_front_matter(source):
     """Front matter that would render wrong, in the terms an author can fix.
 

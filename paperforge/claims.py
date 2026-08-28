@@ -1,0 +1,147 @@
+"""An authored gist for a claim, and the gate that stops it going stale.
+
+Code has a compiler. Rename a function, miss a call site, and the build fails.
+A paper has nothing: change what a paragraph argues, leave its one-line gist
+alone, and nothing anywhere complains. A stale gist is worse than no gist,
+because whatever reads it - somebody skimming, a model handed the document -
+trusts it completely, and the drift is invisible from the output.
+
+So the gist is written by a person and only ever *checked* here. Generating one
+would produce a summary that has to be reviewed before it can be trusted, which
+is the work it claimed to remove; and by the time the prose has drifted, a
+summary of the prose is a summary of the drift.
+
+What is stored is a hash of the prose, taken with the label stripped, so
+rewording a gist does not mark it stale and rewriting the paragraph does.
+Re-stamping is deliberate - `paperforge claims --accept` - because that is the
+moment somebody reread the paragraph and said the gist still holds. Nothing
+stamps itself.
+"""
+import hashlib
+import json
+import re
+from pathlib import Path
+
+from . import xref
+
+LOCK = '.paperforge/claims.json'
+
+GIST_RE = re.compile(r'gist\s*=\s*"([^"]*)"')
+
+# The same condition the emitters' paragraph loops use. A claim's paragraph is
+# the run of lines ending on its label, so this has to stop where they stop or
+# the hash would cover text the reader sees as a different block.
+STOP_RE = re.compile(r'^(?:```|>|\||#)|^\s*(?:[-*+]\s|\d+[.)]\s)|^(?:-{3,}|\*{3,}|_{3,})$')
+
+
+def _prose(text):
+    """A paragraph reduced to what it says, so whitespace is not a change."""
+    return re.sub(r'\s+', ' ', text).strip()
+
+
+def fingerprint(text):
+    return hashlib.sha256(_prose(text).encode('utf-8')).hexdigest()[:16]
+
+
+def find(lines):
+    """{id: {'gist', 'text', 'line'}} for every labelled paragraph.
+
+    A claim labels itself at the end of its own paragraph, so the paragraph is
+    the run of lines ending on the label. Nothing else in the pipeline needs a
+    paragraph's boundaries, which is why this walks them here.
+    """
+    found = {}
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if xref.HEADING_RE.match(stripped):
+            continue
+        body, ident = xref.take_claim(stripped)
+        if not ident:
+            continue
+        attrs = xref.ATTR_RE.search(stripped)
+        gist = GIST_RE.search(attrs.group(1)) if attrs else None
+        start = i
+        while start > 0:
+            above = lines[start - 1].strip()
+            if not above or STOP_RE.match(above):
+                break
+            start -= 1
+        text = ' '.join([l.strip() for l in lines[start:i]] + [body])
+        found[ident] = {'gist': gist.group(1) if gist else None,
+                        'text': _prose(text), 'line': i + 1}
+    return found
+
+
+def collect(sources):
+    """Every claim across a project's sources, with the file it is in."""
+    out = {}
+    for path in sources:
+        lines = Path(path).read_text(encoding='utf-8').split('\n')
+        for ident, rec in find(lines).items():
+            out[ident] = dict(rec, file=Path(path).name)
+    return out
+
+
+def load(root):
+    path = Path(root) / LOCK
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding='utf-8'))
+    except json.JSONDecodeError:
+        # a lock nobody can read is a lock that vouches for nothing
+        return {}
+
+
+def save(root, data):
+    path = Path(root) / LOCK
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    return path
+
+
+def check(sources, root):
+    """Findings about the project's claims, worst first.
+
+    `stale` blocks: the paragraph moved under a gist that was once accepted
+    against it, which is a demonstrated contradiction. The rest warn - a claim
+    with no gist has not promised anything, and one never accepted has not
+    claimed to be current.
+    """
+    present, lock, found = collect(sources), load(root), []
+    for ident in sorted(present):
+        rec, stamped = present[ident], lock.get(ident)
+        if rec['gist'] is None:
+            found.append({'rule': 'no-gist', 'severity': 'warn', 'id': ident,
+                          'file': rec['file'], 'line': rec['line'],
+                          'why': 'a labelled claim with nothing said about it'})
+        elif not stamped:
+            found.append({'rule': 'unaccepted', 'severity': 'warn', 'id': ident,
+                          'file': rec['file'], 'line': rec['line'],
+                          'why': 'a gist never accepted against its paragraph'})
+        elif stamped.get('hash') != fingerprint(rec['text']):
+            found.append({'rule': 'stale-gist', 'severity': 'block', 'id': ident,
+                          'file': rec['file'], 'line': rec['line'],
+                          'why': 'the paragraph changed and the gist was not accepted again'})
+    for ident in sorted(set(lock) - set(present)):
+        found.append({'rule': 'orphan-gist', 'severity': 'warn', 'id': ident,
+                      'file': LOCK, 'line': 0,
+                      'why': 'accepted for a claim that no longer exists'})
+    found.sort(key=lambda f: (f['severity'] != 'block', f['id']))
+    return found
+
+
+def accept(sources, root):
+    """Re-stamp every claim that has a gist. Returns what changed."""
+    present, lock = collect(sources), load(root)
+    fresh, changed = {}, []
+    for ident, rec in present.items():
+        if rec['gist'] is None:
+            continue
+        digest = fingerprint(rec['text'])
+        if lock.get(ident, {}).get('hash') != digest:
+            changed.append(ident)
+        fresh[ident] = {'hash': digest, 'gist': rec['gist']}
+    dropped = sorted(set(lock) - set(fresh))
+    save(root, fresh)
+    return {'accepted': sorted(fresh), 'changed': sorted(changed), 'dropped': dropped}

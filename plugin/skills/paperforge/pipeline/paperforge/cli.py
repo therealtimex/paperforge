@@ -7,7 +7,8 @@ import sys
 import tomllib
 from pathlib import Path
 
-from . import (assemble, brief, deck, diagrams, editions, figures, lint, markdown,
+from . import (assemble, brief, claims, deck, diagrams, editions, figures, lint,
+               markdown,
                pages, palette, profile, publish as pub, runs, scaffold, typst,
                verify)
 
@@ -208,6 +209,43 @@ def pick(docs, only):
     return chosen
 
 
+def _claim_sources(docs):
+    """{root: [source]} - the files a project's claims can live in."""
+    roots = {}
+    for d in docs:
+        root, seen = d['root'], roots.setdefault(d['root'], [])
+        for path in [d['source_path'], d.get('annex_path')] + list(d.get('include_paths') or ()):
+            if path and Path(path).exists() and Path(path) not in seen:
+                seen.append(Path(path))
+    return roots
+
+
+def do_claims(docs, accept=False, quiet=False):
+    """Gists are written by hand. This only ever checks them, except for
+    --accept, which is somebody saying they have reread the paragraph."""
+    blocking = 0
+    for root, sources in sorted(_claim_sources(docs).items()):
+        if accept:
+            done = claims.accept(sorted(sources), root)
+            print('  %-38s %d accepted, %d restamped, %d dropped'
+                  % (claims.LOCK, len(done['accepted']), len(done['changed']),
+                     len(done['dropped'])))
+            continue
+        found = claims.check(sorted(sources), root)
+        blocked = [f for f in found if f['severity'] == 'block']
+        blocking += len(blocked)
+        total = len(claims.collect(sorted(sources)))
+        print('  %-38s %d claim(s), %s'
+              % (root.name, total,
+                 'all current' if not found else
+                 '%d blocking, %d to look at' % (len(blocked), len(found) - len(blocked))))
+        for f in found:
+            print('      %s:%s  %s  %s' % (f['file'], f['line'], f['id'], f['rule']))
+            if not quiet:
+                print('          %s' % f['why'])
+    return blocking
+
+
 def do_figures(docs, quiet=False):
     """Every document must agree with the project's declared figures."""
     seen, total = set(), 0
@@ -256,6 +294,7 @@ def do_lint(cfg, docs, quiet=False):
         findings += lint.check_publishable(d['source_path'], allowed, blocked, embedded)
         findings += lint.check_references(d, d['prof'])
         findings += lint.check_front_matter(d['source_path'])
+        findings += lint.check_claims(d)
         findings += lint.check_citations(
             d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         s = lint.summarise(findings)
@@ -710,7 +749,9 @@ def main(argv=None):
     ap.add_argument('--diff', help='runs: compare two runs, comma separated')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
                                         'status', 'selftest', 'plugin', 'figures', 'init', 'runs',
-                                     'brief'])
+                                     'brief', 'claims'])
+    ap.add_argument('--accept', action='store_true',
+                    help='claims: re-stamp every gist against its paragraph')
     ap.add_argument('--only', help='limit to one document or collection')
     ap.add_argument('--expires-at', help='ISO timestamp for artifact expiry')
     ap.add_argument('--no-measure', action='store_true', help='skip printed page numbering')
@@ -838,6 +879,15 @@ def main(argv=None):
         if a.command == 'figures':
             return 1 if disagreements else 0
         if disagreements:
+            failed = 1
+
+    if a.command in ('claims', 'all'):
+        print('claims:')
+        stale = do_claims(docs, a.accept, a.quiet)
+        stages['claims'] = 'stale' if stale else 'ok'
+        if a.command == 'claims':
+            return 1 if stale else 0
+        if stale:
             failed = 1
 
     if a.command in ('lint', 'all'):

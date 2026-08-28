@@ -12,8 +12,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import (browser, citations, deck, lint, markdown, pages,
-                        profile, verify)
+from paperforge import (browser, citations, deck, docx, lint, markdown, pages,
+                        profile, typst, verify, xref)
 
 failures = []
 
@@ -106,6 +106,80 @@ def main():
             profile.load('en'))
         check('a reference in one file to a label in another resolves',
               found == [])
+
+    print('section labels')
+    en = profile.load('en')
+    lines = ['## Methods {#sec-methods}', '', 'Set out in @sec-methods.', '',
+             '### Sub {.no-part #sec-sub}', '', 'Also @sec-sub and @sec-nowhere.', '',
+             '```mermaid', 'graph LR', 'A-->B', '```', ': A chart {#fig-c}']
+    table = xref.resolve(en, lines)
+    check('a labelled heading enters the table as a section',
+          table.get('sec-methods', {}).get('kind') == 'sec')
+    # nothing in this pipeline numbers headings, and four emitters agreeing on
+    # a counter is the failure xref.py exists to prevent
+    check("a section has no number, and reads as the heading's own words",
+          table.get('sec-methods', {}).get('number', 0) is None
+          and table.get('sec-methods', {}).get('label') == 'Methods')
+    check('the id is found whichever order the attribute is written in',
+          table.get('sec-sub', {}).get('label') == 'Sub')
+    check('a numbered kind alongside it still numbers',
+          table.get('fig-c', {}).get('label') == 'Figure 1')
+    check('a reference to a section resolves to the heading in prose',
+          xref.substitute('Set out in @sec-methods.', table)
+          == 'Set out in Methods.')
+    check('a reference to a section that does not exist is dangling',
+          [i for _, i in xref.dangling(lines, table)] == ['sec-nowhere'])
+    check('a section id declared twice is reported',
+          xref.duplicates(lines + ['## Again {#sec-methods}']) == ['sec-methods'])
+    check('caption_of does not say "Methods. Methods"',
+          'sec-methods' in table
+          and xref.caption_of(table['sec-methods']) == 'Methods')
+    # KINDS was declared here and consumed by nothing. The regexes derive from
+    # it now, and this is the drift guard: it fires if a kind is added to one
+    # and not the other. It passes on the old code too, where they agreed by
+    # accident rather than by construction.
+    check('every kind in KINDS is accepted by the reference syntax, and no other',
+          all(xref.REF_RE.match('@%s-x' % k) for k in xref.KINDS)
+          and not xref.REF_RE.match('@zzz-x'))
+    check('and a section is not one of the numbered kinds',
+          'sec' not in getattr(xref, 'NUMBERED', ('sec',))
+          and 'sec' in xref.KINDS)
+
+    # The attribute must not reach a reader in any edition. `take_equation`
+    # records what happens when one does: `{#eq-x}` printed on the page.
+    src = ('# Doc\n\n## Methods {#sec-methods}\n\nText.\n\n'
+           '## Results {.no-part #sec-results}\n\nSet out in @sec-methods, and @sec-results.\n')
+    resolved = 'Set out in Methods, and Results.'
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        (tmp / 'r.md').write_text(src, encoding='utf-8')
+        markdown.build(tmp / 'r.md', tmp / 'r.html', prof=en)
+        html = (tmp / 'r.html').read_text(encoding='utf-8')
+        check('the reading edition keeps the id as the heading anchor',
+              'id="sec-methods"' in html)
+        check('and strips the attribute, and resolves the reference',
+              '{#sec-methods}' not in html and '{.no-part' not in html
+              and resolved in html)
+
+        (tmp / 'd.md').write_text('# D\n\n---\n\n## Methods {#sec-methods}\n\n'
+                                  'See @sec-methods.\n', encoding='utf-8')
+        deck.build(tmp / 'd.md', tmp / 'd.html', prof=en)
+        slides = (tmp / 'd.html').read_text(encoding='utf-8')
+        check('the deck strips the attribute and resolves the reference',
+              '{#sec-methods}' not in slides and 'See Methods.' in slides)
+
+        typst.XREF.clear()
+        typst.XREF.update(xref.resolve(en, src.split('\n')))
+        typ = typst.convert(src.split('\n'), [], [], 'Figure %d', None)
+        check('the print edition strips the attribute and resolves the reference',
+              'sec-methods' not in typ and resolved in typ)
+
+        docx.build(tmp / 'r.md', tmp / 'r.docx', en)
+        import docx as _pd
+        words = '\n'.join(p.text for p in _pd.Document(str(tmp / 'r.docx')).paragraphs)
+        check('the Word edition strips the attribute and resolves the reference',
+              '{#sec-methods}' not in words and '{.no-part' not in words
+              and resolved in words)
 
     print('display equations')
     from paperforge import xref as xr

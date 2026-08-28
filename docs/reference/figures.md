@@ -50,6 +50,16 @@ correctly spotted, and legitimate: it is the 2028–29 interim milestone, now
 declared as an accepted form. A gate that is never adjusted is a gate nobody
 reads.
 
+## Declared and stated nowhere
+
+`figures` also reports an entry no document states at all. The manifest exists
+so documents agree on a value; an entry nothing states agrees with nothing.
+
+It is a warning, not a refusal — declaring a figure before writing about it is
+ordinary drafting. A figure stated *wrongly* somewhere counts as stated: the
+disagreement is already reported, and calling it unused as well would be two
+findings about one fact, the second of them false.
+
 ## Related
 
 `manifest.md` · `diagrams.md` · `lint.md`

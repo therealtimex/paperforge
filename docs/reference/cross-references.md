@@ -131,6 +131,24 @@ source — *"see @fig-density"* — and a repeated label makes every reference t
 silently mean the first. Both are the sort of thing a reader finds and an author
 does not, so lint blocks them.
 
+## The other direction: nothing pointing at a label
+
+`dangling-reference` catches a reference to a label that is not there.
+`orphan-label` catches the mirror — a figure, table or equation that is
+declared, correctly numbered, printed, and never mentioned in the prose. It is
+just as invisible: the float looks deliberate on the page.
+
+This **warns** rather than blocks. An annex table no body paragraph discusses is
+legitimate, and a reference from anywhere in the work — body or annex — counts.
+
+A **section** label is exempt. A heading is labelled to give it a stable anchor
+at least as often as to be referred to, so an unreferenced `{#sec-…}` is not a
+finding.
+
+`empty-section` is the same idea for headings: one with no prose and no heading
+beneath it. A part banner is not empty — what follows it is the headings it
+opens.
+
 ## Related
 
 `claims.md` · `structure.md` · `diagrams.md` · `unsupported-syntax.md` · `lint.md`

@@ -115,7 +115,16 @@ def coverage(html, *sources):
                 # colon, so compare on words stripped of punctuation
                 words = [w.strip(':.,;()') for w in probe.split()]
                 words = [w for w in words if len(w) > 2]
-                if sum(w in visible for w in words) < max(2, len(words) - 1):
+                # The floor was a flat max(2, len(words) - 1), which can demand
+                # more matches than there are words to match. Words of one or
+                # two characters are dropped above, so `**Prepared by:** Le`
+                # reduces to ["Prepared"] - one word against a threshold of two
+                # - and the line was reported missing however the document
+                # rendered. It needs a value of three characters to survive:
+                # "RTA" passes and "Le" does not, which is a fair way to lose a
+                # Vietnamese name. A check that cannot be satisfied is not one.
+                needed = min(len(words), max(2, len(words) - 1))
+                if not words or sum(w in visible for w in words) < needed:
                     missing.append((Path(path).name, n, s[:60]))
     return missing
 

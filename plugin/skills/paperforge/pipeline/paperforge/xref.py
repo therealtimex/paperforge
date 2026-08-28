@@ -24,16 +24,38 @@ Syntax is the one authors already expect from Pandoc and Quarto:
 and a reference is `@fig-density`, which renders as the localised label and
 number - "Figure 3", "Sơ đồ 3" - in prose, in a table cell, in a caption.
 
+A section labels itself on its own heading, in the attribute block every
+emitter already parses and strips:
+
+    ## Methods {#sec-methods}
+
+and `@sec-methods` renders as the heading's own words. It carries no number:
+nothing here numbers headings, and four emitters agreeing on a heading counter
+is the thing this module exists to prevent.
+
 A label is optional. An unlabelled figure keeps the positional caption it has
 always had, so nothing that worked before needs rewriting.
 """
 import re
 
-CAPTION_RE = re.compile(r'^:\s+(.*?)\s*\{#((fig|tbl|eq)-[\w-]+)\}\s*$')
+# The two kind sets, and the regexes are built from them rather than repeating
+# them - `KINDS` used to be declared here and consumed by nothing, which is how
+# a tuple that looks like the source of truth stops being one.
+NUMBERED = ('fig', 'tbl', 'eq')     # carry a number and a profile label
+KINDS = NUMBERED + ('sec',)         # everything the reference syntax accepts
+
+CAPTION_RE = re.compile(r'^:\s+(.*?)\s*\{#((%s)-[\w-]+)\}\s*$' % '|'.join(NUMBERED))
 DISPLAY_LABEL_RE = re.compile(r'^\$\$\s*\{#((?:eq)-[\w-]+)\}\s*$')
 OPEN_FENCE_RE = re.compile(r'^\$\$\s*$')
-REF_RE = re.compile(r'(?<![\w@])@((?:fig|tbl|eq)-[\w-]+)\b')
-KINDS = ('fig', 'tbl', 'eq')
+REF_RE = re.compile(r'(?<![\w@])@((?:%s)-[\w-]+)\b' % '|'.join(KINDS))
+
+# A heading and its trailing attribute block. Every emitter already parses and
+# strips this - three identical copies of the pattern existed - and it now also
+# carries a fact the whole pipeline shares, so it belongs here with the rest of
+# them. `## Methods {#sec-methods}` or `{.part #sec-methods}`, either order.
+HEADING_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*$')
+ATTR_RE = re.compile(r'\s*\{([^{}]*)\}\s*$')
+SEC_ID_RE = re.compile(r'#(sec-[\w-]+)')
 
 # Profile labels, with the shape every profile already uses for `figure`.
 FALLBACK = {'fig': 'Figure %d', 'tbl': 'Table %d', 'eq': 'Equation %d'}
@@ -73,6 +95,18 @@ def scan(lines, annex=False):
         if m:
             found.append({'line': i, 'id': m.group(1), 'kind': 'eq',
                           'caption': '', 'annex': annex})
+            continue
+        # A section labels itself on its own heading, not on a line after it:
+        # a heading has no caption, and the attribute block is already where
+        # every emitter looks for `{.part}`.
+        m = HEADING_RE.match(stripped)
+        if m:
+            attrs = ATTR_RE.search(m.group(2))
+            ident = SEC_ID_RE.search(attrs.group(1)) if attrs else None
+            if ident:
+                found.append({'line': i, 'id': ident.group(1), 'kind': 'sec',
+                              'caption': m.group(2)[:attrs.start()].rstrip(),
+                              'annex': annex})
     return found
 
 
@@ -87,9 +121,19 @@ def resolve(prof, body, annex=()):
         if is_annex:
             counters = {}
         for entry in scan(lines, annex=is_annex):
-            counters[entry['kind']] = counters.get(entry['kind'], 0) + 1
-            entry['number'] = counters[entry['kind']]
-            entry['label'] = label_for(prof, entry['kind'], is_annex) % entry['number']
+            if entry['kind'] == 'sec':
+                # A section has no number to have - nothing in this pipeline
+                # numbers headings, and four emitters agreeing on a counter is
+                # the failure this module exists to prevent. A reference to a
+                # section renders as the heading's own words. `caption` is
+                # cleared so `caption_of` cannot say "Methods. Methods".
+                entry['number'] = None
+                entry['label'] = entry['caption']
+                entry['caption'] = ''
+            else:
+                counters[entry['kind']] = counters.get(entry['kind'], 0) + 1
+                entry['number'] = counters[entry['kind']]
+                entry['label'] = label_for(prof, entry['kind'], is_annex) % entry['number']
             table.setdefault(entry['id'], entry)
     return table
 

@@ -19,7 +19,9 @@ META_RE = re.compile(r'^\*\*(.+?):\*\*\s*(.*)$')
 #   ## Appendix {.no-part}            suppress a pattern that would otherwise match
 # Explicit always wins over pattern inference, so a project can carry structure
 # the pipeline has no profile for.
-ATTR_RE = re.compile(r'\s*\{([^{}]*)\}\s*$')
+# One definition, in xref.py: the attribute block now carries a section id
+# the whole pipeline shares, not just this emitter's `{.part}`.
+ATTR_RE = xref.ATTR_RE
 
 SVGS = []  # pre-rendered Mermaid diagrams, injected inline so the file is self-contained
 STATS = {}  # what structure was detected, so a profile that matches nothing is reported

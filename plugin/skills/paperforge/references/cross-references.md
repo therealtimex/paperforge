@@ -34,6 +34,22 @@ Fix an id when a reference must survive an edit to the heading text. Otherwise
 the id is generated from the heading, with diacritics folded when the profile
 allows.
 
+An id beginning `sec-` does more than anchor: it registers the heading as a
+**referable section**, so `@sec-` resolves in prose the way `@fig-` does.
+
+```markdown
+## Background {#sec-context}
+
+The scope is set out in @sec-context.
+```
+
+A section reference renders as **the heading's own words** — "set out in
+Background" — not as a number. Nothing here numbers headings, and four emitters
+agreeing on a heading counter is the failure the section below describes; the
+heading text is also what a reader can actually find on the page.
+
+The attribute carries both marks in either order: `## Background {.part #sec-context}`.
+
 ## Numbered cross-references
 
 Label a figure, table or equation with a caption line, then refer to it by id:
@@ -63,7 +79,9 @@ The pipeline is drawn in @fig-stages and the gates are set out in @tbl-gates.
 **图 1** — in prose, in a table cell, in another caption. Reorder the figures and
 the numbers follow; that is the whole point.
 
-Ids are prefixed by kind: `fig-`, `tbl-`, `eq-`. An equation carries its
+Ids are prefixed by kind: `fig-`, `tbl-`, `eq-` and `sec-`. The first three are
+numbered and take their label from the profile; a section is not numbered and
+reads as its own heading. An equation carries its
 label on the closing `$$` fence rather than on a following line, because a
 display block has no natural line after it. Figures and tables number
 independently, and numbering restarts in the annex, which is what its label
@@ -85,7 +103,7 @@ count differently.
 
 | Rule | Catches |
 |---|---|
-| `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
+| `dangling-reference` | `@fig-absent`, `@sec-absent` — a reference to a label that does not exist |
 | `duplicate-label` | the same id declared twice |
 
 Neither is visible in the output. An unresolved reference prints as its own

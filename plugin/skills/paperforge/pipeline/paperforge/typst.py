@@ -22,7 +22,9 @@ from . import browser, citations as cite_mod, front as front_mod, palette, profi
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
 META_RE = re.compile(r'^\*\*(.+?):\*\*\s*(.*)$')
-ATTR_RE = re.compile(r'\s*\{([^{}]*)\}\s*$')
+# One definition, in xref.py: the attribute block now carries a section id
+# the whole pipeline shares, not just this emitter's `{.part}`.
+ATTR_RE = xref.ATTR_RE
 FOOTNOTE_DEF = re.compile(r'^\[\^([^\]]+)\]:\s*(.*)$')
 
 # Every character Typst reads as markup rather than as text. `~` is its

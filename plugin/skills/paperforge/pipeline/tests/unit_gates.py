@@ -12,7 +12,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import browser, citations, deck, lint, pages, profile, verify
+from paperforge import (browser, citations, deck, lint, markdown, pages,
+                        profile, verify)
 
 failures = []
 
@@ -184,6 +185,34 @@ def main():
     check('an overfull slide is reported', any('word' in w for w in deck.audit(wordy)))
     check('a reasonable slide is not reported',
           deck.audit('<section><p>Three short words</p></section>') == [])
+
+    # A deck renders through markdown.py, whose XREF is a module global that
+    # only markdown.build ever filled. So a deck built alone printed `@tbl-t`
+    # to the reader and silently dropped its own captions, and a deck built
+    # after a report resolved against *the report's* table - a plausible
+    # "Table 1" on a slide with no tables, depending on manifest order.
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp, en = Path(tmp), profile.load('en')
+        alone = tmp / 'alone.md'
+        alone.write_text('# Deck\n\n---\n\n## One\n\nSee @tbl-t.\n\n'
+                         '| a | b |\n| - | - |\n| 1 | 2 |\n\n: A table {#tbl-t}\n',
+                         encoding='utf-8')
+        deck.build(alone, tmp / 'alone.html', prof=en)
+        html = (tmp / 'alone.html').read_text(encoding='utf-8')
+        check('a deck resolves a label declared in its own source', 'Table 1' in html)
+        check('so no reference reaches the slide as raw source', '@tbl-t' not in html)
+        check("and the deck's own caption is rendered rather than dropped",
+              'A table' in html)
+
+        report = tmp / 'report.md'
+        report.write_text('# Report\n\n## S\n\n| a |\n| - |\n| 1 |\n\n'
+                          ': Report table {#tbl-r}\n', encoding='utf-8')
+        markdown.build(report, tmp / 'report.html', prof=en)
+        after = tmp / 'after.md'
+        after.write_text('# Deck\n\n---\n\n## One\n\nSee @tbl-r.\n', encoding='utf-8')
+        deck.build(after, tmp / 'after.html', prof=en)
+        check('a deck does not inherit the table of the document built before it',
+              'Table 1' not in (tmp / 'after.html').read_text(encoding='utf-8'))
 
     print('citations')
     check('a single key is found', citations.find('A claim [@nq57].') == ['nq57'])

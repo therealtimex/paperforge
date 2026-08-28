@@ -379,6 +379,37 @@ def main():
         check('the warning can be limited to the keys actually cited',
               citations.dangling_dates(bib, {'ok'}) == [])
 
+    print('coverage of lines that render as separate spans')
+    # Metadata renders across styled spans, so the contiguous probe legitimately
+    # fails and a word-presence fallback decides. Its floor used to be a flat
+    # max(2, len(words) - 1), which can ask for more matches than there are
+    # words: words of one or two characters are dropped, so `**Prepared by:**
+    # Le` reduces to ["Prepared"] and could never reach two. "RTA" passes and
+    # "Le" does not - a fair way to lose a Vietnamese name - and no document
+    # could satisfy the gate either way.
+    with tempfile.TemporaryDirectory() as tmp:
+        cov = Path(tmp) / 'r.md'
+        cov.write_text('**Prepared by:** Le\n\n**Reviewed by:** Vu\n\n'
+                       'A whole sentence of ordinary prose that should be found.\n\n'
+                       'Another sentence of ordinary prose that is absent.\n',
+                       encoding='utf-8')
+        # the real markup: adjacent spans, no whitespace and no colon between
+        # them, which is exactly why the contiguous probe cannot match and the
+        # word fallback is reached at all
+        rendered = ('<html><body><main>'
+                    '<div class="meta-item"><span class="meta-k">Prepared by</span>'
+                    '<span class="meta-v">Le</span></div>'
+                    '<p>A whole sentence of ordinary prose that should be found.</p>'
+                    '</main></body></html>')
+        gone = [m[2] for m in verify.coverage(rendered, cov)]
+        check('a two-character metadata value that did render is not reported',
+              not any('Prepared' in g for g in gone))
+        # the fix must not buy that by making the check vacuous
+        check('one that did not render still is',
+              any('Reviewed' in g for g in gone))
+        check('and ordinary prose that did not render still is',
+              any('absent' in g for g in gone))
+
     print('structural checks on a document built to be broken')
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / 'report.md'

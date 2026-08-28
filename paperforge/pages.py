@@ -13,6 +13,7 @@ import html as ihtml
 import json
 import logging
 import re
+import unicodedata
 import warnings
 
 from . import matching, profile
@@ -38,7 +39,7 @@ def norm(t, fold_diacritics=True):
 FENCE_RE = re.compile(r'```.*?```', re.S)
 
 
-def extractable(pdf_path, source_text, floor=0.45, fold_diacritics=True):
+def extractable(pdf_path, source_text, floor=0.45, fold_diacritics=True, rtl=False):
     """Whether the PDF's text can be matched back to the document's own words.
 
     Page numbers and the pagination check both work by finding the source's
@@ -62,17 +63,26 @@ def extractable(pdf_path, source_text, floor=0.45, fold_diacritics=True):
     """
     with _pdfplumber().open(pdf_path) as pdf:
         got = '\n'.join((page.extract_text() or '') for page in pdf.pages)
-    return correspondence(source_text, got, floor, fold_diacritics)
+    return correspondence(source_text, got, floor, fold_diacritics, rtl)
 
 
-def correspondence(source_text, extracted, floor=0.45, fold_diacritics=True):
+def correspondence(source_text, extracted, floor=0.45, fold_diacritics=True,
+                   rtl=False):
     """The scoring, apart from the PDF, so it can be exercised without one."""
     from . import profile as profile_mod
     source = profile_mod.normalise(FENCE_RE.sub(' ', source_text), fold_diacritics)
     sample = [w for w in source.split()
               if len(w) >= 4 and not w.replace('.', '').isdigit()][:60]
-    seen = profile_mod.normalise(extracted, fold_diacritics)
-    found = sum(1 for w in sample if w in seen)
+    if rtl:
+        # a right-to-left page comes back in visual order, so "is this word in
+        # the text" is a question about tokens, not substrings. Readable here
+        # means readable once the direction is accounted for - which is what
+        # the checks downstream will do too.
+        seen = canonical(extracted, visual=True)
+        found = sum(1 for w in sample if canonical(w) <= seen)
+    else:
+        seen = profile_mod.normalise(extracted, fold_diacritics)
+        found = sum(1 for w in sample if w in seen)
     # `or 1` rather than max(1, ...): a denominator guard and a matching
     # threshold are different things, and writing them the same way is how the
     # arithmetic in matching.py went wrong three times. unit_gates refuses a
@@ -92,7 +102,51 @@ def correspondence(source_text, extracted, floor=0.45, fold_diacritics=True):
                    'the PDF\'s text does not match the document\'s own words'}
 
 
-def contents_pages(pages, doc, contents_anchor):
+# Arabic-script ranges, including the presentation forms a PDF comes back in.
+ARABIC_RE = re.compile(r'[\u0600-\u06ff\u0750-\u077f\ufb50-\ufdff\ufe70-\ufeff]')
+
+# Letters a font's presentation forms map to a different codepoint than the
+# source used. NFKC unshapes but does not unify these, so `ي` written in the
+# markdown comes back as `ی` and the two never compare equal.
+FOLD = {'\u06cc': '\u064a', '\u0649': '\u064a',      # farsi yeh, alef maqsura -> yeh
+        '\u06a9': '\u0643',                            # keheh -> kaf
+        '\u0623': '\u0627', '\u0625': '\u0627', '\u0622': '\u0627'}   # hamza forms -> alef
+
+
+def canonical(text, visual=False):
+    """Comparison tokens for text that may have come back from a PDF.
+
+    A right-to-left page is extracted in *visual* order, so an Arabic word
+    arrives with its characters reversed and the words of a line in the reverse
+    of the order they were written. Reversing each Arabic token puts the word
+    back; the line's word order is not restored, which is why callers compare
+    token *sets* rather than substrings on this path.
+
+    The direction rule is deterministic - only an Arabic-script token from a
+    visually ordered extraction is reversed - rather than "whichever of the two
+    forms sorts first", which would make every word equal to its own reversal
+    and let two different words collide.
+
+    For comparison only. Nothing rendered ever comes from here.
+    """
+    out = set()
+    for token in unicodedata.normalize('NFKC', text).split():
+        word = ''.join(FOLD.get(c, c) for c in token if c.isalnum()).casefold()
+        if not word:
+            continue
+        out.add(word[::-1] if visual and ARABIC_RE.search(word) else word)
+    return out
+
+
+def _seen(probe, page, rtl):
+    """Whether a probe's wording is on a page, in the terms that page allows."""
+    if not rtl:
+        return probe in page
+    want = {w for w in canonical(probe) if len(w) > 1}
+    return bool(want) and want <= canonical(page, visual=True)
+
+
+def contents_pages(pages, doc, contents_anchor, rtl=False, fold=True):
     """Pages occupied by MỤC LỤC: they echo every title and must never match.
 
     The contents is one contiguous run, so walk forward from where it starts.
@@ -101,7 +155,7 @@ def contents_pages(pages, doc, contents_anchor):
     """
     i = doc.find('<h2 id="%s"' % contents_anchor)
     block = re.sub(r'<span class="toc-pg">\d+</span>', '', doc[i:doc.find('<h2 ', i + 10)])
-    labels = [norm(m.group(1))[:40] for m in
+    labels = [norm(m.group(1), fold)[:40] for m in
               re.finditer(r'<li>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)', block, re.S)]
     # A fixed length floor here is the trap that has now bitten three separate
     # checks: a legitimately short entry ("2. Sources") can never clear it. With
@@ -112,7 +166,7 @@ def contents_pages(pages, doc, contents_anchor):
     labels = discriminating if len(discriminating) >= 3 else [l for l in labels if l]
     if not labels:
         return set()
-    hits = lambda t: sum(l in t for l in labels)
+    hits = lambda t: sum(_seen(l, t, rtl) for l in labels)
 
     start = max(range(len(pages)), key=lambda n: (hits(pages[n]), -n))
     if not hits(pages[start]):          # the contents could not be located
@@ -132,7 +186,7 @@ def contents_pages(pages, doc, contents_anchor):
     return run
 
 
-def measure(html_path, pdf_path, contents_anchor):
+def measure(html_path, pdf_path, contents_anchor, rtl=False, fold=True):
     """Return {heading id: printed page}, omitting anything unverifiable."""
     doc = open(html_path, encoding='utf-8').read()
     body = doc[doc.index('<main>'):doc.index('</main>')]
@@ -140,7 +194,7 @@ def measure(html_path, pdf_path, contents_anchor):
     # that distinguishes it from the same words appearing in a summary list
     heads = []
     for m in re.finditer(r'<(h[234])([^>]*)>(.*?)(?:<a class="anchor")', body, re.S):
-        attrs, text = m.group(2), norm(m.group(3))
+        attrs, text = m.group(2), norm(m.group(3), fold)
         hid = re.search(r'id="([^"]+)"', attrs)
         if hid and text:
             # 2 = opens the page; 1 = near the top (the annex title sits under a badge)
@@ -148,14 +202,30 @@ def measure(html_path, pdf_path, contents_anchor):
             heads.append((hid.group(1), text, breaks))
 
     with _pdfplumber().open(pdf_path) as pdf:
-        pages = [norm(p.extract_text() or '') for p in pdf.pages]
+        pages = [norm(p.extract_text() or '', fold) for p in pdf.pages]
     total = len(pages)
-    skip = contents_pages(pages, doc, contents_anchor)
+    skip = contents_pages(pages, doc, contents_anchor, rtl, fold)
 
     found, missed, lo = {}, [], 0
     for hid, text, breaks in heads:
         words = text.split()
         hit = None
+        if rtl:
+            # Set containment, because the line's word order is reversed and no
+            # substring survives it. The positional refinements below model
+            # where on a page a heading sits, which visual order does not
+            # preserve either - so this asks for uniqueness instead: exactly one
+            # candidate page, or the heading is left unresolved. A page number
+            # printed in a contents is worse wrong than absent.
+            want = {w for w in canonical(text) if len(w) > 1}
+            candidates = [n for n in range(lo, total)
+                          if n not in skip and want and want <= canonical(pages[n], visual=True)]
+            if len(candidates) == 1:
+                found[hid] = candidates[0] + 1
+                lo = candidates[0]
+            else:
+                missed.append(hid)
+            continue
         # "Context" is 7 characters. A fixed 12-character floor skipped every
         # short heading; a heading that must OPEN its page can be matched on a
         # short probe without risking a false hit, so scale the floor to how
@@ -186,9 +256,9 @@ def measure(html_path, pdf_path, contents_anchor):
                    'headings': len(heads), 'located': len(found), 'unresolved': missed}
 
 
-def _contents_pages(pages, labels):
+def _contents_pages(pages, labels, rtl=False):
     """The contents block: one contiguous run of pages echoing the entry list."""
-    hits = lambda t: sum(l[:40] in t for l in labels if len(l) > 15)
+    hits = lambda t: sum(_seen(l[:40], t, rtl) for l in labels if len(l) > 15)
     start = max(range(len(pages)), key=lambda n: (hits(pages[n]), -n))
     run, n = {start}, start + 1
     while n < len(pages) and hits(pages[n]) >= 4:
@@ -200,7 +270,7 @@ def _contents_pages(pages, labels):
 
 
 def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
-          annex_phrase):
+          annex_phrase, rtl=False, fold=True):
     """Confirm every printed page number against the PDF.
 
     Deliberately does not reuse the matching the build used: a number is only
@@ -211,15 +281,15 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
     if i < 0:
         return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': []}
     block = doc[i:doc.find('<h2 ', i + 10)]
-    entries = [(norm(m.group(2)), int(m.group(1))) for m in re.finditer(
+    entries = [(norm(m.group(2), fold), int(m.group(1))) for m in re.finditer(
         r'<li><span class="toc-pg">(\d+)</span>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)',
         block, re.S)]
     if not entries:
         return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': []}
 
     with _pdfplumber().open(pdf_path) as pdf:
-        pages = [norm(p.extract_text() or '') for p in pdf.pages]
-    toc = _contents_pages(pages, [l for l, _ in entries])
+        pages = [norm(p.extract_text() or '', fold) for p in pdf.pages]
+    toc = _contents_pages(pages, [l for l, _ in entries], rtl)
 
     confirmed, untestable = 0, []
     wrong, prev = [], 0
@@ -246,8 +316,18 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
             # "PART I: CONTEXT" reduces to ['part','context'] and could never
             # reach a fixed threshold of four.
             need = matching.quorum(len(want), 3)
-            if (want and sum(w in head for w in want) >= need) or \
-               (m and head.startswith(m.group(1) + ' ')):
+            if rtl:
+                # visual order gives no "opens the page": the words of a line
+                # arrive reversed, so the positional part of this test cannot be
+                # made. What is still checkable is that the wording is on the
+                # page it claims, and that is all this claims to have checked.
+                seen = canonical(text, visual=True)
+                found_here = sum(1 for w in want if canonical(w) <= seen)
+                ok = bool(want) and found_here >= need
+            else:
+                ok = (want and sum(w in head for w in want) >= need) or \
+                     (m and head.startswith(m.group(1) + ' '))
+            if ok:
                 confirmed += 1
             else:
                 wrong.append((label[:60], page, 'section does not open this page'))
@@ -259,8 +339,9 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
             # can say which entries were not tested and why, rather than
             # offering a count nobody can chase
             untestable.append((label[:60], 'too few distinctive words to test'))
-        elif ' '.join(words) in text or \
-                sum(w in text for w in words) >= matching.quorum(len(words), 3):
+        elif (_seen(' '.join(words), text, rtl) if rtl else
+              (' '.join(words) in text or
+               sum(w in text for w in words) >= matching.quorum(len(words), 3))):
             confirmed += 1
         else:
             wrong.append((label[:60], page, 'wording not found on this page'))

@@ -474,7 +474,8 @@ def do_build(docs, cache, measure=True):
             body = ''.join(p.read_text(encoding='utf-8')
                            for p in [d['source_path']] + ([d['annex_path']] if d['annex_path'] else []))
             quality = pages.extractable(
-                pdf, body, fold_diacritics=d['prof'].get('fold_diacritics', True))
+                pdf, body, fold_diacritics=d['prof'].get('fold_diacritics', True),
+                rtl=d['prof'].get('direction') == 'rtl')
             if not quality['usable']:
                 # the cause is not always a missing ToUnicode map: Arabic comes
                 # back complete, shaped into presentation forms and in visual
@@ -495,9 +496,14 @@ def do_build(docs, cache, measure=True):
                     print('  %-38s skip  page numbers: %s' % (d['output'], err))
                     info = {'pages': 0}
                     break
-                found, info = pages.measure(str(d['output_path']), str(pdf),
-                                            markdown.slugify(d['contents_heading'],
-                                                             d['prof'].get('fold_diacritics', True)))
+                fold = d['prof'].get('fold_diacritics', True)
+                found, info = pages.measure(
+                    str(d['output_path']), str(pdf),
+                    markdown.slugify(d['contents_heading'], fold),
+                    # a right-to-left page is extracted in visual order, so the
+                    # matching compares token sets rather than substrings
+                    rtl=d['prof'].get('direction') == 'rtl',
+                    fold=fold)
                 if found == pages_map:
                     break
                 pages_map = found
@@ -708,7 +714,8 @@ def do_verify(docs, cache, quiet=False):
         if pdf.exists():
             body = ''.join(p.read_text(encoding='utf-8') for p in assemble.sources(d))
             quality = pages.extractable(
-                pdf, body, fold_diacritics=d['prof'].get('fold_diacritics', True))
+                pdf, body, fold_diacritics=d['prof'].get('fold_diacritics', True),
+                rtl=d['prof'].get('direction') == 'rtl')
             readable = quality['usable']
             if not readable:
                 print('      skip  print checks: %d of %d sampled words are findable in '
@@ -766,7 +773,9 @@ def do_verify(docs, cache, quiet=False):
                     st.get('part_pattern') or r'^%s\s+[ivx]+' % st['part_word'],
                     st.get('section_pattern') or r'^%s\s+(\d+)' % st['section_word'],
                     profile.normalise(d['prof']['labels']['annex_divider'],
-                                      d['prof'].get('fold_diacritics', True)))
+                                      d['prof'].get('fold_diacritics', True)),
+                    rtl=d['prof'].get('direction') == 'rtl',
+                    fold=d['prof'].get('fold_diacritics', True))
                 if a['wrong']:
                     problems.append('%d wrong page numbers %s' % (len(a['wrong']), a['wrong'][:2]))
                 else:

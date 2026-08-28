@@ -2,7 +2,7 @@
   "id": "ai.realtimex.paperforge",
   "name": "paperforge",
   "displayName": "Paperforge Documents",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "Render, check and publish research documents — reports, policy briefs, annexes and slide decks — from markdown. Bundles the build pipeline and the conventions that keep published documents self-contained, correctly paginated and free of internal machinery. It renders and gates; it does not write content and does not decide what a document should say.",
   "author": "RealTimeX",
   "license": "UNLICENSED",

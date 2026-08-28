@@ -98,6 +98,11 @@ jobs:
       - name: Authoring brief unit checks
         run: python3 -m coverage run tests/unit_brief.py
 
+      # a gist is written by a person and only ever checked here; the gate that
+      # matters is the one telling an accepted gist from a paragraph that moved
+      - name: Claim gist unit checks
+        run: python3 -m coverage run tests/unit_claims.py
+
       # manuscript front matter: parsed, validated, and refusing to guess
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py

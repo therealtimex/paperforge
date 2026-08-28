@@ -133,4 +133,4 @@ does not, so lint blocks them.
 
 ## Related
 
-`structure.md` · `diagrams.md` · `unsupported-syntax.md` · `lint.md`
+`claims.md` · `structure.md` · `diagrams.md` · `unsupported-syntax.md` · `lint.md`

@@ -3,6 +3,7 @@
 ```bash
 paperforge status      # what is built, linked and published
 paperforge figures     # documents must agree on the project's canonical values
+paperforge claims      # a gist still says what its paragraph says — see claims.md
 paperforge lint        # refuse documents still carrying internal machinery
 paperforge build       # markdown -> self-contained HTML (+ PDF where declared)
 paperforge verify      # structural, layout, print and cross-edition checks
@@ -28,6 +29,7 @@ that *uses* Paperforge carries no pipeline of its own — only its sources, its
 | `--quiet` | Findings without surrounding context |
 | `--label <name>` | Name this run in the record |
 | `--diff <a>,<b>` | `runs`: compare two recorded runs |
+| `--accept` | `claims`: re-stamp every gist against its paragraph |
 
 With no `--config`, `$PAPERFORGE_CONFIG` is used, then the nearest
 `documents.toml` above the working directory. **Every run prints the manifest it

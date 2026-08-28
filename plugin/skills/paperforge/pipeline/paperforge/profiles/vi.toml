@@ -62,3 +62,13 @@ section_two = "Phát hiện chính"
 conclusion  = "Kết luận"
 sources     = "Nguồn và phương pháp"
 prose       = "Thay đoạn này bằng nội dung của mục."
+
+[provenance]
+# What a project inherits by naming this profile, and what it does not
+# claim. A default that says nothing about itself is one nobody can
+# tell apart from a considered decision - see AGENTS.md, "The defaults
+# agreed, which is why nothing looked wrong".
+what     = "Label, structure and typographic conventions for Vietnamese policy documents"
+not      = "Not a house style, and not any ministry's published requirements"
+basis    = "The corpus this pipeline was built for. Structural words are written already folded because matching folds them, and the font stack avoids the faces that silently drop tone marks on O-horn and U-horn."
+reviewed = "2026-08-28"

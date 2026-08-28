@@ -89,6 +89,31 @@ def render(cfg, docs, invocation):
         out.append('| `%s` | %s | %s |' % (source, kind, publish))
     internal = cfg.get('internal', {}).get('files') or []
     out.append('')
+
+    # What the project inherited by naming a profile, in the profile's own
+    # words. A default that says nothing about itself cannot be told apart from
+    # a considered decision, and this brief is where somebody reads what they
+    # are working with.
+    seen = []
+    for d in docs:
+        prov = (d.get('prof') or {}).get('provenance')
+        name = (d.get('prof') or {}).get('name')
+        if prov and name and name not in [n for n, _ in seen]:
+            seen.append((name, prov))
+    if seen:
+        out.append('## What the profile brings, and what it does not claim')
+        out.append('')
+        for name, prov in seen:
+            out.append('**`%s`** — %s.' % (name, prov.get('what', '?')))
+            out.append('')
+            out.append('- *%s.*' % prov.get('not', '?'))
+            out.append('- %s' % prov.get('basis', '?'))
+            out.append('- Last reviewed %s.' % prov.get('reviewed', 'never'))
+            out.append('')
+        out.append('A project profile layers over this and overrides only what '
+                   'differs; see `languages.md`.')
+        out.append('')
+
     if internal:
         out.append('Never publishable, whatever anyone edits: %s.'
                    % ', '.join('`%s`' % f for f in internal))

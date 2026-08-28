@@ -56,6 +56,28 @@ Thai vowel signs.
 Right-to-left profiles mirror the sidebar, rules, banners, list markers, table
 alignment and the scroll affordance.
 
+## Every shipped profile says what it is, and what it is not
+
+A project inherits a profile without choosing it, so each one declares its own
+provenance:
+
+```toml
+[provenance]
+what     = "Label and structure conventions for English research documents"
+not      = "Not a publisher's template and not any journal's requirements"
+basis    = "Written alongside the en-sample fixture, whose stated purpose is..."
+reviewed = "2026-08-28"
+```
+
+`paperforge brief` prints it for the profile a project uses, because the brief is
+where somebody reads what they are working with. The `not` line is the half a
+project cannot get anywhere else: `ar` says in as many words that it has never
+been checked against a body of real Arabic documents.
+
+The presence and the shape of all four fields are gated. **The age is
+deliberately not** — a profile does not stop being correct on a Tuesday, and a
+check that fires on the calendar rather than on a change fires on correct work.
+
 ## A check is calibrated per script, or it does not run
 
 The near-empty page check compares a printed page's extracted text against a

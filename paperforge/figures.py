@@ -65,6 +65,25 @@ def check_file(path, figures, language=None):
     return findings
 
 
+def stated(paths, figures):
+    """The ids some document actually states, however it states them.
+
+    A disagreement is still a statement. A figure written wrongly somewhere is
+    in use, and reporting it as unused as well would be two findings about one
+    fact, the second of them false.
+    """
+    seen = set()
+    for path in paths:
+        text = FENCE.sub(lambda m: '\n' * m.group(0).count('\n'),
+                         Path(path).read_text(encoding='utf-8'))
+        for line in text.split('\n'):
+            for f in figures:
+                if f['id'] not in seen and f['context_re'].search(line) \
+                        and f['value_re'].search(line):
+                    seen.add(f['id'])
+    return seen
+
+
 def check(paths, figures_file, languages=None):
     """`languages` maps a source path to the language it is written in, so each
     document is checked against its own edition's surface forms."""

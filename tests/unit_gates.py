@@ -12,7 +12,8 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import (browser, citations, deck, docx, lint, markdown, pages,
+from paperforge import (browser, citations, deck, docx, figures as fig_mod, lint,
+                        markdown, pages,
                         profile, typst, verify, xref)
 
 failures = []
@@ -180,6 +181,70 @@ def main():
         check('the Word edition strips the attribute and resolves the reference',
               '{#sec-methods}' not in words and '{.no-part' not in words
               and resolved in words)
+
+    print('labels and headings with nothing pointing at them')
+    # resolved defensively so a regression reads as failing checks rather than
+    # a traceback that stops the rest of the suite
+    orphans = getattr(lint, 'check_orphans', lambda *a, **k: [])
+    stated = getattr(fig_mod, 'stated', lambda *a: set())
+    with tempfile.TemporaryDirectory() as tmp:
+        orph = Path(tmp) / 'r.md'
+        orph.write_text(
+            '## Part One {.part}\n\n### Chapter {#sec-ch}\n\n'
+            'Prose that mentions @fig-used.\n\n'
+            '```mermaid\ngraph LR\nA-->B\n```\n\n: Used chart {#fig-used}\n\n'
+            '| a |\n| - |\n| 1 |\n\n: Lonely table {#tbl-lonely}\n\n'
+            '## Empty\n\n## Last\n', encoding='utf-8')
+        found = orphans({'source_path': orph, 'annex_path': None},
+                        profile.load('en'))
+        by = {(f['match'], f['rule']) for f in found}
+        check('a float nothing refers to is reported',
+              ('tbl-lonely', 'orphan-label') in by)
+        check('one that is referred to is not', ('fig-used', 'orphan-label') not in by)
+        # a heading exists to be a stable anchor as often as to be referred to,
+        # so an unreferenced section label is not a finding
+        check('an unreferenced section label is not reported',
+              not any(m.startswith('sec-') for m, _ in by))
+        check('a heading with nothing under it is reported',
+              any(f['rule'] == 'empty-section' and 'Empty' in f['context'] for f in found))
+        # the negative control that matters: every book in the corpus opens
+        # parts with a banner heading whose content is the headings beneath it
+        check('a part banner that opens deeper headings is not reported',
+              not any(f['rule'] == 'empty-section' and 'Part One' in f['context']
+                      for f in found))
+        check('and everything reported is a warning, not a refusal',
+              all(f['severity'] == 'warn' for f in found))
+
+        # a reference from the annex still counts: the whole work is one document
+        body = Path(tmp) / 'b.md'
+        ann = Path(tmp) / 'a.md'
+        body.write_text('| a |\n| - |\n| 1 |\n\n: Table {#tbl-x}\n', encoding='utf-8')
+        ann.write_text('Discussed at @tbl-x.\n', encoding='utf-8')
+        found = orphans({'source_path': body, 'annex_path': ann},
+                        profile.load('en'))
+        check('a float referred to only from the annex is not an orphan',
+              not any(f['match'] == 'tbl-x' for f in found))
+
+    print('figures declared and stated nowhere')
+    with tempfile.TemporaryDirectory() as tmp:
+        man = Path(tmp) / 'figures.toml'
+        man.write_text('[[figure]]\nid = "target"\nlabel = "Target"\n'
+                       'context = "target"\npattern = "\\\\d+%"\naccept = ["40%"]\n\n'
+                       '[[figure]]\nid = "unused"\nlabel = "Unused"\n'
+                       'context = "coverage"\npattern = "\\\\d+%"\naccept = ["7%"]\n',
+                       encoding='utf-8')
+        doc = Path(tmp) / 'd.md'
+        doc.write_text('The target is 40% by 2030.\n', encoding='utf-8')
+        declared = fig_mod.load(man)
+        told = stated([doc], declared)
+        check('a figure some document states is found stated', 'target' in told)
+        check('one no document states is not', 'unused' not in told)
+        # a disagreement is still a statement; reporting it as unused as well
+        # would be two findings about one fact, the second of them false
+        wrong = Path(tmp) / 'w.md'
+        wrong.write_text('The target is 41% by 2030.\n', encoding='utf-8')
+        check('a figure stated wrongly still counts as stated',
+              'target' in stated([wrong], declared))
 
     print('claim labels')
     # resolved defensively so a regression reads as a failing check rather

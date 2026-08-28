@@ -154,6 +154,79 @@ def check_citations(document, bibliography=None):
     return []
 
 
+def check_orphans(document, prof=None):
+    """Labels nothing refers to, and headings with nothing under them.
+
+    The mirror of `check_references`: that one catches a reference to a label
+    that is not there, this one a label nothing points at. Both are invisible
+    in the output - a figure nobody discusses still prints, correctly numbered,
+    and reads as deliberate.
+
+    These warn rather than block. An annex table no paragraph mentions is
+    legitimate, and so is a heading a part banner opens; a warning is the
+    useful content of a draft report, not a refusal at publication.
+    """
+    from . import assemble, xref
+    body = assemble.read(document['source_path'],
+                         document.get('include_paths')).split('\n')
+    annex = document.get('annex_path')
+    annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
+    table = xref.resolve(prof or {}, body, annex_lines)
+
+    referenced = set()
+    for lines in (body, annex_lines):
+        for line in lines:
+            referenced.update(m.group(1) for m in xref.REF_RE.finditer(line))
+
+    findings = []
+    for ident, entry in sorted(table.items()):
+        # a section label is often there to give a heading a stable anchor
+        # rather than to be referred to, so an unreferenced one is not a finding
+        if entry['kind'] not in xref.NUMBERED or ident in referenced:
+            continue
+        findings.append({'rule': 'orphan-label', 'severity': 'warn',
+                         'line': entry['line'] + 1, 'match': ident,
+                         'why': 'declared and never referred to in the prose',
+                         'context': (entry.get('caption') or '')[:80]})
+
+    for lines, where in ((body, ''), (annex_lines, 'annex ')):
+        for line_no, depth in _empty_headings(lines):
+            findings.append({'rule': 'empty-section', 'severity': 'warn',
+                             'line': line_no, 'match': '#' * depth,
+                             'why': 'a %sheading with no prose and no heading beneath it'
+                                    % where,
+                             'context': lines[line_no - 1].strip()[:80]})
+    return findings
+
+
+def _empty_headings(lines):
+    """(line, depth) for headings that open nothing.
+
+    A part banner is not empty: it is followed by the headings it opens, and
+    reporting those would fire on every book in the corpus. So a heading counts
+    as empty only when nothing at all follows it before the next heading at its
+    own level or shallower.
+    """
+    from . import xref
+    heads = [(i, len(m.group(1))) for i, line in enumerate(lines)
+             if (m := xref.HEADING_RE.match(line.strip()))]
+    empty, fenced = [], False
+    for n, (i, depth) in enumerate(heads):
+        stop = next((j for j, d in heads[n + 1:] if d <= depth), len(lines))
+        deeper = any(j < stop for j, d in heads[n + 1:] if d > depth)
+        content = False
+        for line in lines[i + 1:stop]:
+            s = line.strip()
+            if s.startswith('```'):
+                fenced = not fenced
+            if s and not xref.HEADING_RE.match(s):
+                content = True
+                break
+        if not content and not deeper:
+            empty.append((i + 1, depth))
+    return empty
+
+
 def check_claims(document):
     """Claim labels that would reach a reader, or store the wrong gist.
 

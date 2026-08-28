@@ -27,6 +27,8 @@ filename shown to a reader is wrong regardless of who wrote it:
 | `no-bibliography` | citations with no `bibliography` declared — Typst would fail with an unhelpful "label does not exist" |
 | `front-matter` | an affiliation marker pointing at nothing, a malformed ORCID, a block that is not TOML |
 | `length-spec` (warn) | an authoring length specification left in the text |
+| `orphan-label` (warn) | a figure, table or equation declared and never referred to |
+| `empty-section` (warn) | a heading with no prose and no heading beneath it |
 
 **Packs** — opt-in, for a particular authoring system. `realtimex-loops` catches
 loop issue ids, agent workflow state tokens (`*.draft_ready`), handoff

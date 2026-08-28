@@ -261,6 +261,10 @@ def do_figures(docs, quiet=False):
                  if x.get('figures_path') == path}
         found, declared = figures.check(sources, path, langs)
         total += len(found)
+        # declared and stated nowhere: the manifest exists so documents agree,
+        # and an entry no document states agrees with nothing. A warning, not a
+        # refusal - declaring a figure before writing about it is ordinary.
+        unused = sorted({f['id'] for f in declared} - figures.stated(sources, declared))
         print('  %-38s %d figure(s) declared, %d document(s) checked, %s'
               % (path.name, len(declared), len(sources),
                  'consistent' if not found else '%d DISAGREEMENT(S)' % len(found)))
@@ -269,6 +273,8 @@ def do_figures(docs, quiet=False):
             print('          found %r, expected %r' % (f['found'], f['expected']))
             if not quiet:
                 print('          %s' % f['context'])
+        for ident in unused:
+            print('      %-8s %-16s %s' % ('warn', ident, 'declared, stated in no document'))
     return total
 
 
@@ -295,6 +301,7 @@ def do_lint(cfg, docs, quiet=False):
         findings += lint.check_references(d, d['prof'])
         findings += lint.check_front_matter(d['source_path'])
         findings += lint.check_claims(d)
+        findings += lint.check_orphans(d, d['prof'])
         findings += lint.check_citations(
             d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
         s = lint.summarise(findings)

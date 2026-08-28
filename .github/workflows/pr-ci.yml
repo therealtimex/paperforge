@@ -156,6 +156,9 @@ jobs:
         include:
           - { name: en, project: tests/fixtures/en-sample }
           - { name: zh, project: tests/fixtures/zh-sample }
+          # right to left: mirrored layout, no diacritic folding, and a
+          # near-empty check that has no measured floor for this script
+          - { name: ar, project: tests/fixtures/ar-sample }
           - { name: id, project: tests/fixtures/id-sample }
           - { name: bilingual, project: tests/fixtures/bilingual }
           - { name: citations, project: tests/fixtures/citations }

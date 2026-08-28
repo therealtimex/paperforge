@@ -338,6 +338,39 @@ def main():
     check('the equation is numbered like any other labelled thing',
           numbered['eq-p']['label'] == 'Equation 1')
 
+    print('everything this pipeline says it supports, built by something')
+    # Three defects this session were the same shape: a capability shipped, was
+    # documented as supported, and was exercised by nothing. `deck.build` was
+    # reachable only by hand and had three defects; the `ar` profile had never
+    # been built at all and a scaffolded Arabic project failed `all`. The
+    # doctrine section calls this out for emitters - it is broader than that.
+    # A profile is a capability. A document type is a capability.
+    #
+    # Anything deliberately uncovered belongs here with its reason, so a second
+    # one has to be argued for in the diff that adds it rather than noticed
+    # later by somebody scaffolding a project.
+    UNCOVERED = {}
+
+    repo = Path(__file__).resolve().parents[1]
+    from paperforge import cli as cli_mod
+    shipped = {'profile': {q.stem for q in (repo / 'paperforge/profiles').glob('*.toml')},
+               'type': set(cli_mod.BUILTIN_TYPES)}
+    used = {'profile': set(), 'type': set()}
+    for manifest in sorted(repo.glob('tests/**/documents.toml')):
+        text = manifest.read_text(encoding='utf-8')
+        used['profile'] |= set(re.findall(r'profile\s*=\s*"([\w-]+)"', text))
+        used['type'] |= set(re.findall(r'type\s*=\s*"([\w-]+)"', text))
+        if re.search(r'^\s*\[\[collection\.document\]\]', text, re.M):
+            used['type'].add('report')          # the default when none is named
+
+    for kind in ('profile', 'type'):
+        missing = sorted(shipped[kind] - used[kind] - set(UNCOVERED))
+        check('every shipped %s is built by some fixture' % kind, missing == [])
+        if missing:
+            print('          uncovered: %s' % ', '.join(missing))
+    check('and nothing is excused without a reason written down',
+          all(v.strip() for v in UNCOVERED.values()))
+
     print('a threshold may never exceed the pool it draws from')
     quorum = getattr(matching, 'quorum', lambda pool, floor: max(floor, pool - 1))
     over = [(pool, floor) for pool in range(0, 30) for floor in range(1, 6)

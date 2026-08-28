@@ -189,7 +189,17 @@ def layout(html_path, widths=(1440, 1024, 768, 390)):
 # and one character carries a morpheme. Counting characters and comparing every
 # script to a Latin floor is the fourth fixed threshold in this pipeline that a
 # perfectly good document could never clear.
-SCRIPT_FLOOR = {'cjk': 30}
+# The scripts this check has been calibrated on, and the floor measured for
+# each. A script that is not here has not been measured, and the check does not
+# run for it: inheriting Latin's number is how a correct Arabic page came to be
+# reported as near-empty - 72 and 73 characters failed while an identically
+# shaped 81-character page passed, the whole verdict turning on a threshold
+# derived from Latin documents.
+#
+# Adding a script here means measuring it the way Latin was measured: what a
+# stranded heading runs, what a short but complete section runs, and a floor
+# between the two. A number fitted to one document is not that.
+SCRIPT_FLOOR = {'latin': 80, 'cjk': 30}
 
 
 def pagination(pdf_path, floor=80, exempt=(), script='latin'):
@@ -201,10 +211,19 @@ def pagination(pdf_path, floor=80, exempt=(), script='latin'):
 
     The floor is a heuristic. In Latin script, observed stranded headings ran
     22-74 characters while a genuinely short but complete section ran 91+, so
-    the default sits between the two and brevity is not reported as a defect.
-    `script` rescales it; see SCRIPT_FLOOR.
+    the floor sits between the two and brevity is not reported as a defect.
+
+    A script with no measured floor is **skipped**, with the reason, rather than
+    borrowed against another script's number. Untestable is never passed - and
+    a check that fires on a correct page is worse than one that admits it has
+    nothing to say.
     """
-    floor = SCRIPT_FLOOR.get(script, floor)
+    if script not in SCRIPT_FLOOR:
+        return {'pages': None, 'thin': [],
+                'skipped': 'no near-empty floor has been measured for %s script; '
+                           'the check would be borrowing another script\'s number'
+                           % script}
+    floor = SCRIPT_FLOOR[script]
     import logging
     import warnings
     warnings.filterwarnings('ignore')
@@ -220,7 +239,7 @@ def pagination(pdf_path, floor=80, exempt=(), script='latin'):
             if len(text) < floor and len(page.curves) + len(page.images) < 20:
                 thin.append({'page': n, 'chars': len(text),
                              'text': text[:60].replace('\n', ' ')})
-    return {'pages': total, 'thin': thin}
+    return {'pages': total, 'thin': thin, 'skipped': None}
 
 
 def colophon(pdf_path, html):

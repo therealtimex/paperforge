@@ -1,0 +1,28 @@
+# Fixture project: the right-to-left path, built end to end.
+#
+# It exists because `ar` shipped, was listed in the README as supported, and was
+# exercised by nothing - no fixture, no test, no CI job - so a scaffolded Arabic
+# project failed `all` on pages that were not empty and nobody knew. See the
+# "an emitter nothing runs" section in AGENTS.md; a language profile is the same
+# thing one level up.
+[defaults]
+profile = "ar"
+organisation = "معهد"
+publisher = "معهد البحوث"
+paper = "A4"
+
+[[collection]]
+slug = "ar-sample"
+root = "."
+profile = "ar"
+
+  [[collection.document]]
+  source = "report.md"
+  output = "report.html"
+  contents_heading = "المحتويات"
+  page_numbers = true
+  publish = false
+
+[internal]
+files = []
+reason = "fixture"

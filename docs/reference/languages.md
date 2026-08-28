@@ -56,6 +56,29 @@ Thai vowel signs.
 Right-to-left profiles mirror the sidebar, rules, banners, list markers, table
 alignment and the scroll affordance.
 
+## A check is calibrated per script, or it does not run
+
+The near-empty page check compares a printed page's extracted text against a
+floor. That floor was **measured**: in Latin script, stranded headings ran 22-74
+characters and a short but complete section ran 91+, so the floor sits between
+them. CJK was measured separately and sits at 30, because a character carries
+more there.
+
+Arabic has not been measured, so the check **skips** for it and says why:
+
+```
+skip  near-empty pages: no near-empty floor has been measured for arabic
+      script; the check would be borrowing another script's number
+```
+
+Before this it borrowed the Latin 80, and a scaffolded Arabic document failed on
+three pages that were not empty — two of them identical in shape to a page that
+passed, the whole verdict turning on eight characters.
+
+Adding a script to `verify.SCRIPT_FLOOR` means measuring it the way Latin was
+measured, on real documents in that language. A number fitted to one sample is
+not a measurement, and inheriting another script's is worse.
+
 ## Typography can be a correctness constraint
 
 Several common serif faces silently drop Vietnamese tone marks on `Ơ` and `Ư` at

@@ -35,20 +35,61 @@ def norm(t, fold_diacritics=True):
     return profile.normalise(ihtml.unescape(re.sub(r'<[^>]+>', ' ', t)), fold_diacritics)
 
 
-def extractable(pdf_path, source_chars, floor=0.45):
-    """How much of the document's text can be read back out of the PDF.
+FENCE_RE = re.compile(r'```.*?```', re.S)
 
-    Page numbers and the pagination check both work by reading the PDF's text.
-    Chrome embeds some fonts - CJK body faces among them - without a usable
-    ToUnicode map, so the glyphs are drawn but cannot be read back: a Chinese
-    fixture returned 16% of its source. Detect that and decline, rather than
-    silently reporting no page numbers and a document full of "empty" pages.
+
+def extractable(pdf_path, source_text, floor=0.45, fold_diacritics=True):
+    """Whether the PDF's text can be matched back to the document's own words.
+
+    Page numbers and the pagination check both work by finding the source's
+    wording on a printed page. Chrome embeds some fonts - CJK body faces among
+    them - without a usable ToUnicode map, so the glyphs are drawn but cannot be
+    read back. Decline in that case, rather than silently reporting no page
+    numbers and a document full of "empty" pages.
+
+    This counted characters once, and a character count is a claim about volume
+    being read as a claim about legibility. An Arabic PDF returned 103% of its
+    source by volume and 0% by correspondence: every word came back shaped into
+    presentation forms and in visual order, so the text was all there and none
+    of it matched anything. Volume ranged from 0.07 to 44 across the fixtures
+    and separated nothing.
+
+    So a sample of the source's own distinctive words is looked for in the
+    extracted text. Measured across every fixture, documents whose print checks
+    work score 0.75 to 0.97 and those whose do not score 0.00 to 0.08; the floor
+    sits in that gap. `volume` is still reported, for a reader, and decides
+    nothing.
     """
     with _pdfplumber().open(pdf_path) as pdf:
-        got = sum(len((page.extract_text() or '').strip()) for page in pdf.pages)
-    ratio = got / max(1, source_chars)
-    return {'ratio': ratio, 'usable': ratio >= floor, 'extracted': got,
-            'source': source_chars}
+        got = '\n'.join((page.extract_text() or '') for page in pdf.pages)
+    return correspondence(source_text, got, floor, fold_diacritics)
+
+
+def correspondence(source_text, extracted, floor=0.45, fold_diacritics=True):
+    """The scoring, apart from the PDF, so it can be exercised without one."""
+    from . import profile as profile_mod
+    source = profile_mod.normalise(FENCE_RE.sub(' ', source_text), fold_diacritics)
+    sample = [w for w in source.split()
+              if len(w) >= 4 and not w.replace('.', '').isdigit()][:60]
+    seen = profile_mod.normalise(extracted, fold_diacritics)
+    found = sum(1 for w in sample if w in seen)
+    # `or 1` rather than max(1, ...): a denominator guard and a matching
+    # threshold are different things, and writing them the same way is how the
+    # arithmetic in matching.py went wrong three times. unit_gates refuses a
+    # bare max(n, len(...)) for exactly that reason.
+    ratio = found / (len(sample) or 1)
+    volume = len(extracted.strip()) / (len(re.sub(r'\s+', '', source_text)) or 1)
+    if len(sample) < 8:
+        # too few distinctive words to be evidence either way. Declining only
+        # skips the print checks, which is the safe direction, and it says so
+        # rather than reading an empty sample as agreement.
+        return {'ratio': ratio, 'usable': False, 'checked': len(sample),
+                'found': found, 'volume': volume,
+                'why': 'too few distinctive words to tell whether the PDF is readable'}
+    return {'ratio': ratio, 'usable': ratio >= floor, 'checked': len(sample),
+            'found': found, 'volume': volume,
+            'why': None if ratio >= floor else
+                   'the PDF\'s text does not match the document\'s own words'}
 
 
 def contents_pages(pages, doc, contents_anchor):

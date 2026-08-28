@@ -454,11 +454,15 @@ def do_build(docs, cache, measure=True):
             browser.print_pdf(d['output_path'], pdf)
             body = ''.join(p.read_text(encoding='utf-8')
                            for p in [d['source_path']] + ([d['annex_path']] if d['annex_path'] else []))
-            quality = pages.extractable(pdf, len(re.sub(r'\s|[|#*`>-]', '', body)))
+            quality = pages.extractable(
+                pdf, body, fold_diacritics=d['prof'].get('fold_diacritics', True))
             if not quality['usable']:
-                print('  %-38s printed page numbers skipped: only %.0f%% of the text is '
-                      'readable back from the PDF (font has no usable ToUnicode map)'
-                      % (d['output'], 100 * quality['ratio']))
+                # the cause is not always a missing ToUnicode map: Arabic comes
+                # back complete, shaped into presentation forms and in visual
+                # order, so all of the text is there and none of it matches
+                print('  %-38s printed page numbers skipped: %d of %d sampled words '
+                      'are findable in the PDF (%s)'
+                      % (d['output'], quality['found'], quality['checked'], quality['why']))
                 d['page_numbers'] = False
                 d['_text_unreadable'] = True
         if measure and d.get('page_numbers'):
@@ -663,11 +667,13 @@ def do_verify(docs, cache, quiet=False):
         readable = True
         if pdf.exists():
             body = ''.join(p.read_text(encoding='utf-8') for p in assemble.sources(d))
-            quality = pages.extractable(pdf, len(re.sub(r'\s|[|#*`>-]', '', body)))
+            quality = pages.extractable(
+                pdf, body, fold_diacritics=d['prof'].get('fold_diacritics', True))
             readable = quality['usable']
             if not readable:
-                print('      print checks skipped: only %.0f%% of the text is readable back '
-                      'from the PDF' % (100 * quality['ratio']))
+                print('      skip  print checks: %d of %d sampled words are findable in '
+                      'the PDF (%s)'
+                      % (quality['found'], quality['checked'], quality['why']))
         if pdf.exists() and readable:
             # The cover is sparse by design - a badge, a title, a metadata grid -
             # and the near-empty check looks for stranded headings and orphaned

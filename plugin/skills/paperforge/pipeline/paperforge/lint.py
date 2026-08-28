@@ -154,6 +154,74 @@ def check_citations(document, bibliography=None):
     return []
 
 
+def check_uses(document, prof=None):
+    """Declared edges pointing nowhere, arguments resting on themselves, and
+    attributes nobody read.
+
+    All three are quiet. A `uses=` naming a label that is not there is the same
+    class as a dangling reference and just as invisible - the map is simply
+    wrong. A cycle is an argument that rests on itself, which reads perfectly
+    well in prose. And an attribute the parser did not understand looks exactly
+    like one it did: `uses=a b` reads one edge and drops the other.
+    """
+    from . import assemble, claims as claims_mod, xref
+    body = assemble.read(document['source_path'],
+                         document.get('include_paths')).split('\n')
+    annex = document.get('annex_path')
+    annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
+    known = set(xref.resolve(prof or {}, body, annex_lines))
+
+    findings, graph, lines_of = [], {}, {}
+    for lines in (body, annex_lines):
+        for ident, rec in claims_mod.find(lines).items():
+            graph[ident] = [u for u in rec['uses'] if u.startswith('claim-')]
+            lines_of[ident] = rec['line']
+            if rec['leftover']:
+                findings.append({'rule': 'unknown-attribute', 'severity': 'block',
+                                 'line': rec['line'], 'match': rec['leftover'][:24],
+                                 'why': 'part of the attribute was not understood, so '
+                                        'whatever it meant was silently dropped',
+                                 'context': ''})
+            for target in rec['uses']:
+                if target not in known:
+                    findings.append({'rule': 'dangling-uses', 'severity': 'block',
+                                     'line': rec['line'], 'match': target,
+                                     'why': 'declared as used by %s, but no such label '
+                                            'exists' % ident, 'context': ''})
+    for ident in sorted(_cycles(graph)):
+        findings.append({'rule': 'circular-uses', 'severity': 'block',
+                         'line': lines_of.get(ident, 0), 'match': ident,
+                         'why': 'this claim is reachable from itself; an argument '
+                                'cannot rest on its own conclusion', 'context': ''})
+    return findings
+
+
+def _cycles(graph):
+    """Every node that lies on a cycle. Iterative, so a deep chain of claims
+    cannot exhaust the stack on a document nobody thought was unusual."""
+    colour, on_cycle = {}, set()
+    for root in graph:
+        if colour.get(root):
+            continue
+        stack, path = [(root, iter(graph.get(root, ())))], [root]
+        colour[root] = 1
+        while stack:
+            node, kids = stack[-1]
+            nxt = next(kids, None)
+            if nxt is None:
+                colour[node] = 2
+                stack.pop()
+                path.pop()
+                continue
+            if colour.get(nxt) == 1:                 # back edge: path[i:] is the cycle
+                on_cycle.update(path[path.index(nxt):])
+            elif not colour.get(nxt) and nxt in graph:
+                colour[nxt] = 1
+                path.append(nxt)
+                stack.append((nxt, iter(graph.get(nxt, ()))))
+    return on_cycle
+
+
 def check_orphans(document, prof=None):
     """Labels nothing refers to, and headings with nothing under them.
 

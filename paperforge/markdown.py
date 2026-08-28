@@ -459,14 +459,25 @@ def build_toc(toc):
 
 
 def _norm(text):
-    t = re.sub(r'<[^>]+>', '', text).replace('Đ', 'D').replace('đ', 'd').replace('Ð', 'D')
-    t = unicodedata.normalize('NFD', t)
-    t = ''.join(c for c in t if not unicodedata.combining(c)).lower()
-    return re.sub(r'\s+', ' ', re.sub(r'[^a-z0-9\s.:]', ' ', t)).strip()
+    """Structural matching form, from the profile's own rule.
+
+    This was a second copy of the normaliser, and it was the ASCII-only one:
+    `[^a-z0-9\\s.:]` erased Arabic and Chinese completely, so a contents entry
+    and the heading it names both reduced to their punctuation and could never
+    share a key. `profile.normalise` had already been fixed for exactly this -
+    its docstring says so - and this copy never heard, which is the same shape
+    as the threshold in matching.py. It also folded diacritics unconditionally,
+    against profiles that turn folding off because their marks carry meaning.
+    """
+    return profile.normalise(re.sub(r'<[^>]+>', '', text),
+                             PROF.get('fold_diacritics', True))
 
 
 def _sig(t, n=6):
-    return 'w:' + ''.join(re.sub(r'[^a-z0-9]', '', w) for w in t.split()[:n])
+    """The opening words as one key. Letters and digits of any script: the
+    ASCII-only form collapsed every Arabic heading to the same empty
+    signature, so they were not merely unmatched but indistinguishable."""
+    return 'w:' + ''.join(re.sub(r'[\W_]', '', w) for w in t.split()[:n])
 
 
 def entry_keys(text, annex=False, top=False):
@@ -492,8 +503,13 @@ def entry_keys(text, annex=False, top=False):
             keys.add('a:' + m.group(1))
             t = t[m.end():].strip()
 
-    # the contents prefixes each top-level line with its own ordinal
-    t = re.sub(r'^\d+\.\s+(?=[a-z])', '', t)
+    # The contents prefixes each top-level line with its own ordinal. The
+    # lookahead is for a *letter* in any script, and used to be `[a-z]`: an
+    # Arabic or Chinese entry kept its ordinal while the heading it names did
+    # not, so the two never shared a key and no entry could be numbered. It
+    # still declines to strip before a digit, so "1. 2026 in review" and a
+    # subsection like "1.1. ..." are left alone.
+    t = re.sub(r'^\d+\.\s+(?=[^\W\d_])', '', t)
 
     # numbered subsections agree exactly on both sides
     m = re.match(r'^(\d+\.\d+(?:\.\d+)*)\.', t)

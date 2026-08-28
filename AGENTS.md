@@ -290,3 +290,7 @@ eventually be confidently wrong in front of a reviewer who is not.
 - A check that cannot run says so with a reason. "untestable" is never "passed".
 - Comments explain *why*, especially when the reason is a defect that once
   shipped. Do not delete those.
+- A deliberate exception is pinned as a **set**, not described as a tendency.
+  `SCREEN_ONLY`, `SKIP`, `SCRIPT_FLOOR` and the unnumbered label kinds are
+  asserted by exact membership, so a fourth has to be argued for in the diff
+  that adds it rather than noticed later by somebody it breaks.

@@ -15,7 +15,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from paperforge import (browser, citations, deck, docx, figures as fig_mod, lint,
                         matching,
-                        markdown, pages,
+                        markdown, package_plugin, pages, palette,
                         profile, typst, verify, xref)
 
 failures = []
@@ -393,6 +393,28 @@ def main():
     markdown.PROF = profile.load('ar')
     check('and two different headings do not collapse to one key',
           markdown.entry_keys('الملخص التنفيذي') != markdown.entry_keys('السياق'))
+
+    print('the sets nothing may quietly join')
+    # Each of these is a deliberate exception carried in a comment beside the
+    # code that reads it, which works until somebody adds a fourth. Pinning the
+    # membership rather than the tendency means a new one fails the build and
+    # has to be argued for in the diff that adds it - the pattern taken from
+    # venue-templates, whose suite asserts the exact set of templates lacking an
+    # official source rather than that most of them have one.
+    check('the only tokens that never reach print are the three screen ones',
+          set(palette.SCREEN_ONLY) == {'bg', 'paper', 'shadow'})
+    check('the only directories left out of the plugin payload are these three',
+          set(package_plugin.SKIP) == {'__pycache__', '.cache', '.paperforge'})
+    # a script here has been measured; one that is not skips rather than
+    # borrowing another script's floor, which is what Arabic was doing
+    check('the near-empty floor has been measured for exactly two scripts',
+          set(verify.SCRIPT_FLOOR) == {'latin', 'cjk'})
+    # a section is labelled for a stable anchor as often as to be referred to,
+    # and a claim has no rendered form at all, so neither carries a number
+    check('exactly two label kinds carry no number',
+          set(xref.LABELLED) - set(xref.NUMBERED) == {'sec', 'claim'})
+    check('and the reference syntax accepts exactly four kinds',
+          set(xref.KINDS) == {'fig', 'tbl', 'eq', 'sec'})
 
     print('everything this pipeline says it supports, built by something')
     # Three defects this session were the same shape: a capability shipped, was

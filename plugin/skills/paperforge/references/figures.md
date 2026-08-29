@@ -1,7 +1,9 @@
 # The figures gate: canonical values
 
-Not diagrams — see `diagrams.md` for those. This is `paperforge figures`, the
-check that every document in a project agrees about a number.
+Not diagrams — see `diagrams.md` for those, and `cross-references.md` for the
+`{#fig-…}` labels that number them. This is `paperforge figures`, the check that
+every document in a project agrees about a number: "the latest figures", not
+"Figure 3".
 
 The same value gets stated many times across a project: in one Vietnamese corpus
 a single target is written out eight times across four documents, and a decision
@@ -62,4 +64,4 @@ findings about one fact, the second of them false.
 
 ## Related
 
-`manifest.md` · `diagrams.md` · `lint.md`
+`manifest.md` · `cross-references.md` · `diagrams.md` · `lint.md`

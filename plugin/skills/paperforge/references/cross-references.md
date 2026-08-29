@@ -90,6 +90,20 @@ says — *Figure A1* is the annex's first, not the document's fourteenth.
 A label is **optional**. An unlabelled figure keeps the positional caption it
 has always had, so nothing already written needs changing.
 
+### `fig-` is not `figures.toml`
+
+The word carries both of its ordinary meanings in this pipeline, in the places
+each is ordinary, and they are unrelated:
+
+| | Means | Lives in |
+|---|---|---|
+| `{#fig-density}`, `@fig-density` | a **figure as an illustration** — a diagram, chart or image with a caption | the markdown |
+| `figures.toml`, `paperforge figures` | a **figure as a number** — "the latest figures" — that every document must state the same way | the project manifest |
+
+Labelling a chart `{#fig-density}` says nothing to the figures gate, and
+declaring a canonical value in `figures.toml` numbers no illustration. See
+`figures.md`, which opens by making the same distinction from the other side.
+
 ## Labelling a claim, which is not a cross-reference
 
 A paragraph can carry an id at its end:
@@ -151,4 +165,4 @@ opens.
 
 ## Related
 
-`claims.md` · `structure.md` · `diagrams.md` · `unsupported-syntax.md` · `lint.md`
+`claims.md` · `figures.md` · `structure.md` · `diagrams.md` · `unsupported-syntax.md` · `lint.md`

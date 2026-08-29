@@ -368,7 +368,7 @@ def record_run(cfg, docs, stages, label=None):
     return out
 
 
-def do_runs(cfg, pair, only):
+def do_runs(cfg, pair, only, sources=False):
     """List recorded runs, or compare two of them."""
     root = cfg['_root']
     if pair:
@@ -387,6 +387,15 @@ def do_runs(cfg, pair, only):
             # measured pagination differs between machines; see runs.py
             print('  %-10s %s (print edition only; page numbers are measured)'
                   % 'repaginated', ', '.join(d['pdf_only']))
+        if sources:
+            lines, missing = runs.source_diff(root, an, bn, only)
+            if missing:
+                print('  no stored sources for %s' % ', '.join(missing))
+            elif not lines:
+                print('  sources identical')
+            else:
+                print('')
+                print(''.join(lines), end='')
         return 0
     found = runs.listing(root)
     if not found:
@@ -874,6 +883,8 @@ def main(argv=None):
     ap.add_argument('--label', help='name this run in the record')
     ap.add_argument('--out', help='brief, map: write to this file instead of stdout')
     ap.add_argument('--diff', help='runs: compare two runs, comma separated')
+    ap.add_argument('--sources', action='store_true',
+                    help='runs --diff: show what changed in the sources, not only which')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
                                         'status', 'selftest', 'plugin', 'figures', 'init', 'runs',
                                      'brief', 'claims', 'map', 'doctor'])
@@ -1046,7 +1057,7 @@ def main(argv=None):
         return 0
 
     if a.command == 'runs':
-        return do_runs(cfg, a.diff, a.only)
+        return do_runs(cfg, a.diff, a.only, a.sources)
 
     failed, stages = 0, {}
     if a.command in ('figures', 'all'):

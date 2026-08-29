@@ -18,6 +18,7 @@ page back, so a different machine with different fonts genuinely paginates
 differently. The PDF hash is recorded as observed, and `diff` reports a change
 in it as a note rather than a discrepancy.
 """
+import difflib
 import hashlib
 import json
 import re
@@ -118,6 +119,47 @@ def load(root, name):
         raise SystemExit('no run matches %r; `paperforge runs` lists them' % name)
     raise SystemExit('%r matches %d runs: %s'
                      % (name, len(matches), ', '.join(m[0] for m in matches)))
+
+
+def source_diff(root, a_name, b_name, only=None):
+    """A unified diff of two runs' stored sources.
+
+    `diff` above answers which documents changed. This answers what changed in
+    them, which is the question anybody actually has - and the material was
+    always here: a run keeps the sources themselves rather than their hashes,
+    because "what was wanted afterwards was the lost draft".
+
+    Deliberately not git. The record is a by-product of running the pipeline
+    rather than an act of discipline, and a commit is an act; git history is
+    also rewritable in ways a directory is not. Where a repository exists the
+    two answer different questions - `git diff` what somebody chose to commit,
+    this what was actually built - and an author wants both.
+    """
+    base = Path(root) / RUNS
+    out, missing = [], []
+    for name in (a_name, b_name):
+        if not (base / name / 'sources').is_dir():
+            missing.append(name)
+    if missing:
+        # a run whose sources were not kept says so: an empty diff would read
+        # as "nothing changed", which is the one thing it does not mean
+        return None, missing
+    a_dir, b_dir = base / a_name / 'sources', base / b_name / 'sources'
+    names = sorted({p.name for p in a_dir.iterdir()} | {p.name for p in b_dir.iterdir()})
+    for name in names:
+        if only and only not in name:
+            continue
+        a_file, b_file = a_dir / name, b_dir / name
+        a_text = a_file.read_text(encoding='utf-8').splitlines(keepends=True) \
+            if a_file.exists() else []
+        b_text = b_file.read_text(encoding='utf-8').splitlines(keepends=True) \
+            if b_file.exists() else []
+        if a_text == b_text:
+            continue
+        out.extend(difflib.unified_diff(a_text, b_text,
+                                        fromfile='%s/%s' % (a_name, name),
+                                        tofile='%s/%s' % (b_name, name)))
+    return out, []
 
 
 def diff(before, after):

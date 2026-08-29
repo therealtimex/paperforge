@@ -58,6 +58,7 @@ machine is somebody's decision, not a build step.
 | `--quiet` | Findings without surrounding context |
 | `--label <name>` | Name this run in the record |
 | `--diff <a>,<b>` | `runs`: compare two recorded runs |
+| `--sources` | `runs --diff`: show what changed in the sources, not only which |
 | `--accept` | `claims`: re-stamp every gist against its paragraph |
 | `--json` | `map`: emit the map as JSON rather than for a reader |
 

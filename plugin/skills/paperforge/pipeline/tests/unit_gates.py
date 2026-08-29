@@ -440,6 +440,35 @@ def main():
         check('a browser that does not finish is refused in words',
               False if type(err).__name__ == 'TimeoutExpired' else True)
 
+    print('the chain, described where it is defined')
+    # A hand-written line in the scaffolded AGENTS.md described what `all` does.
+    # The `claims` stage was added and that line was not, so every project
+    # scaffolded afterwards carried a wrong account of the command - the drift
+    # the scaffolded file itself warns about, inside the scaffold.
+    from paperforge import cli as cli_mod, scaffold
+    source = (Path(__file__).resolve().parents[1] / 'paperforge/cli.py').read_text(encoding='utf-8')
+    ran = []
+    for m in re.finditer(r"a\.command in \('([a-z]+)', 'all'\)", source):
+        if m.group(1) not in ran:
+            ran.append(m.group(1))
+    check('the named stage order is the order the stages run',
+          tuple(ran) == cli_mod.STAGES)
+    if tuple(ran) != cli_mod.STAGES:
+        print('          runs %s, named %s' % (ran, list(cli_mod.STAGES)))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        scaffold.create(Path(tmp), 'd', 'D', ['en'],
+                        {'en': profile.load('en')}, ['report'], '', '', git=False)
+        told = (Path(tmp) / 'AGENTS.md').read_text(encoding='utf-8')
+    check('and the scaffolded project is told that chain, not another one',
+          ' -> '.join(cli_mod.STAGES) in told)
+    # the whole authoring layer was absent from the file a project's agent reads
+    for named in ('claims', 'map'):
+        check('the scaffold names `%s`' % named, ' %s ' % named in told or
+              ('%s ' % named) in told)
+    check('and says a gist is the author\'s to write',
+          'never writes one' in told)
+
     print('what this pipeline needs from the machine it runs on')
     from paperforge import require
     # Every binary the package shells out to is either in the table or is

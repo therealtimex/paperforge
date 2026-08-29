@@ -42,7 +42,9 @@ once as `paperforge`:
 
 ```bash
 {invocation} status   # what is built, linked, published
-{invocation} all      # figures -> lint -> build -> verify -> publish
+{invocation} all      # {chain}
+{invocation} claims   # a gist still says what its paragraph says
+{invocation} map      # what this document declares, and what points at what
 {invocation} all --only <source.md>
 {invocation} brief    # what this project declares, regenerated from the manifest
 ```
@@ -54,6 +56,12 @@ once as `paperforge`:
 - A document becomes publishable by a deliberate edit to `publish`, which is
   also the moment someone decides it is ready.
 - If lint blocks, fix the markdown. Do not bypass the gate.
+- Labelling is optional and, once used, held to. `{{#sec-x}}` on a heading and
+  `{{#claim-x gist="..."}}` at the end of a paragraph make a document's structure
+  and its argument readable by `{invocation} map`. A gist is yours to write - the
+  pipeline never writes one - and `{invocation} claims --accept` is you saying
+  you have reread the paragraph. Change the prose afterwards without accepting
+  again and the build refuses.
 - A missing tool is not yours to install. `{invocation} doctor` says what is
   absent and what it was for; say so and ask. Installing software changes
   somebody's machine, which is not a build step.
@@ -322,7 +330,10 @@ def create(directory, slug, title, languages, profiles, publications,
     # absolute: a relative entry point is only valid from wherever the
     # scaffolding happened to be run, which is not where the project lives
     invocation = str(Path(sys.argv[0]).resolve()) if sys.argv and sys.argv[0] else 'paperforge'
-    (root / 'AGENTS.md').write_text(AGENTS.format(title=title, invocation=invocation),
+    from .cli import STAGES
+    (root / 'AGENTS.md').write_text(
+        AGENTS.format(title=title, invocation=invocation,
+                      chain=' -> '.join(STAGES)),
                                     encoding='utf-8')
     refused = _claude_pointer(root)
     written += ['figures.toml', '.gitignore', 'AGENTS.md',

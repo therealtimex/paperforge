@@ -468,6 +468,12 @@ def main():
               ('%s ' % named) in told)
     check('and says a gist is the author\'s to write',
           'never writes one' in told)
+    # accepting is somebody saying they reread the paragraph; left uncommitted
+    # that assertion exists on one machine and vouches for nothing to anyone
+    # who pulls the repository. claims.md said so; the file an agent reads
+    # before it acts did not.
+    check('and that an acceptance has to be committed to mean anything',
+          'claims.json' in told and 'vouches for nothing' in told)
 
     print('what this pipeline needs from the machine it runs on')
     from paperforge import require

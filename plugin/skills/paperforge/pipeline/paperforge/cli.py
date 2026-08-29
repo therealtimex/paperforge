@@ -34,6 +34,14 @@ def find_config(explicit=None):
 # Built-in document types. A project defines its own under [types] in the
 # manifest - a due-diligence memo, a board pack, a case study - because the set
 # of things research teams publish is not ours to enumerate.
+# The order `all` runs its stages in, named once. The scaffolded AGENTS.md
+# builds its description of the chain from this rather than restating it: the
+# `claims` stage was added and that hand-written line was not, so every project
+# scaffolded afterwards carried a wrong account of what the command does.
+# unit_gates scans this module and proves the tuple matches the stages that
+# actually run, in the order they run.
+STAGES = ('figures', 'claims', 'lint', 'build', 'verify', 'publish')
+
 BUILTIN_TYPES = {
     'report': {'layout': 'report'},
     'brief': {'layout': 'brief'},

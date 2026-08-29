@@ -61,7 +61,8 @@ once as `paperforge`:
   and its argument readable by `{invocation} map`. A gist is yours to write - the
   pipeline never writes one - and `{invocation} claims --accept` is you saying
   you have reread the paragraph. Change the prose afterwards without accepting
-  again and the build refuses.
+  again and the build refuses. Commit `.paperforge/claims.json` when you accept:
+  an acceptance only your machine has vouches for nothing to anybody else.
 - A missing tool is not yours to install. `{invocation} doctor` says what is
   absent and what it was for; say so and ask. Installing software changes
   somebody's machine, which is not a build step.

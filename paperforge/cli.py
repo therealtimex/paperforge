@@ -250,6 +250,12 @@ def do_claims(docs, accept=False, quiet=False):
             print('  %-38s %d accepted, %d restamped, %d dropped'
                   % (claims.LOCK, len(done['accepted']), len(done['changed']),
                      len(done['dropped'])))
+            if done['changed']:
+                # accepting is somebody saying they reread the paragraph. Left
+                # uncommitted that assertion exists on one machine and vouches
+                # for nothing to anyone who pulls the repository.
+                print('  %-38s commit it: an acceptance nobody else has is not one'
+                      % claims.LOCK)
             continue
         found = claims.check(sorted(sources), root)
         blocked = [f for f in found if f['severity'] == 'block']

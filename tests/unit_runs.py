@@ -142,6 +142,39 @@ def main():
         check('a project that declares none is recorded without one',
               'request' not in rec4['documents'][0])
 
+    print('what changed, not only which')
+    # `diff` answers which documents were rewritten. The material for what
+    # changed in them was always here - a run keeps the sources themselves
+    # rather than their fingerprints, for the reason at the top of this file.
+    import shutil as _shutil
+    with tempfile.TemporaryDirectory() as tmp2:
+        root2 = Path(tmp2)
+        cfg2, docs2 = project(root2, 'First line.\nSecond line.\n')
+        a = runs.write(cfg2, docs2, {'build': 'ok'})
+        (root2 / 'report.md').write_text('First line.\nSecond line.\nA third.\n',
+                                         encoding='utf-8')
+        b = runs.write(cfg2, docs2, {'build': 'ok'})
+
+        lines, missing = runs.source_diff(root2, a.name, b.name)
+        check('the diff shows the line that was added',
+              missing == [] and any(l.startswith('+A third.') for l in lines))
+        check('and leaves out the lines that did not change',
+              not any(l.startswith('+First line.') for l in lines))
+        check('two identical runs produce no diff',
+              runs.source_diff(root2, b.name, b.name)[0] == [])
+        check('narrowing to a document that is not there shows nothing',
+              runs.source_diff(root2, a.name, b.name, only='other.md')[0] == [])
+        check('and narrowing to the one that is shows it',
+              any(l.startswith('+A third.')
+                  for l in runs.source_diff(root2, a.name, b.name, only='report.md')[0]))
+
+        # an empty diff and an unavailable one are not the same answer: one
+        # means nothing changed, the other that nobody can say
+        _shutil.rmtree(root2 / runs.RUNS / a.name / 'sources')
+        lines, missing = runs.source_diff(root2, a.name, b.name)
+        check('a run whose sources were not kept says so rather than showing nothing',
+              lines is None and missing == [a.name])
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

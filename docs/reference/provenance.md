@@ -75,6 +75,28 @@ judgment that separated a good pass from a poor one in the corpus above —
 any gate emits. What the record buys is the ability to put the two side by side
 and see it.
 
+## What changed, not only which
+
+```bash
+paperforge runs --diff <a>,<b>            # which documents were rewritten
+paperforge runs --diff <a>,<b> --sources  # what changed in them
+```
+
+A run keeps the sources themselves rather than their fingerprints, so the second
+form is a unified diff computed from what was actually built — no repository
+needed, and nothing that a rewritten history can take away.
+
+**This is not a replacement for `git diff`, and not a competitor to it.** Git
+records what somebody chose to commit; a run records what the pipeline built.
+They diverge exactly where it matters: the draft that was lost here was never
+committed. In a repository an author wants both — `git diff` for what has
+changed since they last committed, `runs --diff --sources` for what changed
+between two builds regardless of what anyone committed.
+
+Backing the record with git was considered and rejected for the reason at the
+top of this page: the record is a by-product of running the pipeline rather than
+an act of discipline, and a commit is an act.
+
 ## Related
 
 `commands.md` · `manifest.md` · `verify.md` · `publishing.md`

@@ -20,7 +20,7 @@ from . import assemble
 from . import browser, citations as cite_mod, front as front_mod
 from . import images as img_mod, palette, profile, xref
 
-LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
+LIST_RE = xref.LIST_RE
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
 META_RE = re.compile(r'^\*\*(.+?):\*\*\s*(.*)$')
 # One definition, in xref.py: the attribute block now carries a section id
@@ -113,7 +113,12 @@ def inline(text, footnotes):
     # as a figure - so this is the decorative case, not the illustration.
     def inline_image(m):
         name = plate(m.group(2))
-        return keep('#box(image("%s", height: 1.1em))' % name) if name else ''
+        if name:
+            return keep('#box(image("%s", height: 1.1em))' % name)
+        # never silence: the block path and the reading edition both show the
+        # gap, and an edition that drops content quietly is the failure here
+        return keep('#text(style: "italic")[%s]'
+                    % esc('[image not found: %s]' % m.group(2)))
 
     text = img_mod.IMAGE_RE.sub(inline_image, text)
     text = re.sub(r'\[\^([^\]]+)\]',
@@ -664,11 +669,6 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
 
     if svgs:
         rasterise(svgs[:len(figures)], work)
-    for i, (name, found) in enumerate(PLATES):
-        if found.suffix.lower() == '.svg':
-            rasterise([found.read_text(encoding='utf-8')], work, prefix='plate-%d' % i)
-        else:
-            shutil.copy2(found, work / name)
 
     logo_block = ''
     if logo and Path(logo).exists():
@@ -755,6 +755,16 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     if review:
         preamble += ('\n#set par.line(numbering: "1")\n'
                      '#set par(leading: 1.5em, spacing: 1.5em)\n')
+    # After every pass that can register one. The front matter renders last -
+    # an abstract, a metadata value and a declaration all go through inline() -
+    # so copying earlier left an image named in an abstract referenced by the
+    # Typst source and absent from the directory it compiles in.
+    for i, (name, found) in enumerate(PLATES):
+        if found.suffix.lower() == '.svg':
+            rasterise([found.read_text(encoding='utf-8')], work, prefix='plate-%d' % i)
+        else:
+            shutil.copy2(found, work / name)
+
     (work / 'doc.typ').write_text(preamble + '\n' + typ_body + '\n', encoding='utf-8')
     result = subprocess.run(['typst', 'compile', 'doc.typ', str(Path(output).absolute())],
                             cwd=work, capture_output=True, text=True)

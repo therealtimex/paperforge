@@ -45,6 +45,10 @@ NUMBERED = ('fig', 'tbl', 'eq')     # carry a number and a profile label
 KINDS = NUMBERED + ('sec',)         # everything the reference syntax accepts
 LABELLED = KINDS + ('claim',)       # everything that can carry an id at all
 
+# One definition, aliased by every emitter: the caption scanner below has to
+# agree with them about where a list begins, or it reads a caption inside one
+# as attached to a float.
+LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 CAPTION_RE = re.compile(r'^:\s+(.*?)\s*\{#((%s)-[\w-]+)\}\s*$' % '|'.join(NUMBERED))
 DISPLAY_LABEL_RE = re.compile(r'^\$\$\s*\{#((?:eq)-[\w-]+)\}\s*$')
 OPEN_FENCE_RE = re.compile(r'^\$\$\s*$')
@@ -276,6 +280,15 @@ def attached_captions(lines):
             while pos < n and lines[pos].strip().startswith('|'):
                 pos += 1
             slots.add(next_line(pos))
+            continue
+        if LIST_RE.match(lines[pos]):
+            # a list swallows its own indented content, so an image inside one
+            # is rendered in the item and the caption under the list is left as
+            # prose. Skipping the block is what makes that reportable.
+            pos += 1
+            while pos < n and (not lines[pos].strip() or LIST_RE.match(lines[pos])
+                               or lines[pos][:1].isspace()):
+                pos += 1
             continue
         if img_mod.ONLY_RE.match(lines[pos]):
             slots.add(next_line(pos + 1))

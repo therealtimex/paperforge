@@ -10,7 +10,7 @@ from . import citations as cite_mod
 from . import maths as maths_mod
 from . import front as front_mod, images as img_mod, palette, profile, xref
 
-LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
+LIST_RE = xref.LIST_RE
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
 META_RE = re.compile(r'^\*\*(.+?):\*\*\s*(.*)$')
 # Explicit structure, written by the research team, e.g.
@@ -100,13 +100,14 @@ def inline(text):
         ready.append(image_tag(m.group(2), m.group(1)))
         return '\x00r%d\x00' % (len(ready) - 1)
 
-    # before the link pattern, which matches the bracket half of `![a](b)` and
-    # left the bang behind as literal text with the image reduced to a link
-    text = img_mod.IMAGE_RE.sub(stash_image, text)
     text = cite_mod.CITE_RE.sub(stash_cite, text)
     text = maths_mod.DISPLAY_RE.sub(stash_maths('display'), text)
     text = maths_mod.INLINE_RE.sub(stash_maths('inline'), text)
     text = re.sub(r'`([^`]+)`', stash, text)
+    # after the code stash, so `![alt](src)` written in backticks stays syntax a
+    # reader can see - this page documents that syntax - and before the link
+    # pattern, which matches the bracket half and left the bang behind as text
+    text = img_mod.IMAGE_RE.sub(stash_image, text)
     text = ihtml.escape(text)
 
     def link(m):

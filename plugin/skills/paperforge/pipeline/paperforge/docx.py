@@ -35,7 +35,10 @@ LIST_RE = md.LIST_RE
 INLINE_CODE = re.compile(r'`([^`]+)`')
 BOLD = re.compile(r'\*\*(.+?)\*\*')
 ITALIC = re.compile(r'(?<!\*)\*([^*\n]+)\*(?!\*)')
-LINK = re.compile(r'\[([^\]]+)\]\(([^)\s]+)\)')
+# not the bracket half of `![alt](src)`: that is an image, and taking it as a
+# link wrote `!alt (src)` into the Word file - the same defect the reading
+# edition had
+LINK = re.compile(r'(?<!!)\[([^\]]+)\]\(([^)\s]+)\)')
 WIDE = 6                      # columns from which a table gets a landscape section
 
 
@@ -53,17 +56,32 @@ def _navy(brand):
     return _colour(brand, 'navy')
 
 
+# One pass, so the alternatives compete for the same position: a code span
+# beginning before an image wins, which is what keeps `![alt](src)` written in
+# backticks from being placed as a picture.
+INLINE = re.compile(r'\*\*(.+?)\*\*|(?<!\*)\*([^*\n]+)\*(?!\*)|`([^`]+)`'
+                    r'|!\[([^\]]*)\]\(([^)\s]+)\)')
+
+
 def _runs(paragraph, text):
     """Inline markdown onto Word runs. Links become their text plus the target,
-    because a run carrying a relationship is not what survives a paste."""
+    because a run carrying a relationship is not what survives a paste.
+
+    An image is placed, at the height of the line. It used to fall through to
+    the link rule and reach the reader as `!alt (figures/x.png)`.
+    """
     text = LINK.sub(lambda m: m.group(1) if m.group(2).startswith('./')
                     else '%s (%s)' % (m.group(1), m.group(2)), text)
     text = re.sub(r'<br\s*/?>', '\n', text)
     pos = 0
-    for m in re.finditer(r'\*\*(.+?)\*\*|(?<!\*)\*([^*\n]+)\*(?!\*)|`([^`]+)`', text):
+    for m in INLINE.finditer(text):
         if m.start() > pos:
             paragraph.add_run(text[pos:m.start()])
-        bold, italic, code = m.group(1), m.group(2), m.group(3)
+        bold, italic, code, alt, src = m.groups()
+        if src is not None:
+            _inline_picture(paragraph, alt, src)
+            pos = m.end()
+            continue
         run = paragraph.add_run(bold or italic or code)
         run.bold, run.italic = bool(bold), bool(italic)
         if code:
@@ -71,6 +89,21 @@ def _runs(paragraph, text):
         pos = m.end()
     if pos < len(text):
         paragraph.add_run(text[pos:])
+
+
+def _inline_picture(paragraph, alt, src):
+    """An image inside a sentence, or a visible note that it was not found.
+
+    Never silence: a draft build reaches a missing file - lint blocks the same
+    reference at publication - and an edition that quietly drops content is the
+    failure this path exists to remove.
+    """
+    found = plate(src)
+    if not found:
+        run = paragraph.add_run('[image not found: %s]' % src)
+        run.italic = True
+        return
+    paragraph.add_run().add_picture(str(found), height=Pt(11))
 
 
 def _columns(section, n, space=425):
@@ -164,6 +197,8 @@ def _table(doc, rows, wide):
 SRC = {'dir': Path('.')}
 WORK = {'dir': None}
 FLOATS = []   # image floats, so a figure's ordinal counts them alongside diagrams
+RASTERS = []  # SVGs rendered for Word; an inline image needs a name too, and
+              # numbering them by FLOATS gave one to two different pictures
 
 
 def plate(src):
@@ -182,7 +217,8 @@ def plate(src):
         return None
     # one SVG per call, so the prefix carries which image it is and rasterise's
     # own index is always 0
-    i = len(FLOATS)
+    i = len(RASTERS)
+    RASTERS.append(found)
     typst.rasterise([found.read_text(encoding='utf-8')], WORK['dir'],
                     prefix='plate-%d' % i)
     raster = WORK['dir'] / ('plate-%d-0.png' % i)
@@ -252,6 +288,14 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
             if found:
                 doc.add_picture(str(found), width=Mm(160))
                 doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            else:
+                # a draft build reaches this; lint blocks the same reference at
+                # publication. The gap is shown, as it is in the reading edition
+                gap = doc.add_paragraph()
+                gap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                run = gap.add_run('[image not found: %s]' % m.group(2))
+                run.italic = True
+                run.font.color.rgb = _colour(brand, 'ink-soft')
             entry, pos = take_caption(lines, pos, table or {})
             cap = doc.add_paragraph(xref.caption_of(entry) if entry
                                     else label % (ordinal + 1))
@@ -417,6 +461,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     SRC['dir'] = Path(source).parent
     WORK['dir'] = work
     FLOATS.clear()
+    RASTERS.clear()
     images = {}
     if svgs:
         # the diagrams are already rasterised for the print edition; a Word file

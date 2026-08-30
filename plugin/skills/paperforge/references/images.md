@@ -17,8 +17,11 @@ diagrams, in source order, takes the caption written under it, and carries that
 caption's label — so `@fig-refining` resolves to *Figure 1* the same way a
 diagram's does. An image inside a sentence is left in the sentence.
 
-The path is relative **to the document that names it**, which is where an
-author is looking when they type it.
+The path is relative **to the document's own source file**, which is where an
+author is looking when they type it. An included chapter is a fragment of that
+document rather than a document of its own — see `assembling.md` — so a path
+written in one resolves from the same place, and lint and the four emitters
+cannot disagree about where that is.
 
 ## The file travels with the document
 

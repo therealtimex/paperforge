@@ -33,17 +33,27 @@ ONLY_RE = re.compile(r'^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$')
 
 REMOTE_RE = re.compile(r'^(?:https?:)?//', re.I)
 
+# blanked, not removed, so a match's column still lines up with the source
+CODE_RE = re.compile(r'`[^`]+`')
+
 
 def refs(lines):
-    """(line number, alt, src) for every image reference, in order."""
+    """(line number, alt, src) for every image reference, in order.
+
+    Code is not a reference. A fenced block and an inline code span both hold
+    syntax being shown to a reader rather than an image being placed, and the
+    emitters treat them that way - so a page documenting `![alt](src)` must not
+    be blocked for naming a file that was never meant to exist.
+    """
     out = []
     fenced = False
     for i, line in enumerate(lines):
         if line.strip().startswith('```'):
             fenced = not fenced
+            continue
         if fenced:
             continue
-        for m in IMAGE_RE.finditer(line):
+        for m in IMAGE_RE.finditer(CODE_RE.sub(lambda c: ' ' * len(c.group(0)), line)):
             out.append((i + 1, m.group(1), m.group(2)))
     return out
 

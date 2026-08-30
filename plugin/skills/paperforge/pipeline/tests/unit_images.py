@@ -21,15 +21,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from docx import Document
 
 from paperforge import docx as docx_mod
-from paperforge import images, lint, markdown, profile, typst, verify, xref
+from paperforge import images, lint, markdown, profile, require, typst, verify, xref
 
 failures = []
 
-# an 8x8 PNG; small enough to read in a diff, real enough to be inlined
+# a real 8x8 PNG, not a plausible-looking one. The first constant here decoded
+# as bytes and inlined as a data URI without complaint, and only Typst - which
+# actually decodes what it places - reported the CRC error.
 PNG = base64.b64decode(
-    'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAJUlEQVR42mNkYPhfz0AEYBxV'
-    'SF+FjIyM/4nRODwUDr9UM2wUAgB+ZQ8B4c1WcgAAAABJRU5ErkJggg==')
+    'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEUlEQVR4nGPwSG3EihiGlgQA'
+    'cjtLgZBs74EAAAAASUVORK5CYII=')
 SVG = '<svg viewBox="0 0 10 10" style="max-width:10px"><g/></svg>'
+
+FRONT_DOC = '''+++
+abstract = "A summary with ![a mark](f.png) inside it."
++++
+
+# DOCUMENT
+## Title
+
+---
+**Prepared by:** Test
+
+---
+
+## Body
+
+Some prose long enough to be a paragraph in a document.
+'''
 
 
 def check(label, condition):
@@ -111,6 +130,13 @@ def main():
         check('and not as a bang and a link', '!<a href' not in html)
         check('and does not become a figure', 'figcaption' not in html)
 
+        print('syntax shown to a reader is not a picture placed for one')
+        html = render(['Write `![alt](f.png)` to place one.'], root)
+        check('an image in a code span stays code',
+              '<code>![alt](f.png)</code>' in html and '<img' not in html)
+        check('and lint does not go looking for the file',
+              images.refs(['Write `![alt](f.png)` to place one.']) == [])
+
         print('a float ordinal counts floats; a raster index counts diagrams')
         body = ['![A field](f.png)', '', ': The photograph. {#fig-photo}', '',
                 '```mermaid', 'graph TD', 'A-->B', '```', '',
@@ -137,6 +163,17 @@ def main():
         check('a resolved image with an attached caption is clean',
               lint.check_images(doc) == [] and lint.check_captions(doc) == [])
 
+        # an included file is a fragment of one document, not a document, so
+        # every reader of "the source" resolves against the source's directory.
+        # What matters is that lint and the emitters agree on which directory
+        # that is; they used to be able to differ silently.
+        (root / 'parts').mkdir()
+        (root / 'parts' / 'ch.md').write_text('![here](f.png)\n', encoding='utf-8')
+        doc = document(root, ['Body.'], 'inc.md')
+        doc['include_paths'] = (str(root / 'parts' / 'ch.md'),)
+        check('an image in an included file resolves from the document',
+              lint.check_images(doc) == [])
+
         doc = document(root, ['![gone](missing.png)'], 'b.md')
         check('a missing file blocks',
               rules(lint.check_images(doc)) == {('missing-image', 'block')})
@@ -156,6 +193,9 @@ def main():
               lint.check_references(doc, profile.load('en')) == [])
 
     print('what may carry a caption')
+    check('not a caption under a list that contains an image',
+          xref.attached_captions(['- an item', '  ![a](x.png)', '',
+                                  ': A caption {#fig-a}']) == set())
     slots = xref.attached_captions(
         ['```mermaid', 'graph TD', '```', '', ': one {#fig-a}', '',
          '| a | b |', '|---|---|', '| 1 | 2 |', ': two {#tbl-a}', '',
@@ -213,6 +253,26 @@ def main():
         out = typst.convert(['![A field](gone.png)'], {}, [], 'Figure %d')
         check('a missing file does not reach the Typst source',
               'image(' not in out and 'image not found' in out)
+        check('and a missing inline one is not silently dropped',
+              'image not found' in typst.inline('Prose ![a](gone.png) here.', {}))
+
+    print('an image named in the front matter is copied too')
+    if not require.found('typst'):
+        print('  %-58s skip (typst is not installed)' % 'the print build finds it')
+    else:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'f.png').write_bytes(PNG)
+            # the front matter renders last, after the block pass, so an image
+            # named only there registers a plate after the body is converted
+            (root / 'doc.md').write_text(FRONT_DOC, encoding='utf-8')
+            out = root / 'doc.pdf'
+            try:
+                typst.build(str(root / 'doc.md'), str(out), profile.load('en'))
+                built, why = out.is_file(), ''
+            except RuntimeError as e:
+                built, why = False, str(e)[:60]
+            check('the print build finds it' + (' (%s)' % why if why else ''), built)
 
     print('the Word edition places the picture, and not over a diagram')
     calls = []
@@ -245,6 +305,26 @@ def main():
         check('with its caption under it',
               any('The photograph' in p.text for p in doc.paragraphs))
         check('and it is not counted as a diagram', figures == [])
+
+        docx_mod.FLOATS.clear()
+        docx_mod.RASTERS.clear()
+        doc = Document()
+        para = doc.add_paragraph()
+        docx_mod._runs(para, 'Prose with ![a mark](f.png) in it.')
+        check('an inline image is placed, not written as its own markup',
+              '![a mark]' not in para.text and '!a mark' not in para.text)
+        check('and the picture is really there',
+              any('image' in r.reltype for r in doc.part.rels.values()))
+
+        para = doc.add_paragraph()
+        docx_mod._runs(para, 'Documented as `![alt](f.png)` in the guide.')
+        check('an image in a code span is left as code', '![alt](f.png)' in para.text)
+
+        doc = Document()
+        docx_mod.FLOATS.clear()
+        docx_mod.convert(doc, ['![A field](gone.png)'], [], 'Figure %d', {}, {})
+        check('a missing file leaves a visible note in Word too',
+              any('image not found: gone.png' in p.text for p in doc.paragraphs))
 
     print()
     if failures:

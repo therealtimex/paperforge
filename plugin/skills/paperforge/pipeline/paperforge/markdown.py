@@ -8,9 +8,9 @@ from pathlib import Path
 from . import assemble
 from . import citations as cite_mod
 from . import maths as maths_mod
-from . import front as front_mod, palette, profile, xref
+from . import front as front_mod, images as img_mod, palette, profile, xref
 
-LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
+LIST_RE = xref.LIST_RE
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
 META_RE = re.compile(r'^\*\*(.+?):\*\*\s*(.*)$')
 # Explicit structure, written by the research team, e.g.
@@ -31,7 +31,12 @@ XREF = {}   # labelled captions, numbered once in xref.py for every edition
 XREF_MISSING = []  # references pointing at no label
 FRONT = {}  # structured front matter: authors, affiliations, abstract
 BIB_WARNINGS = []  # bibliography entries that will render oddly
-FIG = {'n': 0, 'base': 0, 'label': '%d'}   # figure counter shared across report + annex
+FIG = {'n': 0, 'base': 0, 'dgm': 0, 'label': '%d'}
+# 'n' counts floats in source order, so a figure's number is the one xref.py
+# gave it; 'dgm' counts diagrams, which is what indexes SVGS. They were one
+# counter while diagrams were the only kind of figure, and an image between
+# two diagrams then drew the wrong one.
+SRC = {'dir': Path('.')}  # where a relative image path is resolved from
 PROF = profile.load('vi')                  # replaced per build; never assume a language
 
 # ---------------------------------------------------------------- inline pass
@@ -91,10 +96,18 @@ def inline(text):
         ready.append(rendered)
         return '\x00r%d\x00' % (len(ready) - 1)
 
+    def stash_image(m):
+        ready.append(image_tag(m.group(2), m.group(1)))
+        return '\x00r%d\x00' % (len(ready) - 1)
+
     text = cite_mod.CITE_RE.sub(stash_cite, text)
     text = maths_mod.DISPLAY_RE.sub(stash_maths('display'), text)
     text = maths_mod.INLINE_RE.sub(stash_maths('inline'), text)
     text = re.sub(r'`([^`]+)`', stash, text)
+    # after the code stash, so `![alt](src)` written in backticks stays syntax a
+    # reader can see - this page documents that syntax - and before the link
+    # pattern, which matches the bracket half and left the bang behind as text
+    text = img_mod.IMAGE_RE.sub(stash_image, text)
     text = ihtml.escape(text)
 
     def link(m):
@@ -134,6 +147,25 @@ def take_caption(lines, pos):
         if m:
             return XREF.get(m.group(2)), look + 1
     return None, pos
+
+
+def image_tag(src, alt=''):
+    """An image inlined, or a visible gap where one was named.
+
+    Inlined, not linked: a published document is one file, and a relative src
+    survives `verify` - which refuses only `http(s)://` - and then breaks the
+    first time the file travels on its own.
+
+    A build only reaches a missing file in draft, since lint blocks on the same
+    reference at publication. The gap is shown rather than skipped: an author
+    reading a draft should see where the figure was meant to be, and silently
+    dropping it is the failure this path was written to remove.
+    """
+    found = img_mod.resolve(src, SRC['dir'])
+    if not found:
+        return ('<div class="plate-missing">%s</div>'
+                % ihtml.escape('image not found: %s' % src))
+    return '<img src="%s" alt="%s">' % (img_mod.data_uri(found), ihtml.escape(alt))
 
 
 def parse_list(lines, pos, level):
@@ -234,8 +266,10 @@ def convert(lines, toc):
             body = ihtml.escape('\n'.join(buf))
             if lang == 'mermaid':
                 FIG['n'] += 1
+                FIG['dgm'] += 1
                 fig = FIG['n']
-                svg = SVGS[fig - 1] if fig - 1 < len(SVGS) else None
+                d = FIG['dgm']
+                svg = SVGS[d - 1] if d - 1 < len(SVGS) else None
                 if svg:
                     m2 = re.search(r'max-width:\s*([\d.]+)px', svg[:svg.find('>')])
                     natural = float(m2.group(1)) if m2 else 0
@@ -341,6 +375,22 @@ def convert(lines, toc):
                                       '<div id="%s" class="table-frame' % entry['id'], 1)
                 block += ('\n<p class="table-caption">%s</p>' % inline(xref.caption_of(entry)))
             out.append(block)
+            continue
+
+        # image ------------------------------------------------------------
+        # A line that is only an image is a float and is numbered with the
+        # diagrams; one inside a sentence is handled by the inline pass.
+        m = img_mod.ONLY_RE.match(line)
+        if m:
+            FIG['n'] += 1
+            fig = FIG['n']
+            pos += 1
+            entry, pos = take_caption(lines, pos)
+            cap = xref.caption_of(entry) if entry else FIG['label'] % (fig - FIG['base'])
+            anchor = ' id="%s"' % entry['id'] if entry else ''
+            out.append('<figure class="diagram plate"%s>\n%s\n'
+                       '<figcaption>%s</figcaption>\n</figure>'
+                       % (anchor, image_tag(m.group(2), m.group(1)), inline(cap)))
             continue
 
         # list --------------------------------------------------------------
@@ -594,7 +644,13 @@ def build_annex(path, toc, nav_label=None):
     FIG['base'] = FIG['n']
     FIG['label'] = PROF['labels']['annex_figure']
     mark = len(toc)
-    body = convert(lines[hr + 1:], toc)
+    # an annex may sit in its own directory, and an image path in it is written
+    # relative to the annex, which is the file its author was looking at
+    outer, SRC['dir'] = SRC['dir'], Path(path).parent
+    try:
+        body = convert(lines[hr + 1:], toc)
+    finally:
+        SRC['dir'] = outer
     # annex sections get the banner treatment, tinted differently from the report parts
     body = re.sub(r'<h2 id="', '<h2 class="part annex-part" id="', body)
 
@@ -748,6 +804,7 @@ def build(source, output, svgs=None, annex=None, pages=None,
     kind_fallback = kind_fallback or PROF['labels']['document']
     contents_heading = contents_heading or None
     SVGS[:] = svgs or []
+    SRC['dir'] = Path(source).parent
     raw = assemble.read(source, includes)
     # structured front matter comes off first, so nothing downstream sees
     # a +++ block and tries to render it as prose
@@ -803,7 +860,7 @@ def build(source, output, svgs=None, annex=None, pages=None,
 
     toc = []
     STATS.clear()
-    FIG.update(n=0, base=0, label=PROF['labels']['figure'])
+    FIG.update(n=0, base=0, dgm=0, label=PROF['labels']['figure'])
     body = convert(lines[start:], toc)
 
     annex_html = ''

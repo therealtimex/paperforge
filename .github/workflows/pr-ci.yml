@@ -108,6 +108,12 @@ jobs:
       - name: Papermap unit checks
         run: python3 -m coverage run tests/unit_papermap.py
 
+      # an image is a figure like any other, and a reference to a file is the
+      # one thing in a document that can be true when written and false when
+      # built; both editions have to place it, and lint has to refuse the gap
+      - name: Image figure unit checks
+        run: python3 -m coverage run tests/unit_images.py
+
       # manuscript front matter: parsed, validated, and refusing to guess
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py

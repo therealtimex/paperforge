@@ -51,6 +51,9 @@ filename shown to a reader is wrong regardless of who wrote it:
 | `unknown-attribute` | part of a claim's attribute was not understood, so it was dropped |
 | `dangling-reference` | `@fig-absent` — a reference to a label that does not exist |
 | `duplicate-label` | the same id declared twice |
+| `missing-image` | `![a](figures/gone.png)` — no file at that path, relative to the document |
+| `remote-image` | an image loaded over the network; a published document carries its own |
+| `stray-caption` | a caption under something that carries none — see `images.md` |
 | `no-bibliography` | citations with no `bibliography` declared — Typst would fail with an unhelpful "label does not exist" |
 | `front-matter` | an affiliation marker pointing at nothing, a malformed ORCID, a block that is not TOML |
 | `length-spec` (warn) | an authoring length specification left in the text |

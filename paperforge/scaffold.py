@@ -63,6 +63,11 @@ once as `paperforge`:
   you have reread the paragraph. Change the prose afterwards without accepting
   again and the build refuses. Commit `.paperforge/claims.json` when you accept:
   an acceptance only your machine has vouches for nothing to anybody else.
+- An illustration from a file is a figure: `![alt](figures/x.png)` on its own
+  line, with `: Caption {{#fig-x}}` under it. The path is relative to the
+  document, the file is carried inside every edition, and a path with no file
+  blocks the build - it is the one thing here that can be true when written and
+  false when built.
 - A missing tool is not yours to install. `{invocation} doctor` says what is
   absent and what it was for; say so and ask. Installing software changes
   somebody's machine, which is not a build step.

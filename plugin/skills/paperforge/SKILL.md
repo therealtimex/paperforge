@@ -38,6 +38,7 @@ rendered file needs to change, change the markdown and rebuild. If the
 | Set a manuscript in two columns | [references/columns.md](references/columns.md) |
 | Write a table, or a table cell with line breaks | [references/tables.md](references/tables.md) |
 | Add a diagram | [references/diagrams.md](references/diagrams.md) |
+| Place a photograph or an exported chart | [references/images.md](references/images.md) |
 | Add a callout or an aside | [references/callouts.md](references/callouts.md) |
 | Add citations and a bibliography | [references/citations.md](references/citations.md) |
 | Write maths | [references/maths.md](references/maths.md) |

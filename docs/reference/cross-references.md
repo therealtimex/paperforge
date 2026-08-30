@@ -90,6 +90,10 @@ says — *Figure A1* is the annex's first, not the document's fourteenth.
 A label is **optional**. An unlabelled figure keeps the positional caption it
 has always had, so nothing already written needs changing.
 
+An image is labelled the same way — the caption goes on the line under it, not
+in the `![alt](src)`. See `images.md`, including what happens to a caption
+written under something that carries none.
+
 ### `fig-` is not `figures.toml`
 
 The word carries both of its ordinary meanings in this pipeline, in the places

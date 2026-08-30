@@ -9,7 +9,8 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from . import browser, citations as cite_mod, maths as maths_mod, matching, xref
+from . import browser, citations as cite_mod, images as img_mod
+from . import maths as maths_mod, matching, xref
 
 VOID = {'br', 'hr', 'meta', 'img', 'link', 'input', 'source', 'col', 'area', 'base',
         'wbr', 'embed', 'path', 'circle', 'line', 'rect', 'polygon', 'polyline',
@@ -89,6 +90,9 @@ def coverage(html, *sources):
             t = re.sub(r'^\s*(#{1,6}|[-*+]|\d+\.|>)\s*', '', s)
             t = re.sub(r'\s*\{[^{}]*\}\s*$', '', t)   # explicit heading attributes
             t = re.sub(r'\[!\w+\]', '', t)
+            # before the link rule, which would leave `!` and the alt text:
+            # an image renders as a picture, and its alt is an attribute
+            t = img_mod.IMAGE_RE.sub(' ', t)
             t = re.sub(r'\[([^\]]+)\]\([^)]*\)', r'\1', t)
             # Constructs that do not render as their own text have to be
             # removed before probing, or the line they sit on is reported as

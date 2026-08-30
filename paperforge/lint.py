@@ -395,3 +395,73 @@ def check_references(document, prof=None):
                          'match': ident, 'why': 'label declared more than once; every '
                          'reference would mean the first', 'context': ''})
     return findings
+
+
+def check_images(document):
+    """An illustration a document names and the disk does not have.
+
+    The one failure in a document that is true when it is written and false
+    when it is built: nothing in the prose changed, so nothing in the prose
+    looks wrong, and the paper still says "see Figure 1". There is no reading
+    under which a missing file is correct, so it blocks.
+
+    A remote image blocks for a different reason. `layout.md` says a published
+    document has no external image, and `verify` only refuses `http(s)://` in
+    the *built* output - which is exactly what this would put there.
+    """
+    from . import assemble, images as img_mod
+    findings = []
+    sources = [(document['source_path'],
+                assemble.read(document['source_path'],
+                              document.get('include_paths')).split('\n'))]
+    if document.get('annex_path'):
+        sources.append((document['annex_path'],
+                        Path(document['annex_path']).read_text(
+                            encoding='utf-8').split('\n')))
+    for path, lines in sources:
+        root = Path(path).parent
+        for line_no, alt, src in img_mod.refs(lines):
+            if img_mod.REMOTE_RE.match(src):
+                findings.append({'rule': 'remote-image', 'severity': 'block',
+                                 'line': line_no, 'match': src,
+                                 'why': 'a published document carries its own '
+                                        'illustrations; this one loads over the network',
+                                 'context': (alt or '')[:80]})
+            elif not img_mod.resolve(src, root):
+                findings.append({'rule': 'missing-image', 'severity': 'block',
+                                 'line': line_no, 'match': src,
+                                 'why': 'no file at that path, relative to the document',
+                                 'context': (alt or '')[:80]})
+    return findings
+
+
+def check_captions(document):
+    """A caption written under something that does not carry one.
+
+    It prints to the reader as prose - the colon, the text and the `{#fig-x}`
+    braces - while `@fig-x` resolves to a number for a float that was never
+    rendered. Every other check reads this document as correct: the label is
+    declared, so nothing is dangling, and it is referred to, so nothing is
+    orphaned. The defect is the attachment, which only `xref.attached_captions`
+    looks at.
+    """
+    from . import assemble, xref
+    findings = []
+    sources = [(document['source_path'],
+                assemble.read(document['source_path'],
+                              document.get('include_paths')).split('\n'))]
+    if document.get('annex_path'):
+        sources.append((document['annex_path'],
+                        Path(document['annex_path']).read_text(
+                            encoding='utf-8').split('\n')))
+    for _, lines in sources:
+        slots = xref.attached_captions(lines)
+        for i, line in enumerate(lines):
+            m = xref.CAPTION_RE.match(line.strip())
+            if m and i not in slots:
+                findings.append({'rule': 'stray-caption', 'severity': 'block',
+                                 'line': i + 1, 'match': m.group(2),
+                                 'why': 'a caption under no figure, table or equation; '
+                                        'it prints as prose and its label numbers nothing',
+                                 'context': line.strip()[:80]})
+    return findings

@@ -176,6 +176,11 @@ figure.diagram p, figure.diagram span, figure.diagram div { text-align:center; m
 figure.diagram svg { max-width:100%; height:auto; display:block; }
 figure.diagram .mermaid { white-space:pre; text-align:left; font-size:.78rem;
   font-family:ui-monospace,Menlo,Consolas,monospace; color:var(--muted); }
+/* an author's own illustration: the diagram frame, holding a picture */
+figure.plate img { max-width:100%; height:auto; display:block; margin:0 auto;
+  border-radius:6px; }
+.plate-missing { padding:22px 12px; border:1px dashed var(--line); border-radius:8px;
+  color:var(--muted); font-style:italic; font-size:.85rem; }
 figcaption { margin-top:14px; font-size:.8rem; color:var(--muted); font-style:italic;
   letter-spacing:.04em; }
 pre { background:var(--navy-deep); color:var(--navy-soft); padding:16px 18px; border-radius:8px;

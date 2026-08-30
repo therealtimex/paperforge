@@ -37,6 +37,13 @@ graph TD
 
 : The pipeline, end to end {#fig-pipeline}
 
+Refining is where the concentration is, and @fig-refining shows how little of it
+sits outside one jurisdiction.
+
+![Refining share by country, 2024](figures/refining-share.svg)
+
+: Refining share by country, 2024 {#fig-refining}
+
 ---
 
 ## PART I: CONTEXT

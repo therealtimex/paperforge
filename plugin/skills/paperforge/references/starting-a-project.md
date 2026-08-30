@@ -87,6 +87,22 @@ target. Where the filesystem refuses the link outright, `init` writes a
 `@AGENTS.md` import instead and says which it wrote, rather than leaving the
 project half made or quietly producing a different one.
 
+`.paperforge/scaffold.json` records what wrote the project: the version, and a
+fingerprint of the `AGENTS.md` **template**. From the moment `init` finishes,
+that file is a copy of guidance that goes on changing in the pipeline, and
+nothing in the project can tell when it has stopped describing it — one real
+project was found running against guidance from before v3.0.0 against a v3.8.0
+pipeline, naming a stage that no longer existed and an entry point that was a
+placeholder.
+
+`paperforge doctor` compares the two and says `ok`, `STALE`, or — for a project
+scaffolded before this existed — `unknown`, with the reason. It reports and
+does not rewrite: editing a file in somebody's project is not a diagnostic, for
+the same reason `doctor` does not install a missing tool. The fingerprint
+covers the template rather than the rendered file, because a project's own
+`AGENTS.md` carries its title and its own absolute path, and hashing those
+would give every project a different answer to a question about Paperforge.
+
 `AGENTS.md` says only what `init` actually knows: the invocation path it just
 wrote, what the manifest decides, that rendered artefacts are built and never
 hand-edited, and that the project is a consumer of a pipeline that lives

@@ -120,6 +120,12 @@ jobs:
       - name: Calibration checks
         run: python3 -m coverage run tests/unit_calibration.py
 
+      # a project's AGENTS.md is a copy of guidance that keeps changing here,
+      # and the copy nobody can see going stale; `plugin --check` catches the
+      # same drift in the generated bundle
+      - name: Scaffold stamp unit checks
+        run: python3 -m coverage run tests/unit_scaffold.py
+
       # manuscript front matter: parsed, validated, and refusing to guess
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py

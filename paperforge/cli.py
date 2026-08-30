@@ -29,6 +29,34 @@ def find_config(explicit=None):
     raise SystemExit('no documents.toml found; pass --config or set PAPERFORGE_CONFIG')
 
 
+def _doctor_project(explicit=None):
+    """Report a project's scaffolded guidance, if there is a project here.
+
+    `init` writes AGENTS.md from a template that keeps changing, so from the
+    moment it lands it is a second copy of the pipeline's own instructions -
+    and the one nobody can see going stale. A real project was found running
+    against guidance from before v3.0.0 against a v3.8.0 pipeline: it named a
+    stage that no longer existed and an entry point that was a placeholder.
+
+    Reported, never rewritten. Editing a file in somebody's project is not a
+    diagnostic, for the same reason `doctor` does not install a missing tool.
+    """
+    from . import scaffold
+    try:
+        config = find_config(explicit)
+    except SystemExit:
+        return False                      # no project here; nothing to say
+    found = scaffold.drift(config.parent)
+    state = {'current': 'ok', 'stale': 'STALE', 'unstamped': 'unknown'}[found['state']]
+    print('')
+    print('this project:')
+    print('  %-18s %-9s %s' % ('scaffold', state, found['why']))
+    if found['state'] == 'stale':
+        print('  %-18s %-9s %s' % ('', '', 'compare it against a fresh `init`, and '
+                                   'copy across what is missing'))
+    return found['state'] == 'stale'
+
+
 # A document type implies how it is rendered, so the manifest names the type
 # rather than repeating layout and format mechanics.
 # Built-in document types. A project defines its own under [types] in the
@@ -1004,8 +1032,15 @@ def main(argv=None):
               % ('chrome', 'ok' if found else 'MISSING',
                  'diagrams, page measurement, layout checks', found or ''))
         missing += not found
+        # what the machine has is half the answer; the other half is whether
+        # this project's own guidance still describes the pipeline it names
+        stale = _doctor_project(a.config)
         if not missing:
-            print('\nnothing is missing.')
+            # the scaffold section above has already said what to do about
+            # drift; the advice below is about tools, and printing it under an
+            # empty list of them said nothing to install and named nobody
+            if not stale:
+                print('\nnothing is missing.')
         else:
             print('')
             for name, path, _ in require.report():

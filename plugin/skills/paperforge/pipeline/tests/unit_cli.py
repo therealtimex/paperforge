@@ -157,6 +157,21 @@ def main():
         check('a document with too few headings to judge is not nagged',
               cli.structure_warnings(report, {'structure': {'h2': 2}, 'numbered': 1}) == [])
 
+        print('a draft run')
+        # The mode reports every finding and refuses nothing, which is only
+        # defensible because it cannot publish: otherwise it is a documented way
+        # around the gates, and the scaffolded AGENTS.md tells agents not to
+        # take one. That property is the gate.
+        raises('publishing a draft is refused, in those terms',
+               lambda: cli.main(['publish', '--draft',
+                                 '--config', str(root / 'documents.toml')]))
+        # a check that cannot fail reads as coverage: assert argparse actually
+        # knows the flag rather than that a docstring mentions it
+        import contextlib, io
+        with contextlib.redirect_stdout(io.StringIO()):
+            knows = cli.main(['doctor', '--draft']) == 0
+        check('and argparse knows the flag, so the refusal is reachable', knows)
+
         print('editions')
         check('a sub-table with a source is an edition',
               set(cli.editions_of({'type': 'report', 'en': {'source': 'a.md'}})) == {'en'})

@@ -20,6 +20,34 @@ The entry point is `bin/paperforge` in a Paperforge checkout, and
 that *uses* Paperforge carries no pipeline of its own — only its sources, its
 `documents.toml` and its `figures.toml`.
 
+## Drafting
+
+Every gate here fires at the end, which is the worst moment to learn something.
+`todo` blocks and every draft has TODOs, so `all` is unusable while a document
+is being written — which is why it is not run until somebody believes they are
+finished, exactly when a refusal costs most.
+
+```bash
+paperforge all --draft
+```
+
+Same checks, same findings, different consequence. Nothing is held back, the
+document builds so there is something to look at, `verify` still runs, and the
+run ends with the inventory:
+
+```
+draft: nothing was held back. Publication would refuse:
+  1 document(s) with blocking lint findings: report.html
+```
+
+**A draft run cannot publish.** `publish --draft` is refused outright, and
+`all --draft` stops before the publish stage and says so. That is what makes the
+mode defensible rather than a documented way around the gates — which the
+scaffolded `AGENTS.md` tells agents in as many words not to take.
+
+The run record shows what it was: `lint: blocked`, `publish: draft`. A draft run
+is in the provenance like any other, and honest about which gates it ignored.
+
 ## What this needs from the machine
 
 `typst` for print editions, rendered maths and formatted citations; headless
@@ -56,6 +84,7 @@ machine is somebody's decision, not a build step.
 | `--no-measure` | Skip printed page numbering while iterating |
 | `--expires-at <ISO>` | Publish with an expiry |
 | `--quiet` | Findings without surrounding context |
+| `--draft` | Report every finding and refuse nothing; cannot publish |
 | `--label <name>` | Name this run in the record |
 | `--diff <a>,<b>` | `runs`: compare two recorded runs |
 | `--sources` | `runs --diff`: show what changed in the sources, not only which |

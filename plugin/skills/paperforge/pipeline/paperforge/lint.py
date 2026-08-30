@@ -465,3 +465,46 @@ def check_captions(document):
                                         'it prints as prose and its label numbers nothing',
                                  'context': line.strip()[:80]})
     return findings
+
+
+def check_all(document, rules, allowed=(), blocked=(), embedded=()):
+    """Every gate this pipeline has, on one document, as one list.
+
+    One list because two callers need the same answer. `lint` reported nine
+    checks and `publish` re-ran two of them, so a standalone `paperforge
+    publish` - the ordinary way to publish a second time - would ship a
+    document with a dangling `@fig-density`, a stale gist or a missing image.
+    Neither the output nor the docstring said so: publish printed the same line
+    either way, while asserting that lint decides whether a document is fit.
+
+    The list was a subset by history rather than by design - it held the checks
+    that existed when it was written - which is the failure mode a second copy
+    of anything has. Adding a check here now reaches both callers, and a check
+    that reaches only one is no longer possible to write by accident.
+    """
+    from . import assemble
+    findings = []
+    for problem in assemble.problems(document['source_path'],
+                                     document.get('include_paths')):
+        findings.append({'rule': 'include', 'severity': 'block', 'line': 0,
+                         'match': '', 'why': problem, 'context': ''})
+    if findings:
+        # every check below reads the assembled document, and a missing include
+        # cannot be read. The finding above already says so; carrying on raised
+        # FileNotFoundError over the top of it, so the one message that named
+        # the actual problem was the one nobody saw.
+        return findings
+    for path in assemble.sources(document):
+        findings += check_document(path, rules)
+    findings += check_publishable(document['source_path'], allowed, blocked, embedded)
+    findings += check_references(document, document.get('prof'))
+    findings += check_front_matter(document['source_path'])
+    findings += check_claims(document)
+    findings += check_orphans(document, document.get('prof'))
+    findings += check_images(document)
+    findings += check_captions(document)
+    findings += check_uses(document, document.get('prof'))
+    bib = document.get('bibliography')
+    findings += check_citations(
+        document, (document['root'] / bib) if bib and document.get('root') else None)
+    return findings

@@ -16,6 +16,82 @@ from pathlib import Path
 
 from . import require
 
+STAMP = '.paperforge/scaffold.json'
+
+
+def fingerprint():
+    """What this Paperforge would write as a project's guidance.
+
+    The template, not the rendered file. A project's AGENTS.md carries its own
+    title and its own absolute path to the entry point, so hashing the output
+    would give every project a unique answer to a question about Paperforge.
+
+    Everything the template does *not* carry itself has to be in here too. The
+    stage chain is filled in from `cli.STAGES`, so adding a stage changes what
+    `init` writes without touching a character of the template - and hashing
+    the template alone would have reported every project current while its
+    AGENTS.md named a chain missing `claims`, which is the exact defect this
+    check exists to catch.
+    """
+    import hashlib
+    from .cli import STAGES
+    material = AGENTS + '\x00' + ' -> '.join(STAGES)
+    return hashlib.sha256(material.encode('utf-8')).hexdigest()[:16]
+
+
+def stamp(root):
+    """Record what wrote this project.
+
+    Without it a project's AGENTS.md is a copy of guidance that keeps changing
+    somewhere else, and nothing can tell that it has stopped describing the
+    pipeline. `plugin --check` does this for the generated bundle; this is the
+    same check for the copy that leaves the repository.
+    """
+    import json
+    from datetime import datetime, timezone
+    from . import __version__
+    path = Path(root) / STAMP
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        'version': __version__,
+        'agents': fingerprint(),
+        'created': datetime.now(timezone.utc).isoformat(timespec='seconds'),
+    }, indent=2) + '\n', encoding='utf-8')
+    return path
+
+
+def drift(root):
+    """What `doctor` should say about a project's scaffolded guidance.
+
+    Three answers, and the third is the one that matters: a project scaffolded
+    before stamping existed has no record of what wrote it, and saying nothing
+    would report it as current. Untestable is never passed.
+    """
+    import json
+    from . import __version__
+    path = Path(root) / STAMP
+    if not path.is_file():
+        return {'state': 'unstamped', 'version': None,
+                'why': 'no record of what scaffolded this project; it predates '
+                       '`%s`, or the file was removed' % STAMP}
+    try:
+        found = json.loads(path.read_text(encoding='utf-8'))
+    except ValueError:
+        found = None
+    if not isinstance(found, dict):
+        # valid JSON is not the same as a record: `[]` parses and then fails on
+        # the first .get, which turned a diagnostic into a traceback
+        return {'state': 'unstamped', 'version': None,
+                'why': '%s does not hold a scaffold record' % STAMP}
+    was = found.get('version')
+    if found.get('agents') == fingerprint():
+        return {'state': 'current', 'version': was,
+                'why': 'AGENTS.md is what `init` would write now'}
+    return {'state': 'stale', 'version': was,
+            'why': 'AGENTS.md is not what `init` would write now; written by '
+                   '%s, this pipeline is %s' % (was or 'an unknown version', __version__)}
+
+
 GITIGNORE = """# built artefacts are reproducible from the sources
 .cache/
 *.pdf
@@ -341,8 +417,9 @@ def create(directory, slug, title, languages, profiles, publications,
         AGENTS.format(title=title, invocation=invocation,
                       chain=' -> '.join(STAGES)),
                                     encoding='utf-8')
+    stamp(root)
     refused = _claude_pointer(root)
-    written += ['figures.toml', '.gitignore', 'AGENTS.md',
+    written += ['figures.toml', '.gitignore', 'AGENTS.md', STAMP,
                 'CLAUDE.md -> AGENTS.md' if refused is None else
                 'CLAUDE.md (an @AGENTS.md import: this filesystem refused a link)']
 

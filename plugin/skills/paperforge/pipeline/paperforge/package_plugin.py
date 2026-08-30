@@ -125,8 +125,9 @@ def version():
 def version_problems(tag=None):
     """One shipped thing, one version number.
 
-    The plugin manifest and the skill frontmatter each carry a version, and they
-    had already drifted apart (1.0.0 against 2.0) before anything was released.
+    The plugin manifest, the skill frontmatter and the package each carry a
+    version, and the first two had already drifted apart (1.0.0 against 2.0)
+    before anything was released.
     A release tag that does not name the version being installed is the same
     class of defect: the artifact and the label disagree, and only the label is
     visible.
@@ -135,6 +136,12 @@ def version_problems(tag=None):
     declared = version()
     if not SEMVER.match(declared):
         problems.append('plugin version %r is not MAJOR.MINOR.PATCH' % declared)
+    # the pipeline carries its own, because the bundle ships neither of the
+    # files below and a scaffolded project has to be able to say what wrote it
+    from . import __version__ as package
+    if package != declared:
+        problems.append('paperforge.__version__ %s does not match the plugin '
+                        'version %s' % (package, declared))
     skill = SKILL.read_text(encoding='utf-8')
     front = skill.split('---')[1] if skill.startswith('---') else ''
     m = re.search(r'^\s*version:\s*"?([\w.]+)"?\s*$', front, re.M)

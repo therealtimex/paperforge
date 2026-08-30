@@ -26,22 +26,26 @@ failures = []
 
 
 def spec_file():
-    """The calibration table, or None if this is not a source tree.
+    """The calibration table, or None if this copy is the shipped bundle.
 
-    The plugin bundle ships `tests/` and not `specs/`, so the copy inside it
-    has no table to check - and `parents[1]` there is the bundle's own
-    directory, where the path resolved to nothing and the gate raised
-    FileNotFoundError before a single check ran.
+    The bundle ships `bin/`, `paperforge/` and `tests/` and nothing else, so
+    the copy inside it has no table to check - and this file resolved to
+    `pipeline/specs/calibration.md`, which raised FileNotFoundError before a
+    single check ran.
 
-    The source tree is the nearest ancestor holding AGENTS.md. Inside one, a
-    missing table is a failure: somebody deleted the only record of what was
-    measured. Outside one, there is nothing to check and the run says so.
+    `docs/reference/` is the marker, and no ancestor is walked. Walking looked
+    for AGENTS.md, which every scaffolded project has: a bundle installed under
+    one would have been read as a source tree with its specs deleted, and the
+    skip would have been a failure instead.
+
+    Inside the source tree a missing table is a failure - somebody deleted the
+    only record of what was measured. Outside it there is nothing to check.
     """
-    for parent in Path(__file__).resolve().parents:
-        if (parent / 'AGENTS.md').is_file():
-            found = parent / 'specs' / 'calibration.md'
-            return found if found.is_file() else False
-    return None
+    root = Path(__file__).resolve().parents[1]
+    if not (root / 'docs' / 'reference').is_dir():
+        return None
+    found = root / 'specs' / 'calibration.md'
+    return found if found.is_file() else False
 
 # `module.NAME` or `module.NAME['key']`, then a backticked value
 ROW_RE = re.compile(r'^\|\s*`([\w.]+)(?:\[\'([^\']+)\'\])?`\s*\|\s*`([^`]+)`\s*\|')

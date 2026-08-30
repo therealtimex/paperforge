@@ -114,6 +114,12 @@ jobs:
       - name: Image figure unit checks
         run: python3 -m coverage run tests/unit_images.py
 
+      # numbers that were measured against a corpus that is not in this repo:
+      # the record of what was measured is the only one there is, so it is held
+      # to the constants rather than left to be true when it was written
+      - name: Calibration checks
+        run: python3 -m coverage run tests/unit_calibration.py
+
       # manuscript front matter: parsed, validated, and refusing to guess
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py

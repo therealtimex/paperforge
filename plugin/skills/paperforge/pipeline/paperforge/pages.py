@@ -38,8 +38,15 @@ def norm(t, fold_diacritics=True):
 
 FENCE_RE = re.compile(r'```.*?```', re.S)
 
+# Calibrated, not chosen: see `specs/calibration.md`, which is asserted against
+# these names. Written once because a threshold repeated as two defaults is two
+# thresholds the moment somebody tunes one of them.
+FLOOR = 0.45    # of the sample that must be findable for the PDF to be readable
+SAMPLE = 60     # distinctive words taken from the source
+WORD = 4        # shortest word distinctive enough to look for
 
-def extractable(pdf_path, source_text, floor=0.45, fold_diacritics=True, rtl=False):
+
+def extractable(pdf_path, source_text, floor=None, fold_diacritics=True, rtl=False):
     """Whether the PDF's text can be matched back to the document's own words.
 
     Page numbers and the pagination check both work by finding the source's
@@ -66,13 +73,14 @@ def extractable(pdf_path, source_text, floor=0.45, fold_diacritics=True, rtl=Fal
     return correspondence(source_text, got, floor, fold_diacritics, rtl)
 
 
-def correspondence(source_text, extracted, floor=0.45, fold_diacritics=True,
+def correspondence(source_text, extracted, floor=None, fold_diacritics=True,
                    rtl=False):
     """The scoring, apart from the PDF, so it can be exercised without one."""
     from . import profile as profile_mod
     source = profile_mod.normalise(FENCE_RE.sub(' ', source_text), fold_diacritics)
+    floor = FLOOR if floor is None else floor
     sample = [w for w in source.split()
-              if len(w) >= 4 and not w.replace('.', '').isdigit()][:60]
+              if len(w) >= WORD and not w.replace('.', '').isdigit()][:SAMPLE]
     if rtl:
         # a right-to-left page comes back in visual order, so "is this word in
         # the text" is a question about tokens, not substrings. Readable here

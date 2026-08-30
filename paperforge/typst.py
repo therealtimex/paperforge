@@ -50,6 +50,8 @@ SRC = {'dir': Path('.')}
 # floats already numbered when the annex begins. Numbering restarts there -
 # Figure A1 is the annex's first - and only the label was switching over.
 BASE = {'n': 0}
+# Calibrated, not chosen: see `specs/calibration.md`.
+RASTER_SCALE = 3   # of natural size, so a diagram is not soft on paper
 
 
 def plate(src):
@@ -783,7 +785,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
             'bytes': Path(output).stat().st_size, 'warnings': result.stderr.count('warning:')}
 
 
-def rasterise(svgs, work, scale=3, prefix='fig'):
+def rasterise(svgs, work, scale=RASTER_SCALE, prefix='fig'):
     """Mermaid puts labels in <foreignObject>, which Typst does not draw, so the
     diagrams are rendered to PNG through Chrome instead of embedded as SVG.
 

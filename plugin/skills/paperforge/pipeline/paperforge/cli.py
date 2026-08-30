@@ -315,30 +315,24 @@ def active_rules(cfg):
     return lint.ruleset(section.get('packs', []), section.get('rule', []))
 
 
+def gate_inputs(cfg, docs):
+    """What every gate needs to know about the project, not the document.
+
+    Derived once and passed to `lint.check_all`, so the two commands that run
+    the gates cannot be given different ideas of what is declared.
+    """
+    return {'rules': active_rules(cfg),
+            'allowed': {d['source'] for d in docs},   # declared, drafts included
+            'blocked': set(cfg['internal']['files']),
+            'embedded': {d['annex'] for d in docs if d.get('annex')}}
+
+
 def do_lint(cfg, docs, quiet=False):
     """Report gate findings; returns {source: blocking count}."""
-    rules = active_rules(cfg)
-    allowed = {d['source'] for d in docs}          # declared, drafts included
-    embedded = {d['annex'] for d in docs if d.get('annex')}
-    blocked = set(cfg['internal']['files'])
+    gate = gate_inputs(cfg, docs)
     result = {}
     for d in docs:
-        findings = []
-        for problem in assemble.problems(d['source_path'], d.get('include_paths')):
-            findings.append({'rule': 'include', 'severity': 'block', 'line': 0,
-                             'match': '', 'why': problem, 'context': ''})
-        for path in assemble.sources(d):
-            findings += lint.check_document(path, rules)
-        findings += lint.check_publishable(d['source_path'], allowed, blocked, embedded)
-        findings += lint.check_references(d, d['prof'])
-        findings += lint.check_front_matter(d['source_path'])
-        findings += lint.check_claims(d)
-        findings += lint.check_orphans(d, d['prof'])
-        findings += lint.check_images(d)
-        findings += lint.check_captions(d)
-        findings += lint.check_uses(d, d['prof'])
-        findings += lint.check_citations(
-            d, (d['root'] / d['bibliography']) if d.get('bibliography') else None)
+        findings = lint.check_all(d, **gate)
         s = lint.summarise(findings)
         result[d['output']] = s['blocking']
         state = next((name for name, key in (('BLOCKED', 'block'), ('manual', 'manual'),
@@ -816,25 +810,35 @@ def do_verify(docs, cache, quiet=False):
 
 def do_publish(cfg, docs, expires=None):
     """Publish only what the gate clears. The allowlist says what *may* be
-    published; lint says whether it is *fit* to be."""
-    allowed = {x['source'] for x in docs}
-    embedded = {x['annex'] for x in docs if x.get('annex')}
-    blocked_files = set(cfg['internal']['files'])
+    published; lint says whether it is *fit* to be.
+
+    Returns the number of documents the gate refused, so a refusal reaches the
+    exit status. It used to print REFUSED and exit 0, which reads to anything
+    automated - a release job, a scheduled rebuild - as a successful publish.
+    A target declining one artefact is not counted: that is the host's policy,
+    reported per artefact, and not this gate's verdict on the document.
+    """
+    refused = 0
+    gate = gate_inputs(cfg, docs)
     for d in docs:
         if not d['publish']:
             print('  %-38s skipped (not publishable)' % d['output']); continue
-        rules = active_rules(cfg)
-        findings = lint.check_document(d['source_path'], rules)
-        findings += lint.check_publishable(d['source_path'], allowed, blocked_files, embedded)
-        if d['annex_path']:
-            findings += lint.check_document(d['annex_path'], rules)
+        # every gate, not the two this used to run. `all` lints first and holds
+        # a blocking document back, so the subset decided nothing there and
+        # everything in a standalone `publish` against an artifact built earlier
+        findings = lint.check_all(d, **gate)
         blocking = [f for f in findings if f['severity'] == 'block']
         if blocking:
             print('  %-38s REFUSED: %d blocking finding(s): %s' %
                   (d['output'], len(blocking), ', '.join(sorted({f['rule'] for f in blocking}))))
+            refused += 1
             continue
         if not d['output_path'].exists():
-            print('  %-38s REFUSED: not built' % d['output']); continue
+            # a refusal like any other: a document declared publishable and
+            # never built is not a publication that succeeded quietly
+            print('  %-38s REFUSED: not built' % d['output'])
+            refused += 1
+            continue
         # the reading edition and the print edition are both deliverables
         editions = [d['output_path']]
         # Only a declared print edition ships. Publishing whatever .pdf happened
@@ -884,6 +888,7 @@ def do_publish(cfg, docs, expires=None):
                 print('  %-38s REFUSED by the target: %s' % (artefact.name, reason))
                 continue
             print('  %-38s %s -> %s' % (artefact.name, how, art['publicUrl']))
+    return refused
 
 
 def main(argv=None):
@@ -1148,8 +1153,11 @@ def main(argv=None):
         stages['publish'] = 'draft'
     elif a.command in ('publish', 'all'):
         print('publish:')
-        do_publish(cfg, docs, a.expires_at)
-        stages['publish'] = 'ran'
+        refused = do_publish(cfg, docs, a.expires_at)
+        stages['publish'] = 'refused' if refused else 'ran'
+        # a refusal is the gate working, and it has to reach the exit status:
+        # a release job reading only that saw a refused publish as a done one
+        failed = failed or bool(refused)
 
     # written for build and all, pass or fail: a run that went badly is exactly
     # the one worth being able to look at again

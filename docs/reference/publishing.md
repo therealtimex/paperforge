@@ -5,8 +5,15 @@ paperforge publish              # ship every declared, publishable document
 paperforge status               # what is built, linked and published
 ```
 
-`publish` re-runs the lint gate and refuses anything blocking, so the manifest
-says what *may* ship and lint says whether it is *fit* to.
+`publish` re-runs **the whole lint gate** and refuses anything blocking, so the
+manifest says what *may* ship and lint says whether it is *fit* to.
+
+The whole gate, not the part of it `publish` happens to remember. In
+`paperforge all` the lint stage runs first and holds a blocking document back,
+so the re-run decides nothing; it decides everything in a standalone
+`paperforge publish` against an artifact built earlier, which is how a document
+is published a second time. Both commands now call one list — see
+`lint.check_all` — so a check cannot reach one and not the other.
 
 ## Targets
 

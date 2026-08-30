@@ -31,6 +31,13 @@ manual  demo-report.md:43  claim-c  unaccepted
 `skip` is the conventions rule given a name: a check that cannot run says so
 with a reason, and untestable is never *passed*.
 
+## Where the gate runs
+
+Every rule below runs in both places: the `lint` stage, and the re-check
+`publish` makes before it ships anything. One list — `lint.check_all` — so a
+rule cannot reach one and not the other, which it could when `publish` kept its
+own shorter copy. See `publishing.md`.
+
 ## Three layers
 
 **Core** — applies to any research project. An unfinished marker or a raw

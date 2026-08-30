@@ -206,7 +206,7 @@ def layout(html_path, widths=(1440, 1024, 768, 390)):
 SCRIPT_FLOOR = {'latin': 80, 'cjk': 30}
 
 
-def pagination(pdf_path, floor=80, exempt=(), script='latin'):
+def pagination(pdf_path, exempt=(), script='latin'):
     """Pages carrying almost nothing: a stranded heading or an orphaned frame.
 
     Added after a two-line part banner was found split across two pages, each
@@ -215,7 +215,10 @@ def pagination(pdf_path, floor=80, exempt=(), script='latin'):
 
     The floor is a heuristic. In Latin script, observed stranded headings ran
     22-74 characters while a genuinely short but complete section ran 91+, so
-    the floor sits between the two and brevity is not reported as a defect.
+    the floor sits between the two and brevity is not reported as a defect. It
+    comes from SCRIPT_FLOOR and nowhere else: this took a `floor=80` argument
+    that was overwritten on the next line, so a caller passing one got the
+    measured number anyway and no error saying so.
 
     A script with no measured floor is **skipped**, with the reason, rather than
     borrowed against another script's number. Untestable is never passed - and

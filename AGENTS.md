@@ -13,6 +13,7 @@ paperforge/             the package: cli, markdown, typst, lint, verify, publish
   profiles/             vi, en, zh, ar
   vendor/revealjs       inlined into decks; MIT, do not edit
 docs/reference/         one file per feature — the documentation surface
+specs/                  decisions, written once; and the measured numbers
 plugin/                 the RealTimeX skill bundle; synced from the repo
 tests/fixtures/         en, zh, id, bilingual, citations
 tests/backtest/         a real multi-language corpus

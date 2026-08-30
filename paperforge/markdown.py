@@ -37,6 +37,9 @@ FIG = {'n': 0, 'base': 0, 'dgm': 0, 'label': '%d'}
 # counter while diagrams were the only kind of figure, and an image between
 # two diagrams then drew the wrong one.
 SRC = {'dir': Path('.')}  # where a relative image path is resolved from
+# Calibrated, not chosen: see `specs/calibration.md`.
+WIDE_DIAGRAM = 900     # px of natural width above which a diagram may scroll
+DIAGRAM_FLOOR = 0.7    # of natural width, below which it stops being legible
 PROF = profile.load('vi')                  # replaced per build; never assume a language
 
 # ---------------------------------------------------------------- inline pass
@@ -275,7 +278,7 @@ def convert(lines, toc):
                     natural = float(m2.group(1)) if m2 else 0
                     # never shrink a wide diagram below ~70% of its natural size;
                     # the figure scrolls horizontally instead of turning illegible
-                    floor = int(natural * 0.7) if natural > 900 else 0
+                    floor = int(natural * DIAGRAM_FLOOR) if natural > WIDE_DIAGRAM else 0
                     style = ' style="min-width:%dpx"' % floor if floor else ''
                     inner = '<div class="dgm"><div class="dgm-in"%s>%s</div></div>' % (style, svg)
                 else:

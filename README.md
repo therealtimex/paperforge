@@ -58,6 +58,11 @@ paperforge all         # the chain above, stopping on failure
 
 ## Documentation
 
+[`CONTRIBUTING.md`](CONTRIBUTING.md) is how to make a change here, and
+[`specs/`](specs/) holds the decisions behind the ones already made —
+including [what is in scope](specs/0001-measure-not-compose.md) and the
+[numbers that were measured](specs/calibration.md) rather than chosen.
+
 `docs/reference/` holds one file per feature. Start from the routing table in
 [plugin/skills/paperforge/SKILL.md](plugin/skills/paperforge/SKILL.md), which is
 also what an agent reads when the plugin is installed.

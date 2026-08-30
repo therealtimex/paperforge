@@ -18,6 +18,50 @@ from paperforge import cli
 failures = []
 
 
+# A project that actually publishes, to a directory, so the gate can be run
+# without a host. The document is publishable and refers to a label that is
+# not there: `lint` has always blocked it, `publish` used not to look.
+PUBLISH_MANIFEST = """[defaults]
+profile = "en"
+target = "directory"
+directory = "published"
+
+[[collection]]
+slug = "p"
+root = "."
+
+  [[collection.document]]
+  id = "report"
+  type = "report"
+  source = "report.md"
+  publish = true
+
+[internal]
+files = []
+reason = "unit"
+"""
+
+DANGLING_DOC = """# DOCUMENT
+## A report that points at nothing
+
+---
+**Prepared by:** Paperforge
+
+---
+
+## CONTENTS
+
+1. **Findings**
+
+---
+
+## Findings
+
+The shape of it is set out in @fig-nowhere, which is a label this document
+never declares, and every edition prints the reference as its own source.
+"""
+
+
 def check(label, condition):
     print('  %-58s %s' % (label, 'ok' if condition else 'FAIL'))
     if not condition:
@@ -171,6 +215,31 @@ def main():
         with contextlib.redirect_stdout(io.StringIO()):
             knows = cli.main(['doctor', '--draft']) == 0
         check('and argparse knows the flag, so the refusal is reachable', knows)
+
+        print('publishing runs the whole gate, not the part it used to')
+        # `all` lints first and holds a blocking document back, so the subset
+        # publish re-ran decided nothing there - and everything in a standalone
+        # `publish` against an artifact built earlier, which is how a document
+        # is published a second time.
+        import contextlib as _c, io as _io
+        pub = root / 'pub'
+        pub.mkdir()
+        (pub / 'documents.toml').write_text(PUBLISH_MANIFEST, encoding='utf-8')
+        (pub / 'report.md').write_text(DANGLING_DOC, encoding='utf-8')
+        out = _io.StringIO()
+        with _c.redirect_stdout(out):
+            cli.main(['build', '--config', str(pub / 'documents.toml')])
+        built = (pub / 'report.html').is_file()
+        check('the document builds; nothing here is about the build', built)
+        out = _io.StringIO()
+        with _c.redirect_stdout(out):
+            cli.main(['publish', '--config', str(pub / 'documents.toml')])
+        said = out.getvalue()
+        check('a dangling reference refuses publication on its own',
+              'REFUSED' in said and 'dangling-reference' in said)
+        check('and nothing reached the directory',
+              not (pub / 'published').exists()
+              or not list((pub / 'published').glob('*.html')))
 
         print('editions')
         check('a sub-table with a source is an edition',

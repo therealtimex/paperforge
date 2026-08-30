@@ -15,6 +15,9 @@ what *may* ship and lint says whether it is *fit* to.
 | `warn` | worth a look; you decide whether it matters | no |
 | `skip` | the check could not run, and says why | no |
 
+Every check in this table runs in both places that run the gate: the `lint`
+stage, and the re-check `publish` makes before it ships anything.
+
 `manual` and `skip` were both `warn` once, and the merge cost something. A
 reader could not tell *"you may want to look at this"* from *"I cannot answer
 this; you must"* — and a warning nobody can act on is how people learn to ignore

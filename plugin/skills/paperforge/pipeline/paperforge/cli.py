@@ -891,6 +891,8 @@ def main(argv=None):
     ap.add_argument('--label', help='name this run in the record')
     ap.add_argument('--out', help='brief, map: write to this file instead of stdout')
     ap.add_argument('--diff', help='runs: compare two runs, comma separated')
+    ap.add_argument('--draft', action='store_true',
+                    help='report every finding and refuse nothing; cannot publish')
     ap.add_argument('--sources', action='store_true',
                     help='runs --diff: show what changed in the sources, not only which')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
@@ -1067,14 +1069,30 @@ def main(argv=None):
     if a.command == 'runs':
         return do_runs(cfg, a.diff, a.only, a.sources)
 
-    failed, stages = 0, {}
+    # A draft run reports every finding and refuses nothing, because every gate
+    # here fires at the end and that is the worst moment to learn something.
+    # `todo` blocks, every draft has TODOs, so `all` is unusable while a
+    # document is being written - which is why it is not run until somebody
+    # believes they are finished, exactly when a refusal costs most.
+    #
+    # It is only defensible because a draft run cannot publish. A mode that
+    # turns refusals off is otherwise a documented way around the gates, and the
+    # scaffolded AGENTS.md tells agents in as many words not to take one.
+    draft = getattr(a, 'draft', False)
+    if draft and a.command == 'publish':
+        raise SystemExit('a draft run does not publish; that is what makes the '
+                         'mode safe. Run `publish` without --draft when the '
+                         'gates pass.')
+    failed, stages, would_block = 0, {}, []
     if a.command in ('figures', 'all'):
         print('figures:')
         disagreements = do_figures(docs, a.quiet)
         stages['figures'] = 'disagreements' if disagreements else 'ok'
         if a.command == 'figures':
             return 1 if disagreements else 0
-        if disagreements:
+        if disagreements and draft:
+            would_block.append('%d figure disagreement(s)' % disagreements)
+        elif disagreements:
             failed = 1
 
     if a.command in ('claims', 'all'):
@@ -1083,7 +1101,9 @@ def main(argv=None):
         stages['claims'] = 'stale' if stale else 'ok'
         if a.command == 'claims':
             return 1 if stale else 0
-        if stale:
+        if stale and draft:
+            would_block.append('%d stale gist(s)' % stale)
+        elif stale:
             failed = 1
 
     if a.command in ('lint', 'all'):
@@ -1094,10 +1114,18 @@ def main(argv=None):
             return 1 if any(blocking.values()) else 0
         # carry on with the documents that passed; a blocked one must not stop the rest
         held = [d['output'] for d in docs if blocking.get(d['output'])]
-        docs = [d for d in docs if not blocking.get(d['output'])]
-        if held:
-            failed = 1
-            print('  held back: %s' % ', '.join(held))
+        if draft:
+            # a draft builds the document it is about to tell you is unfinished:
+            # holding it back would leave nothing to look at, which is the whole
+            # reason the gates were being avoided until the end
+            if held:
+                would_block.append('%d document(s) with blocking lint findings: %s'
+                                   % (len(held), ', '.join(held)))
+        else:
+            docs = [d for d in docs if not blocking.get(d['output'])]
+            if held:
+                failed = 1
+                print('  held back: %s' % ', '.join(held))
 
     if a.command in ('build', 'all'):
         print('build:')
@@ -1114,7 +1142,11 @@ def main(argv=None):
             record_run(cfg, docs, stages, a.label)
             return 1
 
-    if a.command in ('publish', 'all'):
+    if a.command == 'all' and draft:
+        print('publish:')
+        print('  a draft run does not publish. Nothing here has passed the gates.')
+        stages['publish'] = 'draft'
+    elif a.command in ('publish', 'all'):
         print('publish:')
         do_publish(cfg, docs, a.expires_at)
         stages['publish'] = 'ran'
@@ -1123,6 +1155,18 @@ def main(argv=None):
     # the one worth being able to look at again
     if a.command in ('build', 'all'):
         record_run(cfg, docs, stages, a.label)
+
+    if draft:
+        # the inventory, which is what a draft run is for: not "you may not
+        # ship this" but "here is what is left". Findings were printed by the
+        # stages above; this says which of them publication would refuse.
+        print('')
+        if would_block:
+            print('draft: nothing was held back. Publication would refuse:')
+            for item in would_block:
+                print('  %s' % item)
+        else:
+            print('draft: nothing would block publication.')
     return failed
 
 

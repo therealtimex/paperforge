@@ -665,7 +665,10 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         # may not be the directory the report sits in
         SRC['dir'] = Path(annex).parent
         BASE['n'] = len(figures) + len(FLOATS)
-        label = prof['labels'].get('annex_figure', label)
+        # the shared resolver, not a plain get: a profile that declares no
+        # annex label still numbers Figure A1, and the fallback belongs in
+        # one place or the captioned and uncaptioned figures disagree
+        label = xref.label_for(prof, 'fig', annex=True)
         typ_body += ('\n\n%s\n\n' % ('#pf-recto()' if binding else '#pagebreak()')
                      + convert(head_rest, notes, figures, label, part_banner,
                                columns=columns, binding=binding)

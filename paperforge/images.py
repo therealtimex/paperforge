@@ -27,9 +27,16 @@ from pathlib import Path
 # whitespace, matching the link pattern the emitters already use.
 IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)\)')
 
-# A line that is nothing but an image is a float. One inside a sentence is an
-# inline image and stays where the author put it.
-ONLY_RE = re.compile(r'^\s*!\[([^\]]*)\]\(([^)\s]+)\)\s*$')
+# A line that is nothing but an image, at the left margin, is a float. One
+# inside a sentence is an inline image and stays where the author put it.
+#
+# At the left margin because indented content belongs to whatever contains it,
+# and the emitters do not agree about what that is: markdown's list parser
+# swallows an indented line into its item, Typst's stops at it. Allowing an
+# indented float made Word and the PDF number a picture inside a list that the
+# reading edition and the label table both treated as list content, and the
+# next captioned figure repeated its number.
+ONLY_RE = re.compile(r'^!\[([^\]]*)\]\(([^)\s]+)\)\s*$')
 
 REMOTE_RE = re.compile(r'^(?:https?:)?//', re.I)
 

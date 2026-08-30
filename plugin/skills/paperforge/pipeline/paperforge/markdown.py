@@ -844,7 +844,9 @@ def build(source, output, svgs=None, annex=None, pages=None,
     XREF_MISSING[:] = []
     # numbered once, for every edition: see xref.py
     annex_lines = Path(annex).read_text(encoding='utf-8').split('\n') if annex else []
-    XREF.update(xref.resolve(PROF, raw.split('\n'), annex_lines))
+    # `start` is where the body begins; the head is read for labels and not
+    # counted for figure numbers, because nothing renders a float there
+    XREF.update(xref.resolve(PROF, lines, annex_lines, head=start))
     source_text = raw + ('\n' + Path(annex).read_text(encoding='utf-8') if annex else '')
     found = maths_mod.find(source_text)
     if found:

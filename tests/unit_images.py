@@ -174,6 +174,27 @@ def main():
         check('an uncaptioned table takes no number: nothing prints one for it',
               xref.resolve(profile.load('en'), body)['tbl-b']['number'] == 1)
 
+        # every place a float can hide from the scanner but not from an emitter
+        body = ['> [!note]', '> ![a](f.png)', '', '```mermaid', 'graph TD',
+                'A-->B', '```', '', ': The diagram. {#fig-c}']
+        check('a figure inside a callout is counted: the emitter renders one',
+              xref.resolve(profile.load('en'), body)['fig-c']['number'] == 2)
+        html = render(body, root, svgs=[SVG])
+        check('and the page agrees',
+              '<figcaption>Figure 2. The diagram.' in html)
+
+        body = ['- an item', '  ![a](f.png)', '', '```mermaid', 'graph TD',
+                'A-->B', '```', '', ': The diagram. {#fig-d}']
+        check('an image indented under a list is list content, not a float',
+              xref.resolve(profile.load('en'), body)['fig-d']['number'] == 1
+              and xref.floats(body) == [{'kind': 'fig', 'slot': 8}])
+
+        body = ['# TITLE', '', '![a](f.png)', '', '---', '', '## Body', '',
+                '```mermaid', 'graph TD', 'A-->B', '```', '',
+                ': The diagram. {#fig-e}']
+        check('a float in the head is rendered by nothing and numbers nothing',
+              xref.resolve(profile.load('en'), body, head=5)['fig-e']['number'] == 1)
+
         print('a missing file leaves a visible gap, never a silent one')
         html = render(['![A field](gone.png)'], root)
         check('the gap says what is missing',

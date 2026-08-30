@@ -592,7 +592,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         # an image path in the annex is relative to the annex, not the report
         SRC['dir'] = Path(annex).parent
         BASE['n'] = len(figures) + len(FLOATS)
-        convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
+        convert(doc, annex_lines, figures, xref.label_for(prof, 'fig', annex=True),
                 images, brand, part_banner, force_parts=True, table=refs,
                 columns=columns)
 

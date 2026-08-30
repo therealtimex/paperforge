@@ -141,11 +141,17 @@ def scan(lines, annex=False):
     return found
 
 
-def resolve(prof, body, annex=()):
+def resolve(prof, body, annex=(), head=0):
     """{id: entry} with numbers assigned, body first then annex.
 
     Numbering restarts in the annex, which is what the annex label expresses:
     Figure A1 is the annex's first, not the document's fourteenth.
+
+    `head` is how many opening lines the emitters do not render - the title,
+    the metadata block, the contents. Labels are still read from them, because
+    a heading there can carry a `sec-` id somebody refers to; floats are not
+    counted there, because nothing renders one and a figure nobody can see must
+    not take a number from the figures that follow it.
     """
     table, counters = {}, {}
     for lines, is_annex in ((body, False), (annex, True)):
@@ -157,9 +163,10 @@ def resolve(prof, body, annex=()):
         # 1..N here gave the next captioned figure a number already on the
         # page. A document with one of each printed two Figure 1s, and the
         # reference to the second resolved to the first.
+        skip = 0 if is_annex else head
         placed = {}
-        for i, found in enumerate(f for f in floats(lines) if f['kind'] == 'fig'):
-            placed[found['slot']] = i + 1
+        for i, found in enumerate(f for f in floats(lines[skip:]) if f['kind'] == 'fig'):
+            placed[found['slot'] + skip] = i + 1
         for entry in scan(lines, annex=is_annex):
             if entry['kind'] == 'claim':
                 # Nothing renders a claim, so it has no label to carry. What
@@ -287,6 +294,19 @@ def floats(lines):
             pos += 1
             if lang == 'mermaid':
                 found.append({'kind': 'fig', 'slot': slot(pos)})
+            continue
+        if stripped.startswith('>'):
+            # a callout is converted by the same emitter, on its own lines with
+            # the markers stripped, so a figure inside one is a figure. One
+            # source line per quoted line, which is what lets the slots inside
+            # it keep their own line numbers.
+            start = pos
+            inner = []
+            while pos < n and lines[pos].strip().startswith('>'):
+                inner.append(re.sub(r'^\s*>\s?', '', lines[pos]))
+                pos += 1
+            found += [{'kind': f['kind'], 'slot': f['slot'] + start}
+                      for f in floats(inner)]
             continue
         if LIST_RE.match(lines[pos]):
             # a list swallows its own indented content, so an image inside one

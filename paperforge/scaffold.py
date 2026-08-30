@@ -25,11 +25,18 @@ def fingerprint():
     The template, not the rendered file. A project's AGENTS.md carries its own
     title and its own absolute path to the entry point, so hashing the output
     would give every project a unique answer to a question about Paperforge.
-    The template changes exactly when the guidance changes, which is the thing
-    worth detecting.
+
+    Everything the template does *not* carry itself has to be in here too. The
+    stage chain is filled in from `cli.STAGES`, so adding a stage changes what
+    `init` writes without touching a character of the template - and hashing
+    the template alone would have reported every project current while its
+    AGENTS.md named a chain missing `claims`, which is the exact defect this
+    check exists to catch.
     """
     import hashlib
-    return hashlib.sha256(AGENTS.encode('utf-8')).hexdigest()[:16]
+    from .cli import STAGES
+    material = AGENTS + '\x00' + ' -> '.join(STAGES)
+    return hashlib.sha256(material.encode('utf-8')).hexdigest()[:16]
 
 
 def stamp(root):
@@ -70,8 +77,12 @@ def drift(root):
     try:
         found = json.loads(path.read_text(encoding='utf-8'))
     except ValueError:
+        found = None
+    if not isinstance(found, dict):
+        # valid JSON is not the same as a record: `[]` parses and then fails on
+        # the first .get, which turned a diagnostic into a traceback
         return {'state': 'unstamped', 'version': None,
-                'why': '%s is not readable JSON' % STAMP}
+                'why': '%s does not hold a scaffold record' % STAMP}
     was = found.get('version')
     if found.get('agents') == fingerprint():
         return {'state': 'current', 'version': was,

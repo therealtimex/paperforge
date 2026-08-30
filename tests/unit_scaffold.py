@@ -41,8 +41,15 @@ def project(root):
 def main():
     print('one shipped thing, one version number')
     check('the package carries a version', bool(paperforge.__version__))
-    check('and it agrees with the plugin and the skill',
-          package_plugin.version_problems() == [])
+    # the bundle ships neither the manifest nor SKILL.md, which is the whole
+    # reason the package carries a version at all; there is nothing to compare
+    # it against there, and a check that cannot run says so
+    if package_plugin.MANIFEST.is_file():
+        check('and it agrees with the plugin and the skill',
+              package_plugin.version_problems() == [])
+    else:
+        print('  %-58s skip (no plugin manifest here)'
+              % 'and it agrees with the plugin and the skill')
 
     print('a fingerprint of the guidance, not of the project')
     with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b:
@@ -56,6 +63,31 @@ def main():
         check('two projects scaffolded now agree', one['agents'] == two['agents'])
         check('and the stamp records the version that wrote them',
               one['version'] == paperforge.__version__)
+
+    print('everything init fills in is in the fingerprint')
+    from paperforge.cli import STAGES
+    import paperforge.cli as _cli
+    before = fingerprint_now = scaffold.fingerprint()
+    _cli.STAGES = STAGES + ('nonsense',)
+    try:
+        # the stage chain is filled into the template from cli.STAGES, so a new
+        # stage changes what `init` writes without touching the template. The
+        # field project's AGENTS.md was stale in exactly this way: a chain with
+        # no `claims` in it
+        check('adding a stage changes what a project would be told',
+              scaffold.fingerprint() != before)
+    finally:
+        _cli.STAGES = STAGES
+    check('and restoring it restores the fingerprint',
+          scaffold.fingerprint() == before)
+
+    print('a stamp that is JSON but not a record')
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / '.paperforge').mkdir()
+        (root / scaffold.STAMP).write_text('[]', encoding='utf-8')
+        check('parses, and is still unknown rather than a traceback',
+              scaffold.drift(root)['state'] == 'unstamped')
 
     print('what doctor is told about a project')
     with tempfile.TemporaryDirectory() as tmp:

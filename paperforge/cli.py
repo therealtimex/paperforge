@@ -46,7 +46,10 @@ def _doctor_project(explicit=None):
         config = find_config(explicit)
     except SystemExit:
         return False                      # no project here; nothing to say
-    found = scaffold.drift(config.parent)
+    # the manifest may sit in `tools/`, and the project is the directory above
+    # it - the same normalisation `load` does, and for the same reason
+    root = config.parent.parent if config.parent.name == 'tools' else config.parent
+    found = scaffold.drift(root)
     state = {'current': 'ok', 'stale': 'STALE', 'unstamped': 'unknown'}[found['state']]
     print('')
     print('this project:')

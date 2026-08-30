@@ -141,16 +141,32 @@ def scan(lines, annex=False):
     return found
 
 
-def resolve(prof, body, annex=()):
+def resolve(prof, body, annex=(), head=0):
     """{id: entry} with numbers assigned, body first then annex.
 
     Numbering restarts in the annex, which is what the annex label expresses:
     Figure A1 is the annex's first, not the document's fourteenth.
+
+    `head` is how many opening lines the emitters do not render - the title,
+    the metadata block, the contents. Labels are still read from them, because
+    a heading there can carry a `sec-` id somebody refers to; floats are not
+    counted there, because nothing renders one and a figure nobody can see must
+    not take a number from the figures that follow it.
     """
     table, counters = {}, {}
     for lines, is_annex in ((body, False), (annex, True)):
         if is_annex:
             counters = {}
+        # A figure's number counts *floats*, not captions. An uncaptioned
+        # diagram still prints "Figure 1" - the emitters number it positionally
+        # and `cross-references.md` promises they will - so numbering captions
+        # 1..N here gave the next captioned figure a number already on the
+        # page. A document with one of each printed two Figure 1s, and the
+        # reference to the second resolved to the first.
+        skip = 0 if is_annex else head
+        placed = {}
+        for i, found in enumerate(f for f in floats(lines[skip:]) if f['kind'] == 'fig'):
+            placed[found['slot'] + skip] = i + 1
         for entry in scan(lines, annex=is_annex):
             if entry['kind'] == 'claim':
                 # Nothing renders a claim, so it has no label to carry. What
@@ -167,6 +183,13 @@ def resolve(prof, body, annex=()):
                 entry['number'] = None
                 entry['label'] = entry['caption']
                 entry['caption'] = ''
+            elif entry['kind'] == 'fig':
+                # a caption at no float's slot is a stray one, which lint
+                # blocks; number it after the last so the table stays ordered
+                nth = placed.get(entry['line'], counters.get('fig', 0) + 1)
+                counters['fig'] = nth
+                entry['number'] = nth
+                entry['label'] = label_for(prof, 'fig', is_annex) % nth
             else:
                 counters[entry['kind']] = counters.get(entry['kind'], 0) + 1
                 entry['number'] = counters[entry['kind']]
@@ -238,27 +261,25 @@ def take_equation(lines, pos):
     return None, None, pos          # unterminated: leave it to the paragraph path
 
 
-def attached_captions(lines):
-    """Line indices where a caption is attached to something that carries one.
+def floats(lines):
+    """Every block that carries a number, in source order.
 
-    A caption is not free-standing markup: it belongs to the block above it,
-    and every emitter takes it by looking back from a float. When it is written
-    under something no emitter treats as a float - a paragraph, a list, an
-    image before #86 - nothing consumes it and it prints to the reader as
-    prose, braces and all, while `@fig-x` still resolves to a number that names
-    nothing on the page. Neither `dangling` nor the orphan check can see that:
-    the label exists and is referred to. Only this can.
+    One definition of "float", because two things need it and they were about
+    to disagree: the caption scanner, which asks what may carry a caption, and
+    the numbering, which asks what takes a number. A figure is a diagram or an
+    image; a table is a table. Each is reported with the line a caption for it
+    would sit on, whether or not one is written there.
 
     The three kinds here are the three the emitters take captions after. If a
     fourth is added and this is not, the failure is a false report on a correct
     document - loud, and fixed in one place - rather than another float that
-    silently prints its own caption.
+    silently prints its own caption or takes a number nothing else counts.
     """
     from . import images as img_mod
 
-    slots, pos, n = set(), 0, len(lines)
+    found, pos, n = [], 0, len(lines)
 
-    def next_line(i):
+    def slot(i):
         while i < n and not lines[i].strip():
             i += 1
         return i
@@ -272,14 +293,20 @@ def attached_captions(lines):
                 pos += 1
             pos += 1
             if lang == 'mermaid':
-                slots.add(next_line(pos))
+                found.append({'kind': 'fig', 'slot': slot(pos)})
             continue
-        if (stripped.startswith('|') and pos + 1 < n
-                and re.match(r'^\|[\s:*|-]+\|?$', lines[pos + 1].strip())):
-            pos += 2
-            while pos < n and lines[pos].strip().startswith('|'):
+        if stripped.startswith('>'):
+            # a callout is converted by the same emitter, on its own lines with
+            # the markers stripped, so a figure inside one is a figure. One
+            # source line per quoted line, which is what lets the slots inside
+            # it keep their own line numbers.
+            start = pos
+            inner = []
+            while pos < n and lines[pos].strip().startswith('>'):
+                inner.append(re.sub(r'^\s*>\s?', '', lines[pos]))
                 pos += 1
-            slots.add(next_line(pos))
+            found += [{'kind': f['kind'], 'slot': f['slot'] + start}
+                      for f in floats(inner)]
             continue
         if LIST_RE.match(lines[pos]):
             # a list swallows its own indented content, so an image inside one
@@ -290,7 +317,28 @@ def attached_captions(lines):
                                or lines[pos][:1].isspace()):
                 pos += 1
             continue
+        if (stripped.startswith('|') and pos + 1 < n
+                and re.match(r'^\|[\s:*|-]+\|?$', lines[pos + 1].strip())):
+            pos += 2
+            while pos < n and lines[pos].strip().startswith('|'):
+                pos += 1
+            found.append({'kind': 'tbl', 'slot': slot(pos)})
+            continue
         if img_mod.ONLY_RE.match(lines[pos]):
-            slots.add(next_line(pos + 1))
+            found.append({'kind': 'fig', 'slot': slot(pos + 1)})
         pos += 1
-    return slots
+    return found
+
+
+def attached_captions(lines):
+    """Line indices where a caption is attached to something that carries one.
+
+    A caption is not free-standing markup: it belongs to the block above it,
+    and every emitter takes it by looking back from a float. When it is written
+    under something no emitter treats as a float - a paragraph, a list, an
+    image before #86 - nothing consumes it and it prints to the reader as
+    prose, braces and all, while `@fig-x` still resolves to a number that names
+    nothing on the page. Neither `dangling` nor the orphan check can see that:
+    the label exists and is referred to. Only this can.
+    """
+    return {f['slot'] for f in floats(lines)}

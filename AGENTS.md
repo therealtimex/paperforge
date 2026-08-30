@@ -223,9 +223,9 @@ the set of features that ship untried.
 The same walk found two more, both invisible for the same reason. An SVG
 project mark was rasterised as `fig-0.png`, over the first diagram's raster, so
 a `.docx` would print the logo where Figure 1 belongs - no fixture declares a
-logo. And an uncaptioned float still takes its number from the emitter's
-counter while a captioned one takes it from the label table, so a document with
-both prints two "Figure 1"s - no fixture mixes them.
+logo. And an uncaptioned float took its number from the emitter's
+counter while a captioned one took it from the label table, so a document with
+both printed two "Figure 1"s - no fixture mixed them, and `zh-sample` does now.
 
 When adding a capability, ask which fixture will *use* it, and add it there
 before writing the code. A feature documented and not exercised is a claim

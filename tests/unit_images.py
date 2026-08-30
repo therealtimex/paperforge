@@ -148,6 +148,53 @@ def main():
         check('the diagram still draws the first rendered SVG', SVG in html)
         check('the diagram count is diagrams, not floats', markdown.FIG['dgm'] == 1)
 
+        print('a number counts floats, not captions')
+        # the collision this rule exists for: the emitters number every float
+        # positionally and print "Figure 1" under an uncaptioned one, while the
+        # label table used to number captions 1..N. One of each gave two of them
+        body = ['```mermaid', 'graph TD', 'A-->B', '```', '',
+                '```mermaid', 'graph TD', 'C-->D', '```', '',
+                ': The second diagram. {#fig-second}', '', 'See @fig-second.']
+        table = xref.resolve(profile.load('en'), body)
+        check('a captioned figure is numbered past the uncaptioned one before it',
+              table['fig-second']['number'] == 2)
+        html = render(body, root, svgs=[SVG, SVG])
+        check('and the page agrees with the table',
+              '<figcaption>Figure 1<' in html
+              and '<figcaption>Figure 2. The second diagram.' in html)
+        check('so the reference points at the right one', 'See Figure 2.' in html)
+
+        body = ['![A field](f.png)', '', '![Another](f.png)', '',
+                ': The second image. {#fig-b}']
+        check('an uncaptioned image counts the same way',
+              xref.resolve(profile.load('en'), body)['fig-b']['number'] == 2)
+
+        body = ['| a | b |', '|---|---|', '| 1 | 2 |', '', '| c | d |',
+                '|---|---|', '| 3 | 4 |', '', ': The second table. {#tbl-b}']
+        check('an uncaptioned table takes no number: nothing prints one for it',
+              xref.resolve(profile.load('en'), body)['tbl-b']['number'] == 1)
+
+        # every place a float can hide from the scanner but not from an emitter
+        body = ['> [!note]', '> ![a](f.png)', '', '```mermaid', 'graph TD',
+                'A-->B', '```', '', ': The diagram. {#fig-c}']
+        check('a figure inside a callout is counted: the emitter renders one',
+              xref.resolve(profile.load('en'), body)['fig-c']['number'] == 2)
+        html = render(body, root, svgs=[SVG])
+        check('and the page agrees',
+              '<figcaption>Figure 2. The diagram.' in html)
+
+        body = ['- an item', '  ![a](f.png)', '', '```mermaid', 'graph TD',
+                'A-->B', '```', '', ': The diagram. {#fig-d}']
+        check('an image indented under a list is list content, not a float',
+              xref.resolve(profile.load('en'), body)['fig-d']['number'] == 1
+              and xref.floats(body) == [{'kind': 'fig', 'slot': 8}])
+
+        body = ['# TITLE', '', '![a](f.png)', '', '---', '', '## Body', '',
+                '```mermaid', 'graph TD', 'A-->B', '```', '',
+                ': The diagram. {#fig-e}']
+        check('a float in the head is rendered by nothing and numbers nothing',
+              xref.resolve(profile.load('en'), body, head=5)['fig-e']['number'] == 1)
+
         print('a missing file leaves a visible gap, never a silent one')
         html = render(['![A field](gone.png)'], root)
         check('the gap says what is missing',

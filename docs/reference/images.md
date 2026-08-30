@@ -12,10 +12,15 @@ scanned instrument trace — and it is a *reference to a file*.
 Refining is where the concentration is: see @fig-refining.
 ```
 
-An image on a line of its own is a **figure**. It is numbered with the
+An image on a line of its own, at the left margin, is a **figure**. It is numbered with the
 diagrams, in source order, takes the caption written under it, and carries that
 caption's label — so `@fig-refining` resolves to *Figure 1* the same way a
 diagram's does. An image inside a sentence is left in the sentence.
+
+An indented image is content of whatever contains it — a list item, most
+often — and stays inline, because the four emitters do not agree about where an
+indented block belongs and a figure they disagree about takes a number in two
+editions and not the others.
 
 The path is relative **to the document's own source file**, which is where an
 author is looking when they type it. An included chapter is a fragment of that

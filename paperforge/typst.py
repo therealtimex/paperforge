@@ -47,6 +47,9 @@ PAL = dict(palette.TOKENS)
 PLATES = []       # every image copied, in the order they were referenced
 FLOATS = []       # the subset that are figures: an image in a sentence is not
 SRC = {'dir': Path('.')}
+# floats already numbered when the annex begins. Numbering restarts there -
+# Figure A1 is the annex's first - and only the label was switching over.
+BASE = {'n': 0}
 
 
 def plate(src):
@@ -369,7 +372,7 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             pos += 1
             if lang == 'mermaid':
                 idx = len(figures)          # which rasterised PNG this is
-                ordinal = idx + len(FLOATS)  # which figure it is, images included
+                ordinal = idx + len(FLOATS) - BASE['n']  # which figure it is
                 figures.append(idx)
                 # the emitter numbers figures, matching the HTML edition, so
                 # Typst's own supplement is suppressed - otherwise the caption
@@ -392,7 +395,7 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
 
         m = img_mod.ONLY_RE.match(line)
         if m:
-            ordinal = len(figures) + len(FLOATS)
+            ordinal = len(figures) + len(FLOATS) - BASE['n']
             name = plate(m.group(2))
             FLOATS.append(name)
             pos += 1
@@ -592,6 +595,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     SRC['dir'] = src.parent
     PLATES.clear()
     FLOATS.clear()
+    BASE['n'] = 0
     text = assemble.read(src, includes)
     front, text = front_mod.split(text)
     if review:
@@ -660,6 +664,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         # an image path in the annex is written relative to the annex, which
         # may not be the directory the report sits in
         SRC['dir'] = Path(annex).parent
+        BASE['n'] = len(figures) + len(FLOATS)
+        label = prof['labels'].get('annex_figure', label)
         typ_body += ('\n\n%s\n\n' % ('#pf-recto()' if binding else '#pagebreak()')
                      + convert(head_rest, notes, figures, label, part_banner,
                                columns=columns, binding=binding)

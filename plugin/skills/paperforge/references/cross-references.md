@@ -88,7 +88,11 @@ independently, and numbering restarts in the annex, which is what its label
 says — *Figure A1* is the annex's first, not the document's fourteenth.
 
 A label is **optional**. An unlabelled figure keeps the positional caption it
-has always had, so nothing already written needs changing.
+has always had, so nothing already written needs changing — and it still takes
+a number, because a reader counts what is on the page. Numbering counts
+**floats**, not captions: a labelled figure after an unlabelled one is Figure
+2, and `@fig-` resolves to that. Tables and equations are numbered by their
+captions, because nothing prints a number for an unlabelled one.
 
 An image is labelled the same way — the caption goes on the line under it, not
 in the `![alt](src)`. See `images.md`, including what happens to a caption

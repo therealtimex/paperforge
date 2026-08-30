@@ -197,6 +197,7 @@ def _table(doc, rows, wide):
 SRC = {'dir': Path('.')}
 WORK = {'dir': None}
 FLOATS = []   # image floats, so a figure's ordinal counts them alongside diagrams
+BASE = {'n': 0}  # floats already numbered when the annex begins; it restarts
 RASTERS = []  # SVGs rendered for Word; an inline image needs a name too, and
               # numbering them by FLOATS gave one to two different pictures
 
@@ -258,7 +259,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
             pos += 1
             if lang == 'mermaid':
                 idx = len(figures)           # which rasterised diagram this is
-                ordinal = idx + len(FLOATS)  # which figure it is, images included
+                ordinal = idx + len(FLOATS) - BASE['n']  # which figure it is
                 figures.append(idx)
                 image = images.get(idx)
                 if image and Path(image).exists():
@@ -281,7 +282,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
 
         m = img_mod.ONLY_RE.match(line)
         if m:
-            ordinal = len(figures) + len(FLOATS)
+            ordinal = len(figures) + len(FLOATS) - BASE['n']
             found = plate(m.group(2))
             FLOATS.append(found)
             pos += 1
@@ -462,6 +463,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     WORK['dir'] = work
     FLOATS.clear()
     RASTERS.clear()
+    BASE['n'] = 0
     images = {}
     if svgs:
         # the diagrams are already rasterised for the print edition; a Word file
@@ -589,6 +591,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                 run.font.color.rgb = _navy(brand)
         # an image path in the annex is relative to the annex, not the report
         SRC['dir'] = Path(annex).parent
+        BASE['n'] = len(figures) + len(FLOATS)
         convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
                 images, brand, part_banner, force_parts=True, table=refs,
                 columns=columns)

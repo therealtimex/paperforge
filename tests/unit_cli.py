@@ -233,13 +233,33 @@ def main():
         check('the document builds; nothing here is about the build', built)
         out = _io.StringIO()
         with _c.redirect_stdout(out):
-            cli.main(['publish', '--config', str(pub / 'documents.toml')])
+            code = cli.main(['publish', '--config', str(pub / 'documents.toml')])
         said = out.getvalue()
         check('a dangling reference refuses publication on its own',
               'REFUSED' in said and 'dangling-reference' in said)
+        # a refusal that exits 0 reads to a release job as a done publish
+        check('and the refusal reaches the exit status', code == 1)
         check('and nothing reached the directory',
               not (pub / 'published').exists()
               or not list((pub / 'published').glob('*.html')))
+
+        print('a document that cannot be assembled')
+        # `check_all` reads the assembled document, and a missing include
+        # cannot be read: the include finding was recorded and then buried
+        # under a FileNotFoundError traceback
+        gone = root / 'gone'
+        gone.mkdir()
+        (gone / 'documents.toml').write_text(
+            PUBLISH_MANIFEST.replace('  source = "report.md"',
+                                     '  source = "report.md"\n  include = ["missing.md"]'),
+            encoding='utf-8')
+        (gone / 'report.md').write_text(DANGLING_DOC, encoding='utf-8')
+        out = _io.StringIO()
+        with _c.redirect_stdout(out):
+            cli.main(['lint', '--config', str(gone / 'documents.toml')])
+        said = out.getvalue()
+        check('a missing include is reported, not raised',
+              'include' in said and 'missing.md' in said)
 
         print('editions')
         check('a sub-table with a source is an edition',

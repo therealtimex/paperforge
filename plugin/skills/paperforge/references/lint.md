@@ -15,9 +15,6 @@ what *may* ship and lint says whether it is *fit* to.
 | `warn` | worth a look; you decide whether it matters | no |
 | `skip` | the check could not run, and says why | no |
 
-Every check in this table runs in both places that run the gate: the `lint`
-stage, and the re-check `publish` makes before it ships anything.
-
 `manual` and `skip` were both `warn` once, and the merge cost something. A
 reader could not tell *"you may want to look at this"* from *"I cannot answer
 this; you must"* — and a warning nobody can act on is how people learn to ignore
@@ -33,6 +30,13 @@ manual  demo-report.md:43  claim-c  unaccepted
 
 `skip` is the conventions rule given a name: a check that cannot run says so
 with a reason, and untestable is never *passed*.
+
+## Where the gate runs
+
+Every rule below runs in both places: the `lint` stage, and the re-check
+`publish` makes before it ships anything. One list — `lint.check_all` — so a
+rule cannot reach one and not the other, which it could when `publish` kept its
+own shorter copy. See `publishing.md`.
 
 ## Three layers
 

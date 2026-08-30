@@ -488,6 +488,12 @@ def check_all(document, rules, allowed=(), blocked=(), embedded=()):
                                      document.get('include_paths')):
         findings.append({'rule': 'include', 'severity': 'block', 'line': 0,
                          'match': '', 'why': problem, 'context': ''})
+    if findings:
+        # every check below reads the assembled document, and a missing include
+        # cannot be read. The finding above already says so; carrying on raised
+        # FileNotFoundError over the top of it, so the one message that named
+        # the actual problem was the one nobody saw.
+        return findings
     for path in assemble.sources(document):
         findings += check_document(path, rules)
     findings += check_publishable(document['source_path'], allowed, blocked, embedded)

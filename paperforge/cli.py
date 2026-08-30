@@ -810,7 +810,15 @@ def do_verify(docs, cache, quiet=False):
 
 def do_publish(cfg, docs, expires=None):
     """Publish only what the gate clears. The allowlist says what *may* be
-    published; lint says whether it is *fit* to be."""
+    published; lint says whether it is *fit* to be.
+
+    Returns the number of documents the gate refused, so a refusal reaches the
+    exit status. It used to print REFUSED and exit 0, which reads to anything
+    automated - a release job, a scheduled rebuild - as a successful publish.
+    A target declining one artefact is not counted: that is the host's policy,
+    reported per artefact, and not this gate's verdict on the document.
+    """
+    refused = 0
     gate = gate_inputs(cfg, docs)
     for d in docs:
         if not d['publish']:
@@ -823,6 +831,7 @@ def do_publish(cfg, docs, expires=None):
         if blocking:
             print('  %-38s REFUSED: %d blocking finding(s): %s' %
                   (d['output'], len(blocking), ', '.join(sorted({f['rule'] for f in blocking}))))
+            refused += 1
             continue
         if not d['output_path'].exists():
             print('  %-38s REFUSED: not built' % d['output']); continue
@@ -875,6 +884,7 @@ def do_publish(cfg, docs, expires=None):
                 print('  %-38s REFUSED by the target: %s' % (artefact.name, reason))
                 continue
             print('  %-38s %s -> %s' % (artefact.name, how, art['publicUrl']))
+    return refused
 
 
 def main(argv=None):
@@ -1139,8 +1149,11 @@ def main(argv=None):
         stages['publish'] = 'draft'
     elif a.command in ('publish', 'all'):
         print('publish:')
-        do_publish(cfg, docs, a.expires_at)
-        stages['publish'] = 'ran'
+        refused = do_publish(cfg, docs, a.expires_at)
+        stages['publish'] = 'refused' if refused else 'ran'
+        # a refusal is the gate working, and it has to reach the exit status:
+        # a release job reading only that saw a refused publish as a done one
+        failed = failed or bool(refused)
 
     # written for build and all, pass or fail: a run that went badly is exactly
     # the one worth being able to look at again

@@ -834,7 +834,11 @@ def do_publish(cfg, docs, expires=None):
             refused += 1
             continue
         if not d['output_path'].exists():
-            print('  %-38s REFUSED: not built' % d['output']); continue
+            # a refusal like any other: a document declared publishable and
+            # never built is not a publication that succeeded quietly
+            print('  %-38s REFUSED: not built' % d['output'])
+            refused += 1
+            continue
         # the reading edition and the print edition are both deliverables
         editions = [d['output_path']]
         # Only a declared print edition ships. Publishing whatever .pdf happened

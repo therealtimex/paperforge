@@ -260,6 +260,25 @@ def main():
         said = out.getvalue()
         check('a missing include is reported, not raised',
               'include' in said and 'missing.md' in said)
+        # publish runs the same list now, so it reaches the same file
+        out = _io.StringIO()
+        with _c.redirect_stdout(out):
+            code = cli.main(['publish', '--config', str(gone / 'documents.toml')])
+        said = out.getvalue()
+        check('and publishing refuses on it rather than raising',
+              'REFUSED' in said and 'include' in said and code == 1)
+
+        print('a document declared publishable and never built')
+        never = root / 'never'
+        never.mkdir()
+        (never / 'documents.toml').write_text(PUBLISH_MANIFEST, encoding='utf-8')
+        (never / 'report.md').write_text(
+            DANGLING_DOC.replace('@fig-nowhere', 'the annex'), encoding='utf-8')
+        out = _io.StringIO()
+        with _c.redirect_stdout(out):
+            code = cli.main(['publish', '--config', str(never / 'documents.toml')])
+        check('is a refusal, and reaches the exit status too',
+              'REFUSED: not built' in out.getvalue() and code == 1)
 
         print('editions')
         check('a sub-table with a source is an edition',

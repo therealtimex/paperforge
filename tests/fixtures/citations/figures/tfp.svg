@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 140" width="300" height="140"
+     role="img" aria-label="Đóng góp của TFP vào tăng trưởng, 2015-2024">
+  <rect width="300" height="140" fill="#f7f9fc"/>
+  <polyline fill="none" stroke="#486581" stroke-width="2"
+            points="30,110 70,96 110,88 150,70 190,58 230,44 270,36"/>
+  <g stroke="#c9d3e0" stroke-width="1">
+    <line x1="30" y1="120" x2="270" y2="120"/>
+    <line x1="30" y1="20" x2="30" y2="120"/>
+  </g>
+  <g font-family="sans-serif" font-size="9" fill="#243b53">
+    <text x="26" y="134">2015</text>
+    <text x="252" y="134">2024</text>
+    <text x="8" y="24">%</text>
+  </g>
+</svg>

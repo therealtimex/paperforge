@@ -202,6 +202,35 @@ sibling of the section above: there, a gate that could not fire; here, a gate
 that fires perfectly at a door nobody uses. A count of green checks says
 nothing about which door they are standing at.
 
+## The corpus decides what is tested, and it is not a sample
+
+Every fixture illustrated itself with a Mermaid diagram, because the person
+writing a fixture writes the figure that is quickest to type. So `![alt](src)`
+was matched by the link pattern, which took the bracket half and left the bang
+in the prose; the caption under it was consumed by no emitter and printed to
+the reader with its `{#fig-x}` braces showing; the Typst path deleted images
+outright under a comment saying they were handled as figures; and `@fig-x`
+resolved to a number for a float that was on no page. Lint said `ok`. `verify`
+said `ok`. `cross-references.md` had promised "a diagram, chart or image" the
+whole time.
+
+That is the previous section from the other end. There, an entry point nothing
+called; here, an entry point everything calls, down a branch nothing takes. The
+fixtures are not a sample of what people write - they are a sample of what was
+convenient to write while building the pipeline, and the difference is exactly
+the set of features that ship untried.
+
+The same walk found two more, both invisible for the same reason. An SVG
+project mark was rasterised as `fig-0.png`, over the first diagram's raster, so
+a `.docx` would print the logo where Figure 1 belongs - no fixture declares a
+logo. And an uncaptioned float still takes its number from the emitter's
+counter while a captioned one takes it from the label table, so a document with
+both prints two "Figure 1"s - no fixture mixes them.
+
+When adding a capability, ask which fixture will *use* it, and add it there
+before writing the code. A feature documented and not exercised is a claim
+about the software, not a property of it.
+
 ## A check that reads an artifact assumes a layout
 
 `editions.py` reads a printed page a line at a time. In two columns both columns

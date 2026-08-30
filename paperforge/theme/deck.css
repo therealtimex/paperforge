@@ -66,6 +66,7 @@
 .reveal figure.diagram { background:none; border:0; margin:.2em 0; padding:0; text-align:center; }
 /* fill the slide rather than sitting at the diagram's natural size */
 .reveal figure.diagram svg { width:100%; max-width:100%; max-height:470px; height:auto; }
+.reveal figure.plate img { max-width:100%; max-height:470px; height:auto; margin:0 auto; }
 .reveal figcaption { font-size:.42em; color:var(--muted); font-style:italic; margin-top:.3em; }
 .reveal .callout { background:var(--amber-soft); border-left:5px solid var(--amber);
   border-radius:8px; padding:.5em .7em; font-size:.72em; }

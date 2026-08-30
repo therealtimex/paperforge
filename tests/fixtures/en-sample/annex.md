@@ -8,7 +8,13 @@
 
 ## 1. SOURCE APPRAISAL
 
-Each figure is traced to a named published source and dated.
+Each figure is traced to a named published source and dated. The appraisal
+ladder is set out in @fig-appraisal — an image in the annex, which numbers its
+figures separately from the report.
+
+![Source appraisal ladder](figures/appraisal.svg)
+
+: Source appraisal ladder {#fig-appraisal}
 
 ## 2. BASELINES
 

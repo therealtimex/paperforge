@@ -68,6 +68,13 @@ bình. Chi phí biên của việc mở rộng công suất ước tính theo $(
 Các mức giá trong báo cáo được ghi bằng USD; ví dụ $5 và $10 là văn xuôi chứ
 không phải công thức, và phải hiện ra đúng như vậy.
 
+Xu hướng của phần dư được trình bày ở @fig-tfp: một hình minh hoạ đến từ tệp
+ảnh của nhóm nghiên cứu, không phải sơ đồ do quy trình vẽ.
+
+![Đóng góp của TFP vào tăng trưởng, 2015-2024](figures/tfp.svg)
+
+: Đóng góp của TFP vào tăng trưởng, 2015-2024 {#fig-tfp}
+
 ## Nguồn dẫn {.part}
 
 Trữ lượng đất hiếm tham chiếu theo USGS [@usgs2026]; tiềm năng điện gió ngoài

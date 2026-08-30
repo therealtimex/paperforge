@@ -99,7 +99,8 @@ def build(source, output, svgs=None, kind_fallback=None, prof=None, brand=None,
     _md.PROF = prof
     kind_fallback = kind_fallback or prof['labels']['deck']
     SVGS[:] = svgs or []
-    FIG.update(n=0, base=0, label=prof['labels']['figure'])
+    _md.SRC['dir'] = Path(source).parent
+    FIG.update(n=0, base=0, dgm=0, label=prof['labels']['figure'])
     lines = Path(source).read_text(encoding='utf-8').replace('\r\n', '\n').split('\n')
 
     # Numbered here, from this deck's own source, for the reason in xref.py.
@@ -156,5 +157,5 @@ def build(source, output, svgs=None, kind_fallback=None, prof=None, brand=None,
         shell = shell.replace('{{%s}}' % key, value)
     Path(output).write_text(shell, encoding='utf-8')
     return {'bytes': len(shell.encode('utf-8')), 'slides': len(out),
-            'diagrams': FIG['n'],
+            'diagrams': FIG['dgm'],
             'warnings': audit(shell, prof.get('word_units', 'spaces'))}

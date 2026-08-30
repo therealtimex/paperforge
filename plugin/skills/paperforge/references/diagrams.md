@@ -79,5 +79,6 @@ Deck diagrams are capped at 470px so they fill a slide.
 
 ## Related
 
+`images.md` (a figure from a file) ·
 `figures.md` (the numeric-consistency gate — a different thing) ·
 `unsupported-syntax.md` · `print.md` · `decks.md`

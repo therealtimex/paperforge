@@ -17,7 +17,8 @@ import subprocess
 from pathlib import Path
 
 from . import assemble
-from . import browser, citations as cite_mod, front as front_mod, palette, profile, xref
+from . import browser, citations as cite_mod, front as front_mod
+from . import images as img_mod, palette, profile, xref
 
 LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 HEAD_RE = re.compile(r'^(#{1,6})\s+(.*?)\s*#*$')
@@ -39,6 +40,37 @@ XREF = {}   # resolved once in xref.py; this emitter never counts for itself
 # shipped defaults stand in until a document is built, so this module still
 # converts markup outside a build.
 PAL = dict(palette.TOKENS)
+# Author images, copied beside the generated Typst source so the compile root
+# holds everything it needs. Same arrangement as XREF and PAL, for the reason
+# given above. They were deleted from the text entirely until #86, under a
+# comment claiming they were handled as figures; nothing handled them.
+PLATES = []       # every image copied, in the order they were referenced
+FLOATS = []       # the subset that are figures: an image in a sentence is not
+SRC = {'dir': Path('.')}
+
+
+def plate(src):
+    """The name to reference an image by inside the Typst source, or None.
+
+    Copied rather than referenced in place: the compile runs in a working
+    directory beside the document, and a path that climbs out of it is a path
+    that breaks the moment the project is built from somewhere else.
+
+    An SVG is rasterised rather than placed. Typst draws vector art as vector
+    operations, which is the better result on paper and invisible to the gate
+    that compares the editions - `figures_agree` counts images in the PDF, so a
+    figure present in all three editions read as a figure missing from one.
+    Diagrams already take this route, so one kind of picture is not quietly
+    treated differently from another.
+    """
+    found = img_mod.resolve(src, SRC['dir'])
+    if not found:
+        return None
+    i = len(PLATES)
+    name = ('plate-%d-0.png' % i if found.suffix.lower() == '.svg'
+            else 'plate-%d%s' % (i, found.suffix.lower()))
+    PLATES.append((name, found))
+    return name
 
 
 def colour(token):
@@ -76,7 +108,14 @@ def inline(text, footnotes):
     text = re.sub(r'(?<![\w$])\$(?!\s)([^$\n]+?)(?<!\s)\$(?![\w$])',
                   lambda m: keep('$%s$' % m.group(1).strip()), text)
     text = re.sub(r'`([^`]+)`', lambda m: keep('#raw("%s")' % m.group(1).replace('"', '\\"')), text)
-    text = re.sub(r'!\[[^\]]*\]\([^)]*\)', '', text)                    # images handled as figures
+    # an image inside a sentence: set inline, at the height of the line. An
+    # image on a line of its own never reaches here - the block pass takes it
+    # as a figure - so this is the decorative case, not the illustration.
+    def inline_image(m):
+        name = plate(m.group(2))
+        return keep('#box(image("%s", height: 1.1em))' % name) if name else ''
+
+    text = img_mod.IMAGE_RE.sub(inline_image, text)
     text = re.sub(r'\[\^([^\]]+)\]',
                   lambda m: keep('#footnote[%s]' % inline(footnotes.get(m.group(1), ''), {})
                                  if m.group(1) in footnotes else ''), text)
@@ -324,13 +363,14 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
                 pos += 1
             pos += 1
             if lang == 'mermaid':
-                idx = len(figures)
+                idx = len(figures)          # which rasterised PNG this is
+                ordinal = idx + len(FLOATS)  # which figure it is, images included
                 figures.append(idx)
                 # the emitter numbers figures, matching the HTML edition, so
                 # Typst's own supplement is suppressed - otherwise the caption
                 # reads "Hình 1: Sơ đồ 1", its label and ours doubled up
                 entry, pos = take_caption(lines, pos)
-                cap = xref.caption_of(entry) if entry else label % (idx + 1)
+                cap = xref.caption_of(entry) if entry else label % (ordinal + 1)
                 # '92%', not '92%%': this is an argument to the format, not
                 # part of it, so nothing consumes the doubled sign. A stray %%
                 # has reached a Typst source here before; it compiles to
@@ -343,6 +383,26 @@ def convert(lines, notes, figures, label, part_banner=None, force_parts=False,
             else:
                 out.append('#raw("%s", block: true)' % '\\n'.join(
                     l.replace('\\', '\\\\').replace('"', '\\"') for l in buf))
+            continue
+
+        m = img_mod.ONLY_RE.match(line)
+        if m:
+            ordinal = len(figures) + len(FLOATS)
+            name = plate(m.group(2))
+            FLOATS.append(name)
+            pos += 1
+            entry, pos = take_caption(lines, pos)
+            cap = xref.caption_of(entry) if entry else label % (ordinal + 1)
+            if name:
+                width = '78%' if columns > 1 else '92%'
+                out.append(span('#figure(image("%s", width: %s), caption: [%s],'
+                                ' supplement: none, numbering: none)'
+                                % (name, width, inline(cap, notes)), columns))
+            else:
+                # only reachable in a draft build; lint blocks the same
+                # reference at publication
+                out.append('#align(center)[#text(fill: %s, style: "italic")[%s]]'
+                           % (colour('ink-soft'), esc('image not found: %s' % m.group(2))))
             continue
 
         if re.fullmatch(r'(-{3,}|\*{3,}|_{3,})', stripped):
@@ -524,6 +584,9 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     shutil.rmtree(work, ignore_errors=True)
     work.mkdir(parents=True, exist_ok=True)
 
+    SRC['dir'] = src.parent
+    PLATES.clear()
+    FLOATS.clear()
     text = assemble.read(src, includes)
     front, text = front_mod.split(text)
     if review:
@@ -589,6 +652,9 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         # an appendix opens like a chapter, on the right-hand leaf; unbound it
         # opens a page, which is what it has always done
         head_meta, head_rest = split_meta(head)
+        # an image path in the annex is written relative to the annex, which
+        # may not be the directory the report sits in
+        SRC['dir'] = Path(annex).parent
         typ_body += ('\n\n%s\n\n' % ('#pf-recto()' if binding else '#pagebreak()')
                      + convert(head_rest, notes, figures, label, part_banner,
                                columns=columns, binding=binding)
@@ -598,6 +664,11 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
 
     if svgs:
         rasterise(svgs[:len(figures)], work)
+    for i, (name, found) in enumerate(PLATES):
+        if found.suffix.lower() == '.svg':
+            rasterise([found.read_text(encoding='utf-8')], work, prefix='plate-%d' % i)
+        else:
+            shutil.copy2(found, work / name)
 
     logo_block = ''
     if logo and Path(logo).exists():
@@ -689,17 +760,21 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
                             cwd=work, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError('typst failed:\n%s' % result.stderr.strip()[:900])
-    return {'figures': len(figures), 'footnotes': len(notes),
+    return {'figures': len(figures) + len(FLOATS), 'footnotes': len(notes),
             'bytes': Path(output).stat().st_size, 'warnings': result.stderr.count('warning:')}
 
 
-def rasterise(svgs, work, scale=3):
+def rasterise(svgs, work, scale=3, prefix='fig'):
     """Mermaid puts labels in <foreignObject>, which Typst does not draw, so the
-    diagrams are rendered to PNG through Chrome instead of embedded as SVG."""
+    diagrams are rendered to PNG through Chrome instead of embedded as SVG.
+
+    The prefix keeps two sets of rasters apart in one working directory: the
+    diagrams this pipeline drew, and an author's own SVG, which Word cannot
+    place either."""
     for i, svg in enumerate(svgs):
         m = re.search(r'viewBox="[^ ]+ [^ ]+ ([\d.]+) ([\d.]+)"', svg)
         w, h = (float(m.group(1)), float(m.group(2))) if m else (800.0, 600.0)
-        page = work / ('fig-%d.html' % i)
+        page = work / ('%s-%d.html' % (prefix, i))
         page.write_text('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
                         # mermaid sets style="max-width: NNNpx" inline, which capped the
                         # raster at the diagram's natural size and left the rest white
@@ -713,5 +788,5 @@ def rasterise(svgs, work, scale=3):
         browser.run(['--hide-scrollbars', '--virtual-time-budget=8000',
                      '--default-background-color=00000000',
                      '--window-size=%d,%d' % (w * scale, h * scale),
-                     '--screenshot=%s' % (work / ('fig-%d.png' % i)),
+                     '--screenshot=%s' % (work / ('%s-%d.png' % (prefix, i))),
                      page.absolute().as_uri()])

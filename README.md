@@ -64,6 +64,7 @@ also what an agent reads when the plugin is installed.
 
 Authoring: [structure](docs/reference/structure.md) ·
 [tables](docs/reference/tables.md) · [diagrams](docs/reference/diagrams.md) ·
+[images](docs/reference/images.md) ·
 [callouts](docs/reference/callouts.md) ·
 [citations](docs/reference/citations.md) · [maths](docs/reference/maths.md) ·
 [cross-references](docs/reference/cross-references.md) ·

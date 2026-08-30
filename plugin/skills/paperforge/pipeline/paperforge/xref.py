@@ -232,3 +232,52 @@ def take_equation(lines, pos):
         body.append(lines[look])
         look += 1
     return None, None, pos          # unterminated: leave it to the paragraph path
+
+
+def attached_captions(lines):
+    """Line indices where a caption is attached to something that carries one.
+
+    A caption is not free-standing markup: it belongs to the block above it,
+    and every emitter takes it by looking back from a float. When it is written
+    under something no emitter treats as a float - a paragraph, a list, an
+    image before #86 - nothing consumes it and it prints to the reader as
+    prose, braces and all, while `@fig-x` still resolves to a number that names
+    nothing on the page. Neither `dangling` nor the orphan check can see that:
+    the label exists and is referred to. Only this can.
+
+    The three kinds here are the three the emitters take captions after. If a
+    fourth is added and this is not, the failure is a false report on a correct
+    document - loud, and fixed in one place - rather than another float that
+    silently prints its own caption.
+    """
+    from . import images as img_mod
+
+    slots, pos, n = set(), 0, len(lines)
+
+    def next_line(i):
+        while i < n and not lines[i].strip():
+            i += 1
+        return i
+
+    while pos < n:
+        stripped = lines[pos].strip()
+        if stripped.startswith('```'):
+            lang = stripped[3:].strip().lower()
+            pos += 1
+            while pos < n and not lines[pos].strip().startswith('```'):
+                pos += 1
+            pos += 1
+            if lang == 'mermaid':
+                slots.add(next_line(pos))
+            continue
+        if (stripped.startswith('|') and pos + 1 < n
+                and re.match(r'^\|[\s:*|-]+\|?$', lines[pos + 1].strip())):
+            pos += 2
+            while pos < n and lines[pos].strip().startswith('|'):
+                pos += 1
+            slots.add(next_line(pos))
+            continue
+        if img_mod.ONLY_RE.match(lines[pos]):
+            slots.add(next_line(pos + 1))
+        pos += 1
+    return slots

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 150" width="320" height="150"
+     role="img" aria-label="Refining share by country, 2024">
+  <rect width="320" height="150" fill="#f7f9fc"/>
+  <g fill="#486581">
+    <rect x="40" y="30" width="180" height="18"/>
+    <rect x="40" y="60" width="52" height="18"/>
+    <rect x="40" y="90" width="34" height="18"/>
+    <rect x="40" y="120" width="20" height="18"/>
+  </g>
+  <g font-family="sans-serif" font-size="10" fill="#243b53">
+    <text x="228" y="44">China 61%</text>
+    <text x="100" y="74">Chile 18%</text>
+    <text x="82" y="104">Japan 12%</text>
+    <text x="68" y="134">Other 9%</text>
+  </g>
+</svg>

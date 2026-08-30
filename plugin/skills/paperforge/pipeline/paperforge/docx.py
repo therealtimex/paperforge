@@ -27,7 +27,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Mm, Pt, RGBColor
 
 from . import assemble
-from . import front as front_mod, markdown as md, palette, typst, xref
+from . import front as front_mod, images as img_mod, markdown as md, palette, typst, xref
 
 HEAD_RE = md.HEAD_RE
 ATTR_RE = md.ATTR_RE
@@ -158,6 +158,37 @@ def _table(doc, rows, wide):
     return table
 
 
+# Where an author's images are resolved from, and where the ones Word cannot
+# place are rasterised to. Module state for the same reason typst.py keeps it:
+# document-wide facts that the block pass needs and should not have to carry.
+SRC = {'dir': Path('.')}
+WORK = {'dir': None}
+FLOATS = []   # image floats, so a figure's ordinal counts them alongside diagrams
+
+
+def plate(src):
+    """The file to place for an image reference, or None.
+
+    Word cannot place an SVG - the same limitation that already rasterises the
+    project mark - so one is rendered through Chrome first, under its own name.
+    Sharing the diagrams' `fig-%d.png` would mean two things writing one path.
+    """
+    found = img_mod.resolve(src, SRC['dir'])
+    if not found:
+        return None
+    if found.suffix.lower() != '.svg':
+        return found
+    if WORK['dir'] is None:
+        return None
+    # one SVG per call, so the prefix carries which image it is and rasterise's
+    # own index is always 0
+    i = len(FLOATS)
+    typst.rasterise([found.read_text(encoding='utf-8')], WORK['dir'],
+                    prefix='plate-%d' % i)
+    raster = WORK['dir'] / ('plate-%d-0.png' % i)
+    return raster if raster.exists() else None
+
+
 def take_caption(lines, pos, table):
     """Consume a `: text {#fig-x}` line after a block, as the other emitters do."""
     look = pos
@@ -190,7 +221,8 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 pos += 1
             pos += 1
             if lang == 'mermaid':
-                idx = len(figures)
+                idx = len(figures)           # which rasterised diagram this is
+                ordinal = idx + len(FLOATS)  # which figure it is, images included
                 figures.append(idx)
                 image = images.get(idx)
                 if image and Path(image).exists():
@@ -198,7 +230,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                     doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
                 entry, pos = take_caption(lines, pos, table or {})
                 cap = doc.add_paragraph(xref.caption_of(entry) if entry
-                                        else label % (idx + 1))
+                                        else label % (ordinal + 1))
                 cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 for run in cap.runs:
                     run.italic = True
@@ -209,6 +241,25 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
                 run = para.add_run('\n'.join(buf))
                 run.font.name = 'Consolas'
                 run.font.size = Pt(9)
+            continue
+
+        m = img_mod.ONLY_RE.match(line)
+        if m:
+            ordinal = len(figures) + len(FLOATS)
+            found = plate(m.group(2))
+            FLOATS.append(found)
+            pos += 1
+            if found:
+                doc.add_picture(str(found), width=Mm(160))
+                doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+            entry, pos = take_caption(lines, pos, table or {})
+            cap = doc.add_paragraph(xref.caption_of(entry) if entry
+                                    else label % (ordinal + 1))
+            cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            for run in cap.runs:
+                run.italic = True
+                run.font.size = Pt(9)
+                run.font.color.rgb = _colour(brand, 'ink-soft')
             continue
 
         if re.fullmatch(r'(-{3,}|\*{3,}|_{3,})', stripped):
@@ -363,6 +414,9 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     head, body = lines[:start], lines[start:]
     kind, title, meta, _ = md.parse_head(head)
 
+    SRC['dir'] = Path(source).parent
+    WORK['dir'] = work
+    FLOATS.clear()
     images = {}
     if svgs:
         # the diagrams are already rasterised for the print edition; a Word file
@@ -380,8 +434,12 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         # own mark just because one of four editions is fussy
         mark = Path(logo)
         if mark.suffix.lower() == '.svg':
-            typst.rasterise([mark.read_text(encoding='utf-8')], work, scale=4)
-            raster = work / 'fig-0.png'
+            # under its own name: rasterising it as `fig-0.png` overwrote the
+            # first diagram's raster, which `images` already points at, and the
+            # mark was printed where Figure 1 should be
+            typst.rasterise([mark.read_text(encoding='utf-8')], work, scale=4,
+                            prefix='mark')
+            raster = work / 'mark-0.png'
             mark = raster if raster.exists() else None
         if mark:
             doc.add_picture(str(mark), height=Mm(14))
@@ -484,6 +542,8 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
             _runs(heading, annex_title)
             for run in heading.runs:
                 run.font.color.rgb = _navy(brand)
+        # an image path in the annex is relative to the annex, not the report
+        SRC['dir'] = Path(annex).parent
         convert(doc, annex_lines, figures, prof['labels'].get('annex_figure', label),
                 images, brand, part_banner, force_parts=True, table=refs,
                 columns=columns)
@@ -520,7 +580,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     if review:
         _line_numbers(doc)
     doc.save(str(output))
-    return {'figures': len(figures), 'tables': len(doc.tables),
+    return {'figures': len(figures) + len(FLOATS), 'tables': len(doc.tables),
             'headings': sum(1 for p in doc.paragraphs if p.style.name.startswith('Heading')),
             'bytes': Path(output).stat().st_size}
 

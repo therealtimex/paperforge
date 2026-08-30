@@ -23,7 +23,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from paperforge import markdown, pages, typst, verify
 
 failures = []
-SPEC = Path(__file__).resolve().parents[1] / 'specs' / 'calibration.md'
+
+
+def spec_file():
+    """The calibration table, or None if this is not a source tree.
+
+    The plugin bundle ships `tests/` and not `specs/`, so the copy inside it
+    has no table to check - and `parents[1]` there is the bundle's own
+    directory, where the path resolved to nothing and the gate raised
+    FileNotFoundError before a single check ran.
+
+    The source tree is the nearest ancestor holding AGENTS.md. Inside one, a
+    missing table is a failure: somebody deleted the only record of what was
+    measured. Outside one, there is nothing to check and the run says so.
+    """
+    for parent in Path(__file__).resolve().parents:
+        if (parent / 'AGENTS.md').is_file():
+            found = parent / 'specs' / 'calibration.md'
+            return found if found.is_file() else False
+    return None
 
 # `module.NAME` or `module.NAME['key']`, then a backticked value
 ROW_RE = re.compile(r'^\|\s*`([\w.]+)(?:\[\'([^\']+)\'\])?`\s*\|\s*`([^`]+)`\s*\|')
@@ -54,6 +72,17 @@ def live(dotted, key):
 
 
 def main():
+    global SPEC
+    SPEC = spec_file()
+    if SPEC is None:
+        print('  %-58s skip (no source tree here; specs/ is not shipped)'
+              % 'the calibration table')
+        return 0
+    if SPEC is False:
+        print('  %-58s FAIL (specs/calibration.md is gone)'
+              % 'the calibration table')
+        return 1
+
     print('the table is read, not assumed')
     rows = declared()
     # a parser that silently matches nothing would pass every check below
@@ -87,10 +116,25 @@ def main():
     check('the refusal is documented where the floor is used',
           'has been measured' in out or 'measured floor' in out
           or 'borrowing' in out)
+    # membership, not equality against a literal set: a third script that has
+    # been measured and written up should pass, and only one that has not
+    # should fail. Pinning the set here would make the honest case a test edit
     check('and no script is in SCRIPT_FLOOR without a row here',
-          {'latin', 'cjk'} == set(verify.SCRIPT_FLOOR)
-          and all(("verify.SCRIPT_FLOOR", s) in {(d, k) for d, k, _ in rows}
-                  for s in verify.SCRIPT_FLOOR))
+          all(('verify.SCRIPT_FLOOR', s) in {(d, k) for d, k, _ in rows}
+              for s in verify.SCRIPT_FLOOR))
+
+    print('the index lists every record, and every link resolves')
+    root = SPEC.parent
+    records = sorted(p.name for p in root.glob('[0-9][0-9][0-9][0-9]-*.md'))
+    index = (root / 'README.md').read_text(encoding='utf-8')
+    # a record nothing links to is a record nobody reads; the index is the only
+    # way in, so it is checked rather than trusted
+    check('every decision record is in the index',
+          all('(%s)' % name in index for name in records))
+    linked = set(re.findall(r'\]\(([\w./-]+\.md)\)', index))
+    check('and every link in the index resolves',
+          all((root / name).is_file() for name in linked))
+    check('there is at least one record to check', len(records) >= 4)
 
     print()
     if failures:

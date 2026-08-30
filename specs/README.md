@@ -10,8 +10,8 @@ which is correct, and it means none of them can tell you what was *decided* —
 what the alternatives were, what evidence closed the question, and which
 arguments have already been had.
 
-So a decision record here is written once and **not edited afterwards**. It
-records a moment. A moment cannot drift, which is the whole point: this
+So a decision record here is written once and, **once merged, not edited
+afterwards**. It records a moment. A moment cannot drift, which is the whole point: this
 codebase has repeatedly been bitten by a second copy of something that fell out
 of step with the first — a regex defined in three modules, a check list that
 `publish` kept its own shorter copy of, a comment asserting that images were
@@ -53,6 +53,12 @@ to check the reasoning rather than take it.
 
 Superseding a record is done by writing a new one that says so and adding a
 line to the old one pointing at it. The old text stays as written.
+
+If a merged record turns out to be **wrong** rather than outdated, append a
+`## Correction` section saying what it got wrong and leave the original text
+above it. A record that can be quietly rewritten is worth less than no record:
+the whole value here is that you can trust what it says was believed at the
+time. 0004 carries one, from review of the pull request that added it.
 
 ## The records
 

@@ -5,59 +5,86 @@
 
 ## Context
 
-`.paperforge/runs/` keeps a record per run: which documents were built, which
-stages passed, the manifest hash, and optionally a copy of the sources. Git is
-already in the project — `init` creates a repository — so the obvious
-simplification is to drop the run record and read history from git instead, or
-to commit each run.
+A research corpus in this system was drafted twice. The first pass was poor and
+was **overwritten in place** by the second. The repository had git from the
+start and it did not help, because preserving the first pass required somebody
+to remember to commit at the right moment, and four agent roles all did not.
+The drafts are simply gone; the two passes can never be compared.
 
-The question came up directly: *if git is enabled, should runs be incremental
-changes agents can `git diff`?*
+That is the failure this record is about. It is not a failure of git. It is a
+failure of relying on an act of discipline to preserve something that was
+produced by a process.
 
 ## Decision
 
-**The two record different things and neither replaces the other.**
+**The run record is a by-product of running the pipeline, not an act of
+discipline.** `all` and `build` write one every time, into
+`.paperforge/runs/<timestamp>/`, without being asked.
 
-Git records **acts**: somebody decided this text was worth keeping. A commit is
-a deliberate act of authorship.
+It holds **the sources themselves**, not only their hashes. What was wanted
+afterwards was the lost draft, and a fingerprint would not have returned it.
 
-The run record records **events**: this build happened, these gates ran, this
-is what they said. A build is not a decision, and most builds are never
-committed — the draft that made a gate necessary usually never was.
+Git and the run record answer different questions and neither replaces the
+other:
 
-So `.paperforge/runs/` is not git-backed and its contents are gitignored.
-`.paperforge/claims.json` **is** committed, because an acceptance is an act.
+- Git records **acts** — somebody decided this text was worth keeping.
+- The run record records **events** — this build happened, these gates ran,
+  this is what they said.
 
-`runs --diff --sources` compares two runs' inputs directly, and reports
-`(None, [names])` — not an empty diff — when the sources were not kept, because
-an empty diff means "nothing changed".
+A scaffolded project therefore **tracks its run records**: `scaffold.py`'s
+`.gitignore` says in as many words that `.paperforge/runs` is deliberately not
+ignored. Paperforge itself never runs git. Whether to commit is the project's
+decision; the pipeline's job is to make sure there is something to commit.
+
+`.paperforge/claims.json` is committed for a different reason — an acceptance
+*is* an act, and one only your machine has vouches for nothing to anybody else.
 
 ## Alternatives rejected
 
-**Commit each run.** Rejected: it makes a build an act of authorship. The
-history fills with commits nobody chose to make, and the acts that matter stop
-being visible among them.
+**Rely on git history.** This was the status quo when the drafts were lost. Git
+was present and preserved nothing, because the moment that mattered was between
+two runs and no human was in it.
 
-**Drop the run record and read git.** Rejected: git has nothing to say about a
-build that was never committed, which is most of them, including every build
-that failed a gate — the ones worth being able to look at again.
+**Record hashes only.** Rejected: a fingerprint tells you the draft changed and
+cannot give it back. The record exists because somebody wanted the file.
 
-**Require git.** Rejected: `doctor` reports a missing tool and what it was for,
-and asks. A project without git is a project with a weaker record, not a
-project the pipeline refuses. See the `--no-git` path in `init`.
+**Have the pipeline commit each run.** Rejected twice over. It makes a build an
+act of authorship, so the history fills with commits nobody chose to make and
+the acts that matter stop being visible among them. And running git against
+somebody's repository is not a build step — the same reason `doctor` reports a
+missing tool rather than installing it.
+
+**Require git.** Rejected: `init --no-git` is supported, and a project without
+git has a weaker record, not a refusal.
 
 ## Consequences
 
 - A run can be inspected after a failure without anything having been
   committed, which is the case the record exists for.
-- The two records can disagree — the working tree can be dirty relative to the
-  last commit while a run reflects it exactly. That is not a defect; they are
-  answering different questions.
-- `.gitignore` is narrow (`tests/**/.paperforge/runs/`) so a project's own
-  claims lock is never accidentally excluded with the runs.
+- Run records **churn**: every build writes one, and a project that tracks them
+  accepts that in its history. That is the accepted cost of not losing a draft.
+- The PDF hash is recorded **as observed**, not as a reproducibility claim.
+  Printed page numbers are measured by printing the document and reading the
+  page back, so a machine with different fonts genuinely paginates differently;
+  `runs --diff` reports a changed PDF hash as a note, not a discrepancy.
+- The two records can disagree — a dirty working tree against the last commit —
+  and that is not a defect. They are answering different questions.
+- This repository ignores `tests/**/.paperforge/runs/`. That is fixture output,
+  not a statement about projects.
 
 ## Evidence
 
-- #81 (`runs --diff` says which documents changed, never what changed in them),
+- `paperforge/runs.py` module docstring, which carries the lost-draft account
+  at the point of use; `paperforge/scaffold.py` `GITIGNORE`.
+- #81 (`runs --diff` said which documents changed, never what changed in them),
   #71 (`init` without git), #84 (an acceptance nobody else has is not one).
-- `paperforge/runs.py`; `scaffold.py` decides about git before writing anything.
+
+## Correction
+
+The first version of this record, in the pull request that added it, asserted
+that `.paperforge/runs/` is gitignored and not git-backed. That is the opposite
+of what the scaffold does, and it was caught in review before merge. The
+distinction it was reaching for is real — the pipeline never commits — but the
+record stated it as a fact about projects that was false. Noted here rather
+than quietly rewritten, because a specs directory whose records can be wrong
+without trace is worse than no specs directory.

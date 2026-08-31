@@ -68,6 +68,21 @@ A clean run states what it confirmed, not just that it passed:
 "untestable" is not "passed": it means the check declined, with a reason. See
 the `ToUnicode` limitation in `print.md`.
 
+## The block a heading cannot represent
+
+The cross-edition checks compare page-opening headings, figure counts and table
+counts. A **cover lede** is none of those, so when two of the four emitters
+discarded it there was nothing that could notice, and every gate passed on a
+document whose printed edition had lost its executive summary.
+
+The comparison now also asks whether the lede's own words reached the print and
+Word editions — by word presence rather than a contiguous probe, because the
+editions wrap it differently. It reports as a failure, named:
+
+```
+FAIL: the cover lede is not in the print edition (1 of 8 words found)
+```
+
 ## Related
 
 `print.md` · `columns.md` · `layout.md` · `lint.md` · `unsupported-syntax.md`

@@ -623,7 +623,15 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
     h2 = next((HEAD_RE.match(l.strip()).group(2) for l in head if l.strip().startswith('## ')), None)
     title = h2 or h1 or src.stem
     kind = (h1 if h2 else title_kind) or prof['labels'].get('document', '')
-    meta, _ = split_meta(head)
+    # The lede: prose standing in the head, which the reading edition sets
+    # under the title. It was discarded here - `parse_head`'s own docstring
+    # says dropping the leftovers "silently loses content" - so a dossier's
+    # executive summary was on the cover of the HTML and in no printed page.
+    # Taken from markdown's parser rather than split_meta's, so all three
+    # editions decide what a lede is in one place.
+    from . import markdown as md
+    meta = [(k, str(v)) for k, v in md.parse_head(head)[2]]
+    lede = [l for l in md.parse_head(head)[3] if l.strip()]
 
     XREF.clear()
     XREF.update(xref.resolve(prof, body, annex_lines))
@@ -720,6 +728,13 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         front_block = '\n'.join(bits) + '\n#v(10pt)\n'
 
     meta_block = meta_grid(meta)
+    lede_block = ''
+    if lede:
+        # `84%%`, not `84%`: this is part of the format string, and the same
+        # doubled-sign trap is recorded on the figure width below
+        lede_block = ('\n#block(width: 84%%, inset: (x: 0pt))[\n%s\n]\n#v(8pt)\n'
+                      % convert(lede, notes, figures, label, part_banner,
+                                columns=1, binding=binding))
 
     # a project's own faces override the profile's, same order as the reading
     # edition, so the two do not disagree about type
@@ -745,7 +760,7 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         display_font=quoted(fonts.get('serif'), 'Georgia'),
         navy=PAL['navy'], navy2=PAL['navy-2'], navy3=PAL['navy-3'],
         amber=PAL['amber'], ink=PAL['ink'],
-        kind=esc(kind), meta=meta_block + front_block, logo=logo_block)
+        kind=esc(kind), meta=lede_block + meta_block + front_block, logo=logo_block)
 
     entries = front_mod.declarations(front, prof)
     if entries:

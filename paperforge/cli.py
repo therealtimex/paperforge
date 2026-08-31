@@ -760,6 +760,10 @@ def do_verify(docs, cache, quiet=False):
                 if wd[kind]:
                     problems.append('%d heading(s) %s: %s'
                                     % (len(wd[kind]), label, [h[:34] for h in wd[kind]][:2]))
+            if not wd['lede_carried']:
+                problems.append('the cover lede is not in the .docx '
+                                '(%d of %d words found)'
+                                % (wd['lede_found'], wd['lede_words']))
             for what in ('figures', 'tables'):
                 if wd['%s_html' % what] != wd['%s_docx' % what]:
                     problems.append('%s differ: html %d, docx %d'
@@ -779,6 +783,10 @@ def do_verify(docs, cache, quiet=False):
             if ed['unlocated']:
                 problems.append('%d heading(s) not found in the PDF: %s'
                                 % (len(ed['unlocated']), [h[:30] for h in ed['unlocated']][:3]))
+            if not ed['lede_carried']:
+                problems.append('the cover lede is not in the print edition '
+                                '(%d of %d words found)'
+                                % (ed['lede_found'], ed['lede_words']))
             if not ed['figures_agree']:
                 problems.append('figure counts differ: html %d, pdf %d'
                                 % (ed['figures_html'], ed['figures_pdf']))

@@ -14,7 +14,7 @@ import logging
 import re
 import warnings
 
-from . import profile
+from . import matching, profile
 
 
 def _pdfplumber():
@@ -153,6 +153,22 @@ def page_openers_pdf(pdf_path, candidates, words=6, columns=1, header=0):
     return found
 
 
+def head_words(html):
+    """The distinctive words of the cover lede, for finding in another edition.
+
+    Everything else this module compares is a heading, a figure or a table. A
+    lede is none of those, so when the print and Word paths discarded it - a
+    dossier's executive summary, present on the HTML cover and on no printed
+    page - there was nothing here that could notice. Prose with no heading is
+    exactly what a comparison keyed to headings cannot see.
+    """
+    m = re.search(r'<div class="cover-lede">(.*?)</div>', html, re.S)
+    if not m:
+        return []
+    text = ihtml.unescape(re.sub(r'<[^>]+>', ' ', m.group(1)))
+    return [w for w in re.findall(r'[^\W\d_]{5,}', text, re.UNICODE)][:20]
+
+
 def compare(html_path, pdf_path, fold=True, columns=1, header=0):
     html = open(html_path, encoding='utf-8').read()
     expected = page_openers_html(html)
@@ -165,10 +181,18 @@ def compare(html_path, pdf_path, fold=True, columns=1, header=0):
     html_figs = html.count('<figcaption>')
     with _pdfplumber().open(pdf_path) as pdf:
         pdf_figs = sum(len(p.images) for p in pdf.pages)
+        printed = ' '.join((page.extract_text() or '') for page in pdf.pages[:4]).lower()
 
+    # A lede has no heading and is not a float, so nothing above can see it.
+    # Checked on the first pages, where a lede is, and by word presence rather
+    # than a contiguous probe: the two editions wrap it differently.
+    wanted = head_words(html)
+    found = sum(w.lower() in printed for w in wanted)
     return {'expected_openers': len(expected), 'mid_page': mid_page, 'unlocated': missing,
             'figures_html': html_figs, 'figures_pdf': pdf_figs,
-            'figures_agree': html_figs == pdf_figs}
+            'figures_agree': html_figs == pdf_figs,
+            'lede_words': len(wanted), 'lede_found': found,
+            'lede_carried': not wanted or found >= matching.quorum(len(wanted), 3)}
 
 
 def _html_headings(html):
@@ -196,12 +220,21 @@ def compare_docx(html_path, docx_path):
     there is nothing here to hold against a measured page number.
     """
     from . import docx as docx_mod
-    web = _html_headings(open(html_path, encoding='utf-8').read())
+    html = open(html_path, encoding='utf-8').read()
+    web = _html_headings(html)
     built = docx_mod.structure(docx_path)
     doc_heads = [h.rstrip('#').strip() for h in built['headings']]
-    html_figs = open(html_path, encoding='utf-8').read().count('<figcaption>')
-    html_tables = open(html_path, encoding='utf-8').read().count('<table>')
+    html_figs = html.count('<figcaption>')
+    html_tables = html.count('<table>')
+    # the lede, which is neither a heading nor a float and so was invisible to
+    # everything above: Word discarded it for the same reason Typst did
+    wanted = head_words(html)
+    from docx import Document
+    words = ' '.join(p.text for p in Document(docx_path).paragraphs).lower()
+    found = sum(w.lower() in words for w in wanted)
     return {
+        'lede_words': len(wanted), 'lede_found': found,
+        'lede_carried': not wanted or found >= matching.quorum(len(wanted), 3),
         'missing': [h for h in web if h not in doc_heads],
         'extra': [h for h in doc_heads if h not in web],
         'headings_html': len(web), 'headings_docx': len(doc_heads),

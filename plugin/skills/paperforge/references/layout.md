@@ -47,6 +47,14 @@ lede is usually written as and hostile at that length — and nothing in the
 corpus had a lede at all, so the setting had never been seen with prose in it.
 `en-sample` carries one now.
 
+Every edition carries it. It was rendered on the HTML cover and discarded by
+the Typst and Word paths — `parse_head` returns the leftovers precisely because
+"dropping them silently loses content", and two of four emitters dropped them
+anyway. A published dossier went out with its executive summary on no printed
+page. `verify` compares the editions on headings, figures and tables; a lede is
+none of those, so the comparison now also asks whether the lede's own words
+reached the print and Word editions.
+
 A lede that runs to a full executive summary will push the metadata below the
 first screen. That is an editorial decision about what a reader should meet
 first, and the theme does not try to solve it.

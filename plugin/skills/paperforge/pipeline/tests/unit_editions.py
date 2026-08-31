@@ -181,6 +181,22 @@ def main():
               section is not None and section != badge)
         shutil.rmtree(work, ignore_errors=True)
 
+    print('the block a heading-keyed comparison cannot see')
+    # A lede is neither a heading nor a float, so nothing else in this module
+    # could notice when the print and Word paths discarded it - and a dossier's
+    # executive summary was on the HTML cover and on no printed page
+    cover = ('<header class="cover"><h1>A title</h1>'
+             '<div class="cover-lede"><p>Refining capacity, not extraction, is the '
+             'binding constraint on supply.</p></div></header>')
+    words = editions.head_words(cover)
+    check('the lede yields words to look for in another edition',
+          len(words) >= 5 and 'Refining' in words)
+    check('short words are not distinctive enough to ask about',
+          all(len(w) >= 5 for w in words))
+    check('a document with no lede asks for nothing',
+          editions.head_words('<header class="cover"><h1>A title</h1></header>') == [])
+
+    print()
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

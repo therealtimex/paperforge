@@ -457,7 +457,10 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         start = next((i for i, l in enumerate(lines)
                       if re.fullmatch(r'-{3,}', l.strip())), 0) + 1
     head, body = lines[:start], lines[start:]
-    kind, title, meta, _ = md.parse_head(head)
+    # the lede, not `_`: prose standing in the head is document content, and
+    # `parse_head`'s docstring says dropping it "silently loses content" -
+    # which it did, out of this edition and the printed one
+    kind, title, meta, lede = md.parse_head(head)
 
     SRC['dir'] = Path(source).parent
     WORK['dir'] = work
@@ -557,6 +560,10 @@ def build(source, output, prof, svgs=None, annex=None, title_kind=None,
         para = doc.add_paragraph()
         para.add_run('%s: ' % front_mod.label(prof, 'keywords')).bold = True
         para.add_run(', '.join(str(k) for k in front['keywords']))
+    for line in [l for l in lede if l.strip()]:
+        para = doc.add_paragraph()
+        para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        _runs(para, xref.strip_claims(line.strip()))
     for key, value in meta:
         para = doc.add_paragraph()
         para.alignment = WD_ALIGN_PARAGRAPH.CENTER

@@ -52,7 +52,17 @@ LIST_RE = re.compile(r'^(\s*)([-*+]|\d+\.)\s+(.*)$')
 CAPTION_RE = re.compile(r'^:\s+(.*?)\s*\{#((%s)-[\w-]+)\}\s*$' % '|'.join(NUMBERED))
 DISPLAY_LABEL_RE = re.compile(r'^\$\$\s*\{#((?:eq)-[\w-]+)\}\s*$')
 OPEN_FENCE_RE = re.compile(r'^\$\$\s*$')
-REF_RE = re.compile(r'(?<![\w@])@((?:%s)-[\w-]+)\b' % '|'.join(KINDS))
+# What may not sit immediately before a reference. `\w` is Unicode-aware, so it
+# counted 见 as a word character - and Chinese, Japanese and Korean put no space
+# before a reference, which made the natural form the one form refused. ASCII
+# only: the case this guards is `name@fig-...`, which is not an address anyone
+# has. One definition, because lint's claim-reference rule needs the same one.
+NOT_BEFORE = r'(?<![A-Za-z0-9_@])'
+# `[\w-]+` is Unicode-aware too, and deliberately: a Chinese heading slugifies
+# to a Chinese id. The cost is at the other end - `@fig-x的图` swallows the
+# words after it - and `resolve_ref` below trims back to a declared label
+# rather than narrowing the class and making CJK ids unreferenceable.
+REF_RE = re.compile(NOT_BEFORE + r'@((?:%s)-[\w-]+)' % '|'.join(KINDS))
 
 # A heading and its trailing attribute block. Every emitter already parses and
 # strips this - three identical copies of the pattern existed - and it now also
@@ -205,14 +215,66 @@ def caption_of(entry):
     return '%s. %s' % (entry['label'], entry['caption'])
 
 
+def resolve_ref(ident, table):
+    """The declared label a match names, and whatever followed it.
+
+    A reference has no closing delimiter, and an id may contain any word
+    character because a Chinese heading slugifies to a Chinese id. So
+    `@fig-x的图` matches `fig-x的图`, and in a language that writes no space
+    the sentence continues straight into the id.
+
+    Trimmed back to the longest declared label, longest first so `fig-x-2` is
+    preferred over `fig-x` where both exist. Nothing is guessed: if no prefix
+    is a label, the whole match is unresolved and reported as it always was.
+    """
+    if ident in table:
+        return ident, ''
+    for cut in range(len(ident) - 1, 0, -1):
+        if ident[:cut] in table and ident[cut] not in '-':
+            return ident[:cut], ident[cut:]
+    return None, ''
+
+
+def referenced(lines, table=None):
+    """Every label the prose points at, as declared rather than as matched.
+
+    A reference has no closing delimiter and an id may hold any word character,
+    so in a language that writes no spaces the match runs on into the sentence:
+    `@fig-a的数据` matches `fig-a的数据`. Rendering trims that back to the label
+    it names; every other reader of REF_RE was still recording the untrimmed
+    string, so the orphan check and the map would report a figure as never
+    referred to on the strength of the reference to it.
+    """
+    out = set()
+    for line in lines:
+        for m in REF_RE.finditer(line):
+            found = resolve_ref(m.group(1), table)[0] if table else None
+            out.add(found or m.group(1))
+    return out
+
+
+def strip_refs(text, table=None):
+    """The line with its references removed, for a check that reads the output.
+
+    Only the declared id goes. The greedy match takes the prose after it in a
+    language that writes no spaces, and removing that from a coverage probe
+    quietly shrinks what is checked - 24 characters of a 48-character line, in
+    the fixture that found it.
+    """
+    def one(m):
+        found, tail = resolve_ref(m.group(1), table) if table else (None, '')
+        return ' ' + tail if found else ' '
+    return REF_RE.sub(one, text)
+
+
 def substitute(text, table, missing=None):
     """Replace @fig-x with its resolved label. Unknown ids are left alone and
     collected, so a reference to nothing is reported rather than silently
     printed as raw source or silently deleted."""
     def one(m):
-        entry = table.get(m.group(1))
-        if entry:
-            return entry['label']
+        found, tail = resolve_ref(m.group(1), table)
+        if found:
+            return table[found]['label'] + tail
         if missing is not None:
             missing.append(m.group(1))
         return m.group(0)
@@ -224,7 +286,7 @@ def dangling(lines, table):
     found = []
     for i, line in enumerate(lines, 1):
         for m in REF_RE.finditer(line):
-            if m.group(1) not in table:
+            if resolve_ref(m.group(1), table)[0] is None:
                 found.append((i, m.group(1)))
     return found
 

@@ -61,7 +61,7 @@ def build(document, prof=None):
     referenced = set()
     for lines in (body, annex_lines):
         for line in lines:
-            referenced.update(m.group(1) for m in xref.REF_RE.finditer(line))
+            referenced |= xref.referenced([line], table)
 
     heads = _headings(body) + [(n + len(body), d, t, i)
                                for n, d, t, i in _headings(annex_lines)]
@@ -79,7 +79,7 @@ def build(document, prof=None):
             line = rec['line'] + offset
             claims[ident] = {'id': ident, 'gist': rec['gist'], 'line': line,
                              'section': _section_at(heads, line),
-                             'uses': claims_mod.edges(rec), 'used_by': []}
+                             'uses': claims_mod.edges(rec, table), 'used_by': []}
         offset = len(body)
 
     by_id = {f['id']: f for f in floats}

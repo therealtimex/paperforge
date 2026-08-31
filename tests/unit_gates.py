@@ -366,6 +366,45 @@ def main():
     check('a document with too few distinctive words declines, with a reason',
           not short['usable'] and 'too few' in (short['why'] or ''))
 
+    print('a reference in a language that writes no spaces')
+    # `\w` is Unicode-aware, so the lookbehind guarding `name@fig-x` counted 见
+    # as a word character. Chinese, Japanese and Korean put no space before a
+    # reference, so the natural form was the one form the pattern refused: the
+    # reader got `@fig-shengchan` on the page, `dangling` saw no reference to
+    # report, and the orphan check blamed the author for the figure
+    table = {'fig-x': {'label': 'Figure 1'}, 'fig-x-2': {'label': 'Figure 2'},
+             'fig-xy': {'label': 'Figure 3'}, 'fig-a': {'label': '图 2'}}
+    check('a reference straight after a CJK character resolves',
+          xref.substitute('见@fig-a。', table) == '见图 2。')
+    check('and one the sentence runs straight into',
+          xref.substitute('见@fig-a的数据', table) == '见图 2的数据')
+    # `@fig-x-2` on its own is a declared id and never reaches the trimming;
+    # the trim is only exercised when the match runs past the id, and the two
+    # candidates must be tried longest first or `fig-x` wins wrongly
+    check('an id is trimmed to the longest declared label, not the first',
+          xref.substitute('见@fig-x-2的图', table) == '见Figure 2的图')
+    check('a fully declared id needs no trimming',
+          xref.substitute('@fig-x-2 too', table) == 'Figure 2 too')
+    # `fig-x` is a prefix of `fig-xy` with no hyphen between them, so the guard
+    # against cutting mid-id does not separate these two: only trying the
+    # longest first does
+    check('and a shorter label that is a prefix does not win',
+          xref.substitute('见@fig-xy的图', table) == '见Figure 3的图')
+    check('a reference after a Latin word is still not one',
+          xref.substitute('mail me@fig-x', table) == 'mail me@fig-x')
+    check('an unknown id is still left alone and reported',
+          xref.substitute('@fig-nope here', table) == '@fig-nope here')
+    check('and dangling sees it through the same trimming',
+          [i for _, i in xref.dangling(['见@fig-a的数据', '@fig-nope'], table)]
+          == ['fig-nope'])
+    # every other reader of REF_RE recorded the untrimmed string, so the orphan
+    # check and the map called a figure never-referred-to on the strength of
+    # the reference to it
+    check('what the prose points at is the label, not the match',
+          xref.referenced(['见@fig-a的数据'], table) == {'fig-a'})
+    check('and a line keeps the prose a reference runs into',
+          xref.strip_refs('见@fig-a的数据很重要', table).strip() == '见 的数据很重要')
+
     print('a contents entry and the heading it names, in every script')
     # `markdown._norm` was a second copy of the normaliser, and it was the
     # ASCII-only one - `[^a-z0-9\\s.:]` erased Arabic and Chinese completely, so

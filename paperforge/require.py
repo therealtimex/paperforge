@@ -70,6 +70,38 @@ def demand(name, lost):
     return name
 
 
+# What the pipeline imports, as distinct from what it runs. `doctor` reported
+# the external programs and said nothing about these, so a machine without them
+# failed inside a stage - which is the situation `doctor` exists to prevent. A
+# real project's publish script spent fifteen lines hunting for an interpreter
+# that had pdfplumber, because nothing would tell it.
+LIBRARIES = {
+    'pdfplumber': {
+        'for': 'page measurement, near-empty pages, every cross-edition check',
+        'from': 'pip install pdfplumber',
+    },
+    'docx': {
+        'for': 'the Word edition',
+        'from': 'pip install python-docx',
+    },
+}
+
+
+def imported(name):
+    """Whether the pipeline can import a library it needs."""
+    import importlib.util
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def libraries():
+    """(name, present, what it is for, where it comes from) for `doctor`."""
+    return [(name, imported(name), LIBRARIES[name]['for'], LIBRARIES[name]['from'])
+            for name in sorted(LIBRARIES)]
+
+
 def report():
     """(name, path or None, what it is for) for every tool, for `doctor`."""
     return [(name, found(name), TOOLS[name]['for']) for name in sorted(TOOLS)]

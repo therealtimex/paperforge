@@ -110,6 +110,36 @@ def main():
               second['sha256'] == first['sha256'])
         shutil.rmtree(second_dir, ignore_errors=True)
 
+    print('a project can say `paperforge` without knowing where it lives')
+    import tomllib
+    root = Path(__file__).resolve().parents[1]
+    meta = tomllib.loads((root / 'pyproject.toml').read_text(encoding='utf-8'))
+    check('there is packaging metadata at all',
+          meta['project']['name'] == 'paperforge')
+    check('and a console script, so PYTHONPATH is not the answer',
+          meta['project']['scripts'].get('paperforge') == 'paperforge.cli:main')
+    # one version, and this is the fourth place it could have been written
+    check('the version is read from the package, not repeated here',
+          'version' not in meta['project']
+          and meta['tool']['setuptools']['dynamic']['version']['attr']
+          == 'paperforge.__version__')
+
+    print('what the pipeline imports is declared and reported')
+    from paperforge import require
+    declared = set(meta['project']['dependencies'])
+    check('the runtime dependencies are declared',
+          any(d.startswith('pdfplumber') for d in declared)
+          and any(d.startswith('python-docx') for d in declared))
+    # doctor reported the external programs and said nothing about these, so a
+    # machine without them failed inside a stage instead of being told
+    reported = {name for name, _, _, _ in require.libraries()}
+    check('and doctor reports every one of them',
+          reported == {'pdfplumber', 'docx'})
+    check('a library that is not installed is seen as missing',
+          require.imported('definitely_not_installed') is False)
+    check('every library says where it comes from',
+          all(src.startswith('pip install') for _, _, _, src in require.libraries()))
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

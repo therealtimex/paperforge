@@ -1,0 +1,42 @@
+# Packaging, so a project can say `paperforge` without knowing where it lives.
+#
+# Every consumer used to hand-roll the answer: one real project's publish
+# script spent forty lines hunting for an interpreter that had pdfplumber and
+# resolving PAPERFORGE_HOME, and a reviewer auditing it met
+# `ModuleNotFoundError` on their first command. Each of those is a second copy
+# of an answer this file gives once.
+#
+# The version is not repeated here. It lives in `paperforge/__init__.py`, which
+# is the one the pipeline can read when the plugin manifest is not shipped
+# beside it, and `package_plugin.version_problems` holds all three to it.
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "paperforge"
+description = "Document build and publication pipeline for research projects"
+readme = "README.md"
+requires-python = ">=3.11"
+dynamic = ["version"]
+dependencies = [
+    # page measurement, the pagination gate and every cross-edition check
+    "pdfplumber>=0.11",
+    # the Word edition
+    "python-docx>=1.1",
+]
+
+[project.scripts]
+# Named in full for the reason bin/paperforge records: `pf` is the BSD packet
+# filter, and a two-letter command that reaches PATH should not collide with a
+# firewall.
+paperforge = "paperforge.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "paperforge.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["paperforge*"]
+
+[tool.setuptools.package-data]
+paperforge = ["theme/*", "profiles/*", "vendor/**/*"]

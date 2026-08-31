@@ -1101,6 +1101,18 @@ def main(argv=None):
               % ('chrome', 'ok' if found else 'MISSING',
                  'diagrams, page measurement, layout checks', found or ''))
         missing += not found
+
+        # what the pipeline imports, not only what it runs: a machine without
+        # these fails inside a stage, which is the situation doctor exists to
+        # prevent - one project's publish script spent fifteen lines hunting
+        # for an interpreter that had pdfplumber, because nothing would say
+        print('')
+        print('python libraries:')
+        for name, ok, what, source in require.libraries():
+            print('  %-18s %-9s %-52s %s'
+                  % (name, 'ok' if ok else 'MISSING', what, '' if ok else source))
+            missing += not ok
+
         # what the machine has is half the answer; the other half is whether
         # this project's own guidance still describes the pipeline it names
         stale = _doctor_project(a.config)

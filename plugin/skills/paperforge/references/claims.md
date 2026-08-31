@@ -144,9 +144,11 @@ settles and before `publish` is flipped.
 **The gate is only as good as the rereading.** `--accept` re-stamps; it cannot
 know whether anybody read anything. A gist accepted without being reread is a
 trusted summary that is wrong, and nothing downstream can tell — which is worse
-than never having written one. `--accept` names a single claim and prints the
-paragraph beside the gist for this reason, but the discipline is yours and no
-design replaces it.
+than never having written one. `--accept CLAIM` exists for this reason: it
+stamps that one claim and prints the paragraph beside its gist, so a build
+blocked on one paragraph is not cleared by an action that touches every other.
+Bare `--accept` still re-stamps all of them. The discipline is yours either way
+and no design replaces it.
 
 **A gist nobody reads is overhead.** If no reviewer opens the map and nothing
 is handed the document, the sentences are a cost with no reader.

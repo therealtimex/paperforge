@@ -185,13 +185,22 @@ def main():
         check('an undeclared document is noted, once',
               [n['rule'] for n in m['notes']] == ['nothing-declared'])
 
-        some = Path(_d) / 'some.md'
-        some.write_text('## A heading {#sec-a}\n\nProse pointing at @sec-a.\n',
-                        encoding='utf-8')
-        m = papermap.build({'source_path': str(some), 'include_paths': (),
-                            'annex_path': None})
-        check('a document with labels and no claims is partial, not empty',
-              'nothing-declared' not in [n['rule'] for n in m['notes']])
+        # three ways out of "declares nothing", and the note must be suppressed
+        # by each: a labelled section, a float, and a claim
+        for what, text in (
+                ('a labelled section',
+                 '## A heading {#sec-a}\n\nProse pointing at @sec-a.\n'),
+                ('a float',
+                 '```mermaid\ngraph TD\nA-->B\n```\n\n: A caption {#fig-a}\n\n'
+                 'Prose about @fig-a.\n'),
+                ('a claim',
+                 'Prose that argues. {#claim-a gist="It argues."}\n')):
+            some = Path(_d) / ('some-%s.md' % what.replace(' ', '-'))
+            some.write_text(text, encoding='utf-8')
+            m = papermap.build({'source_path': str(some), 'include_paths': (),
+                                'annex_path': None})
+            check('%s makes a map partial, not empty' % what,
+                  'nothing-declared' not in [n['rule'] for n in m['notes']])
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

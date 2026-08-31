@@ -275,16 +275,18 @@ def do_claims(docs, accept=False, quiet=False, only=None):
     """Gists are written by hand. This only ever checks them, except for
     --accept, which is somebody saying they have reread the paragraph."""
     blocking = 0
-    for root, sources in sorted(_claim_sources(docs).items()):
+    roots = sorted(_claim_sources(docs).items())
+    if accept and only is not None and not any(
+            only in claims.collect(sorted(s)) for _, s in roots):
+        # checked across every root before refusing: a project with two
+        # collections would otherwise reject an id the second one has
+        raise SystemExit('no claim %r in this project; `paperforge claims` '
+                         'lists what is there' % only)
+    for root, sources in roots:
         if accept:
-            try:
-                done = claims.accept(sorted(sources), root, only)
-            except KeyError:
-                # naming a claim that is not there is a typo, and re-stamping
-                # everything because one id was mistyped is the behaviour this
-                # option exists to remove
-                raise SystemExit('no claim %r in this project; `paperforge claims` '
-                                 'lists what is there' % only)
+            if only is not None and only not in claims.collect(sorted(sources)):
+                continue          # a different collection owns it
+            done = claims.accept(sorted(sources), root, only)
             # the paragraph, not a tally. Showing it is not proof anybody read
             # it - nothing is - but a count is proof they were not shown it
             for item in done['restamped'] if not quiet else []:
@@ -296,6 +298,19 @@ def do_claims(docs, accept=False, quiet=False, only=None):
             print('  %-38s %d accepted, %d restamped, %d dropped'
                   % (claims.LOCK, len(done['accepted']), len(done['changed']),
                      len(done['dropped'])))
+            if only is not None:
+                # accepting one says nothing about the others, and the stage
+                # reported the project clean while a second paragraph was still
+                # stale - the sweep could claim that honestly, a single accept
+                # cannot. Named, not counted: an exit status with no finding
+                # behind it is a puzzle rather than a report
+                left = [f for f in claims.check(sorted(sources), root)
+                        if f['severity'] == 'block']
+                blocking += len(left)
+                for f in left:
+                    print('      %-7s %s:%s  %s  %s'
+                          % (f['severity'], Path(f['file']).name, f['line'],
+                             f['id'], f['rule']))
             if done['changed']:
                 # accepting is somebody saying they reread the paragraph. Left
                 # uncommitted that assertion exists on one machine and vouches

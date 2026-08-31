@@ -153,7 +153,10 @@ def render(maps):
         if m['citations']:
             out.append('cites: %s' % ', '.join(m['citations']))
         for note in m['notes']:
-            out.append('note: %-20s %s  (%s)' % (note['rule'], note['id'], note['why']))
+            out.append('note: %-20s %s  (%s)'
+                       % (note['rule'], note['id'], note['why'])
+                       if note['id'] else
+                       'note: %-20s (%s)' % (note['rule'], note['why']))
         out.append('')
     return '\n'.join(out).rstrip() + '\n'
 
@@ -164,7 +167,13 @@ def as_json(maps):
 
 def _link(ident):
     """An edge as something a reader can follow. A citation key has no anchor
-    on this page - there is no entry here to jump to - so it stays plain."""
+    on this page - there is no entry here to jump to - so it stays plain.
+
+    Nor does a note about the document as a whole, which names no id: linking
+    one produced `<a href="#"></a>`, an empty anchor that jumps to the top.
+    """
+    if not ident:
+        return ''
     if ident.startswith('@'):
         return '<span class="cite">%s</span>' % ihtml.escape(ident)
     return '<a class="ref" href="#%s">%s</a>' % (ihtml.escape(ident), ihtml.escape(ident))

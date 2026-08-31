@@ -199,8 +199,13 @@ def accept(sources, root, only=None):
         if rec['gist'] is None or (only is not None and ident != only):
             continue
         digest = fingerprint(rec['text'])
-        if lock.get(ident, {}).get('hash') != digest:
+        moved = lock.get(ident, {}).get('hash') != digest
+        if moved:
             changed.append(ident)
+        # a named claim is shown whether or not it moved: somebody asked to
+        # reread that paragraph, and answering with silence because the hash
+        # already matched withholds the one thing they asked for
+        if moved or only is not None:
             restamped.append({'id': ident, 'gist': rec['gist'], 'text': rec['text'],
                               'was': lock.get(ident, {}).get('gist')})
         fresh[ident] = {'hash': digest, 'gist': rec['gist']}

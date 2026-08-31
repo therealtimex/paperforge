@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import claims
+from paperforge import claims, xref
 
 failures = []
 
@@ -244,6 +244,44 @@ def main():
               'claim-b' in kept['accepted'])
         swept = claims.accept([str(src)], root)
         check('a full pass is what drops it', 'claim-b' in swept['dropped'])
+
+    print('a label is not the reader\'s business, wherever it sits')
+    para = ('First sentence. {#claim-a gist="a summary"}\n'
+            'Second sentence, same paragraph because no blank line.')
+    check('a label that ends a line but not a paragraph is stripped',
+          '#claim-a' not in xref.strip_claims(para))
+    check('and the sentences stay separate',
+          xref.strip_claims(para).split('\n') ==
+          ['First sentence.', 'Second sentence, same paragraph because no blank line.'])
+    # Typst and Word join a paragraph's lines with a space, markdown with a
+    # newline, so a rule keyed to the end of a line fixed one edition of three
+    joined = 'First sentence. {#claim-a gist="a summary"} Second sentence.'
+    check('and the same label in a space-joined paragraph',
+          xref.strip_claims(joined) == 'First sentence. Second sentence.')
+    check('a paragraph entitled to end in braces keeps them',
+          xref.strip_claims('the set {a, b}') == 'the set {a, b}')
+    check('and an attribute that is not a claim is left alone',
+          xref.strip_claims('A heading {.part}') == 'A heading {.part}')
+    # a report that explains the syntax had its own example deleted before the
+    # emitter could set it as code; `verify.leaks` already excludes code from
+    # the artifact scan, so backticks are how one is written deliberately
+    shown = 'Write `{#claim-x gist="y"}` to label a paragraph.'
+    check('syntax shown in a code span is not a label being used',
+          xref.strip_claims(shown) == shown)
+    check('punctuation belonging to the sentence keeps its place',
+          xref.strip_claims('First {#claim-a gist="x"}, next') == 'First, next')
+
+    print('every edition strips it, and the artifact is checked for one')
+    from paperforge import verify
+    found = verify.leaks('concessions. {#claim-exec gist="a summary"} Thanh Hoa mirrors')
+    check('a label that survived into a built document is a leak',
+          [f['kind'] for f in found] == ['label'])
+    check('and ordinary prose with braces is not',
+          verify.leaks('an ordinary sentence about {a, b} sets') == [])
+    # an id may sit behind other attributes, as every attribute parser here
+    # allows, so a pattern that demanded `{#` would have missed `{.part #sec-x}`
+    check('an id behind another attribute is still a leak',
+          [f['kind'] for f in verify.leaks('a heading {.part #sec-x} leaked')] == ['label'])
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

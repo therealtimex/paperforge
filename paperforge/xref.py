@@ -112,6 +112,58 @@ def take_claim(text):
     return text[:m.start()].rstrip(), ident.group(1)
 
 
+# A claim label, wherever it appears. ATTR_RE is anchored to the end of the
+# string it is given, and the two sides gave it different strings: claims.py a
+# line, the emitters a paragraph. A label that ended a line without ending the
+# paragraph - what an author writes when the next sentence follows without a
+# blank line - was registered by one and printed raw by the other, on the cover
+# of a 95-page dossier.
+#
+# Identified by what it contains rather than where it sits, because the
+# emitters do not agree on that either: markdown joins a paragraph's lines with
+# a newline and Typst and Word join them with a space, so a rule keyed to the
+# end of a line would have fixed one edition and left two.
+CLAIM_LABEL_RE = re.compile(r'[ \t]*\{[^{}]*#claim-[\w-]+[^{}]*\}[ \t]*')
+CODE_SPAN_RE = re.compile(r'`[^`\n]+`')
+# punctuation that belongs to the words before the label, not after it
+CLING = ',.;:!?)]}»、。，；：！？'
+
+
+def strip_claims(text):
+    """The text with every claim label removed, wherever one appears.
+
+    The emitters want this and not `take_claim`: they are given a whole
+    paragraph, and a label inside one is still not the reader's business.
+
+    A label between two sentences leaves the space that separated them; one at
+    the end of a line leaves nothing, so the line does not gain trailing
+    whitespace it did not have.
+    """
+    def gap(m):
+        after = text[m.end():m.end() + 1]
+        # nothing before a line end, a string end, or punctuation that belongs
+        # to the sentence in front of the label: `First {#claim-a}, next` read
+        # as `First , next`
+        return '' if after in ('', '\n') or after in CLING else ' '
+
+    # A code span is syntax being shown, not a label being used: a report that
+    # explains `{#claim-x gist="..."}` had its own example deleted before the
+    # emitter could set it as code. Stashed, not skipped, so what is inside is
+    # returned untouched - and `verify.leaks` already excludes code from the
+    # artifact scan, which makes backticks the way to write one deliberately.
+    kept = []
+
+    def stash(m):
+        kept.append(m.group(0))
+        return '\x00k%d\x00' % (len(kept) - 1)
+
+    text = CODE_SPAN_RE.sub(stash, text)
+    text = CLAIM_LABEL_RE.sub(gap, text)
+    for i, s in enumerate(kept):
+        text = text.replace('\x00k%d\x00' % i, s)
+    return text
+
+
 def scan(lines, annex=False):
     """Labelled captions in document order, with what they caption.
 

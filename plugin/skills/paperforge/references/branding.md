@@ -205,6 +205,20 @@ with scroll-spy · part and annex banners · callouts · table frame with
 horizontal-scroll affordance · diagram figure with numbered caption · printed
 contents with measured page numbers.
 
+## The cover is a dark surface
+
+Everything on the cover takes its colour by inheritance, and a rule that
+colours an element *directly* beats an inherited value whatever the
+specificity. `strong { color:var(--navy-strong) }` — ink for white paper —
+reached the bolded lede of every report and rendered it at **1.09:1** against
+its own background.
+
+The cover restates what those rules would take (`.cover strong`, `.cover
+code`), rather than the body rules being scoped away: the ink rules are right
+for the body, and the surface that needs something different is the one that
+should say so. `tests/unit_palette.py` holds every colour that appears on the
+cover to WCAG AA, so the next token cannot arrive unreadable.
+
 ## Related
 
 `languages.md` · `layout.md` · `print.md` · `manifest.md`

@@ -119,6 +119,27 @@ than letting either fail quietly:
 
 Neither says anything in the output, which is why both block.
 
+## Where the label may sit
+
+At the end of the paragraph, or at the end of a line inside it — both work, and
+both are stripped from every edition before a reader sees them:
+
+```markdown
+A single jurisdiction refines the majority of several critical inputs.
+{#claim-concentration gist="One jurisdiction refines most critical inputs"}
+The next sentence, in the same paragraph because no blank line separates them.
+```
+
+The claim's own text is the run of lines **ending on its label** — the sentence
+after it belongs to the paragraph a reader sees and not to what the gist is
+hashed against. That is what lets a claim mark one assertion inside a longer
+block.
+
+This is worth stating because it did not work: a label that ended a line
+without ending the paragraph was registered by the claims layer and printed to
+the reader by every emitter, on the cover of a 95-page dossier, with `lint`
+reporting the document clean.
+
 ## When not to use one
 
 A gist is a standing commitment: one sentence to write, and a re-accept every

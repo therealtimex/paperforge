@@ -94,6 +94,11 @@ a number, because a reader counts what is on the page. Numbering counts
 2, and `@fig-` resolves to that. Tables and equations are numbered by their
 captions, because nothing prints a number for an unlabelled one.
 
+A heading worded the same as another — a report section and an annex section,
+most often — cannot be told apart by a contents entry naming it, so its page
+number is refused rather than guessed and `verify` says which entries that
+happened to. See `print.md`.
+
 An image is labelled the same way — the caption goes on the line under it, not
 in the `![alt](src)`. See `images.md`, including what happens to a caption
 written under something that carries none.

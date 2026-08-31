@@ -834,6 +834,17 @@ def do_verify(docs, cache, quiet=False):
                     if not quiet:
                         for label, why in a['untestable']:
                             print('          skip  %-46s %s' % (label, why))
+                # An entry with no number is neither confirmed nor wrong, so the
+                # line above reported a contents where five of six entries were
+                # blank as a clean sweep. A warning, not a refusal: the document
+                # is correct, its contents is just less useful than it looks.
+                if a['unnumbered'] and not quiet:
+                    print('      warn  %d contents entr%s could not be numbered - no '
+                          'unambiguous heading in the printed pages; see print.md'
+                          % (len(a['unnumbered']),
+                             'y' if len(a['unnumbered']) == 1 else 'ies'))
+                    for label in a['unnumbered'][:4]:
+                        print('          warn  %s' % label)
         print('  %-38s %s' % (d['output'], 'ok' if not problems else 'FAIL: ' + '; '.join(problems)))
         failed += bool(problems)
     return failed

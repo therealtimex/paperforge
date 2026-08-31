@@ -287,13 +287,14 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
     doc = open(html_path, encoding='utf-8').read()
     i = doc.find('<h2 id="%s"' % contents_anchor)
     if i < 0:
-        return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': []}
+        return _nothing()
     block = doc[i:doc.find('<h2 ', i + 10)]
     entries = [(norm(m.group(2), fold), int(m.group(1))) for m in re.finditer(
         r'<li><span class="toc-pg">(\d+)</span>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)',
         block, re.S)]
+    blank = unnumbered(block, fold)
     if not entries:
-        return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': []}
+        return dict(_nothing(), unnumbered=blank)
 
     with _pdfplumber().open(pdf_path) as pdf:
         pages = [norm(p.extract_text() or '', fold) for p in pdf.pages]
@@ -355,4 +356,34 @@ def audit(html_path, pdf_path, contents_anchor, part_pattern, section_pattern,
             wrong.append((label[:60], page, 'wording not found on this page'))
 
     return {'entries': len(entries), 'confirmed': confirmed,
-            'untestable': untestable, 'wrong': wrong}
+            'untestable': untestable, 'wrong': wrong, 'unnumbered': blank}
+
+
+def _nothing():
+    return {'entries': 0, 'confirmed': 0, 'untestable': [], 'wrong': [],
+            'unnumbered': []}
+
+
+def unnumbered(block, fold=True):
+    """Contents entries that were given no page number at all.
+
+    Everything else here validates the numbers that are present, which is a
+    check with no denominator: an entry that got nothing can be neither
+    confirmed nor wrong nor untestable, so a contents where five of six entries
+    are blank reported "1 confirmed, 0 untestable, 0 wrong" and read as clean.
+
+    The usual cause is two headings answering to the same words - `xref` and
+    `number_contents` refuse to guess which one an entry means, correctly,
+    because a wrong page number in a contents is worse than none. Refusing
+    quietly is the part that was wrong.
+    """
+    out = []
+    for m in re.finditer(r'<li>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)',
+                         block, re.S):
+        item = m.group(1)
+        if 'class="toc-pg"' in item:
+            continue
+        label = norm(item, fold)
+        if label:
+            out.append(label[:60])
+    return out

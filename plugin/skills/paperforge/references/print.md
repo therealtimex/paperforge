@@ -82,6 +82,39 @@ an A4 print at those margins.
 
 `--no-measure` skips the whole loop when iterating on content.
 
+### An entry that gets no number is reported
+
+A contents entry is numbered by matching it to the heading it names, and then
+finding that heading in the printed pages. Two things make that impossible, and
+both end the same way — the match is **refused rather than guessed** and the
+entry is left blank, because a wrong page number in a contents is worse than
+none:
+
+- **Two headings answer to the same words.** A report section and an annex
+  section worded alike; case and punctuation are normalised away, so
+  `## Domain 1. Downstream industrial cluster` and
+  `### Domain 1: Downstream Industrial Cluster` are the same identity.
+- **The heading does not open its own page.** A part or annex section is
+  required to start a page, which is what stops a number being aimed at a
+  summary list of the same words. An annex section sharing a page with the
+  annex title cannot pass that test — `en-sample` has one.
+
+Refusing quietly was the defect. Everything else in this check validates the
+numbers that are present, which has no denominator, so a 49-page report with
+five of its six entries blank reported `1 confirmed, 0 untestable, 0 wrong`.
+`verify` now names them:
+
+```
+page numbers: 1 confirmed, 0 untestable, 0 wrong
+warn  5 contents entries could not be numbered - no unambiguous heading
+      in the printed pages; see print.md
+    warn  domain 1. downstream industrial and chemical cluster
+```
+
+A **warning, not a refusal**: the document is correct and publishable, its
+contents is only less useful than it looks. The fix is in the source — word the
+two headings differently, and the entry finds its own.
+
 > **Limitation.** Page numbering and the pagination check both work by reading
 > the PDF's text back. Chrome embeds some fonts — CJK body faces among them —
 > without a usable `ToUnicode` map, so glyphs are drawn but cannot be read: the

@@ -643,6 +643,27 @@ def main():
     empty = pages.audit(__file__, __file__, 'nothing-here', '', '', '')
     check('an entry that cannot be tested is a list of reasons, not a tally',
           empty['untestable'] == [] and isinstance(empty['untestable'], list))
+    # three return paths, and a caller that reads the key on one of them
+    check('every way out of audit() answers the same questions',
+          set(empty) == {'entries', 'confirmed', 'untestable', 'wrong', 'unnumbered'})
+
+    # A check with no denominator: everything else in audit() validates the
+    # numbers that are present, so five blank entries out of six read as
+    # "1 confirmed, 0 untestable, 0 wrong" and the contents looked clean
+    block = ('<ol>'
+             '<li><strong>Domain 1. Downstream industrial cluster</strong></li>'
+             '<li><span class="toc-pg">8</span><strong>Domain 2. Diversification</strong></li>'
+             '<li><strong>Domain 3. Governance and ring-fencing</strong></li>'
+             '</ol>')
+    blank = pages.unnumbered(block)
+    check('an entry with no page number is reported', len(blank) == 2)
+    check('and it is named, not counted',
+          any('domain 1' in b for b in blank) and any('domain 3' in b for b in blank))
+    check('an entry that has one is not', not any('domain 2' in b for b in blank))
+    check('a contents where every entry is numbered reports nothing',
+          pages.unnumbered('<ol><li><span class="toc-pg">3</span>A part</li></ol>') == [])
+    check('and a contents with no entries at all reports nothing',
+          pages.unnumbered('<ol></ol>') == [])
 
     print('the publication allowlist')
     declared, blocked, embedded = {'report.md'}, {'REVIEW.md'}, {'annex.md'}

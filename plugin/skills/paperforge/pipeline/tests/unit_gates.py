@@ -643,6 +643,40 @@ def main():
     empty = pages.audit(__file__, __file__, 'nothing-here', '', '', '')
     check('an entry that cannot be tested is a list of reasons, not a tally',
           empty['untestable'] == [] and isinstance(empty['untestable'], list))
+    # audit() has three ways out and a caller that now reads the new key on
+    # each; the one below returns before the PDF is opened, which is the path a
+    # contents where *nothing* was numbered takes - the worst case, and the one
+    # that used to report `entries: 0` and say nothing at all
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as _d:
+        page = Path(_d) / 'doc.html'
+        page.write_text('<h2 id="c">Contents</h2><ol>'
+                        '<li><strong>A part nobody numbered</strong></li>'
+                        '</ol><h2 id="after">After</h2>', encoding='utf-8')
+        none = pages.audit(str(page), str(page), 'c', '', '', '')
+    check('every way out of audit() answers the same questions',
+          set(empty) == set(none)
+          == {'entries', 'confirmed', 'untestable', 'wrong', 'unnumbered'})
+    check('a contents where nothing was numbered still names its entries',
+          none['entries'] == 0 and len(none['unnumbered']) == 1)
+
+    # A check with no denominator: everything else in audit() validates the
+    # numbers that are present, so five blank entries out of six read as
+    # "1 confirmed, 0 untestable, 0 wrong" and the contents looked clean
+    block = ('<ol>'
+             '<li><strong>Domain 1. Downstream industrial cluster</strong></li>'
+             '<li><span class="toc-pg">8</span><strong>Domain 2. Diversification</strong></li>'
+             '<li><strong>Domain 3. Governance and ring-fencing</strong></li>'
+             '</ol>')
+    blank = pages.unnumbered(block)
+    check('an entry with no page number is reported', len(blank) == 2)
+    check('and it is named, not counted',
+          any('domain 1' in b for b in blank) and any('domain 3' in b for b in blank))
+    check('an entry that has one is not', not any('domain 2' in b for b in blank))
+    check('a contents where every entry is numbered reports nothing',
+          pages.unnumbered('<ol><li><span class="toc-pg">3</span>A part</li></ol>') == [])
+    check('and a contents with no entries at all reports nothing',
+          pages.unnumbered('<ol></ol>') == [])
 
     print('the publication allowlist')
     declared, blocked, embedded = {'report.md'}, {'REVIEW.md'}, {'annex.md'}

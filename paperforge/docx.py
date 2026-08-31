@@ -412,7 +412,7 @@ def convert(doc, lines, figures, label, images, brand, part_banner=None,
         # A claim's label is not the reader's business. Strip it here or
         # `{#claim-x}` prints at the end of the paragraph, which is the
         # defect take_equation records for `{#eq-x}`.
-        text, _ = xref.take_claim(' '.join(buf))
+        text = xref.strip_claims(' '.join(buf))
         _runs(doc.add_paragraph(), xref.substitute(text, table or {}))
     if landscape:
         _landscape(doc, False, columns)

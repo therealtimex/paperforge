@@ -43,6 +43,16 @@ body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans)
   line-height:1.6; }
 .cover-lede p { margin:0 0 8px; text-align:center; }
 .cover-lede a { color:var(--amber-bright); }
+/* The cover is a dark surface and everything on it takes its colour by
+   inheritance. A rule that colours an element *directly* beats an inherited
+   value whatever the specificity, so `strong { color:var(--navy-strong) }` -
+   ink for white paper - reached the bolded lede of every report and rendered
+   it at 1.09:1 against its own background. Restated here rather than scoped
+   away up there: the ink rules are right for the body, and the cover is the
+   surface that has to say what it needs. */
+.cover strong { color:inherit; }
+.cover code { color:var(--amber-bright); background:var(--amber-film);
+  border-color:var(--amber-veil); }
 
 .meta-grid { display:grid; gap:10px 34px; max-width:920px; margin:0 auto;
   grid-template-columns:repeat(auto-fit,minmax(310px,1fr)); text-align:left; }

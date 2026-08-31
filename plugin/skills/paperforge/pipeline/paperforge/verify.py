@@ -298,6 +298,12 @@ LEAKS = (
     ('entity', re.compile(r'&(?:[a-zA-Z][a-zA-Z0-9]{1,30}|#\d+);')),
     ('emphasis', re.compile(r'\*\*|(?<![\w`])__(?![\w_])')),
     ('escape', re.compile(r'\\[#$*_<>@\[\]]')),
+    # An attribute block on the page. Every emitter strips these, which is
+    # exactly why nothing looked for one in the output - and a claim label that
+    # ended a line without ending its paragraph reached the cover of a 95-page
+    # dossier while `lint` reported the document clean. Measured against the
+    # artifact, so it holds however the strippers change.
+    ('label', re.compile(r'\{#(?:claim|sec|fig|tbl|eq)-[\w-]+[^{}]*\}')),
 )
 
 

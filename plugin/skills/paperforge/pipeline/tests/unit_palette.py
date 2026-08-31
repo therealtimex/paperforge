@@ -76,6 +76,29 @@ def literals(source):
     return HEX.findall(' '.join(stripped))
 
 
+# WCAG 2.1 relative luminance and contrast, both straight from the spec, so a
+# floor here means what it means to everybody else.
+def _lum(hex_colour):
+    h = hex_colour.lstrip('#')
+    r, g, b = (int(h[i:i + 2], 16) / 255 for i in (0, 2, 4))
+    f = lambda c: c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+    return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+
+
+def contrast(a, b):
+    hi, lo = sorted((_lum(a), _lum(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+# The cover is a gradient, so every stop counts: text that clears the darkest
+# end and fails the lightest has still failed.
+COVER_BACKS = ('navy-deep', 'navy-dark', 'navy-mid')
+ON_COVER = ('paper',         # the cover's own text colour
+            'navy-wash',     # the lede, and what bold text inside it inherits
+            'amber-bright')  # the kind badge, links, code
+FLOOR = 4.5                  # WCAG AA for body text
+
+
 def main():
     root = Path(__file__).resolve().parents[1] / 'paperforge'
 
@@ -436,6 +459,26 @@ def measured():
         for kind, token in (('warning', 'red'), ('tip', 'green')):
             check('Word tells a %s from a note' % kind,
                   BRAND[token].lstrip('#').upper() in word.upper())
+
+    print('what the cover paints, and what stays readable on it')
+    # `strong { color:var(--navy-strong) }` is ink for white paper, and a rule
+    # that colours an element directly beats the colour it inherits from the
+    # cover - so the bolded lede of a 95-page dossier rendered at 1.09:1
+    # against its own background, through nineteen rounds of review. Nothing
+    # here read a contrast ratio, which is why it took a screenshot.
+    tokens = palette.resolve({}, {})
+    for fg in ON_COVER:
+        worst = min(contrast(tokens[fg], tokens[bg]) for bg in COVER_BACKS)
+        check('%s reads on the cover (%.1f:1)' % (fg, worst), worst >= FLOOR)
+    # the specific one that shipped: body ink, which nothing on the cover may
+    # inherit or be given
+    worst = max(contrast(tokens['navy-strong'], tokens[bg]) for bg in COVER_BACKS)
+    check('body ink on the cover would be unreadable, so nothing may set it',
+          worst < FLOOR)
+    css = (Path(__file__).resolve().parents[1]
+           / 'paperforge' / 'theme' / 'paperforge.css').read_text(encoding='utf-8')
+    check('and the cover restates what a bare element rule would take',
+          '.cover strong { color:inherit; }' in css)
 
     return 1 if failures else 0
 

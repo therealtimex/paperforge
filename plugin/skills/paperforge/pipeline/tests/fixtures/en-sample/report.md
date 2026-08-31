@@ -73,6 +73,9 @@ appraised.
 A single jurisdiction refines the majority of several critical inputs, which is
 what @fig-pipeline sets out end to end.
 {#claim-concentration gist="One jurisdiction refines most critical inputs"}
+The sentence after the label is part of the same paragraph, because no blank
+line separates them - which is how a claim label ends a line without ending a
+paragraph, and how one reached a reader.
 
 ---
 

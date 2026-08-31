@@ -153,7 +153,23 @@ def check(sources, root):
     present, lock, found = collect(sources), load(root), []
     for ident in sorted(present):
         rec, stamped = present[ident], lock.get(ident)
-        if rec['gist'] is None:
+        if not rec['text'].strip():
+            # The gate is the point of a gist, and this one can never fire:
+            # the hash covers nothing, so no edit to any prose will ever mark
+            # it stale. Six of seven accepted claims in a real dossier were in
+            # this state and everything reported them current - a gate that
+            # cannot fire is worse than none, because it reads as coverage.
+            #
+            # It happens when the label stands alone after a list, and a policy
+            # document's load-bearing statement is very often a list, so the
+            # finding names the forms that work rather than only refusing.
+            found.append({'rule': 'empty-claim', 'severity': 'block', 'id': ident,
+                          'file': rec['file'], 'line': rec['line'],
+                          'why': 'the label is attached to nothing, so its gist '
+                                 'is hashed against empty text and can never go stale',
+                          'fix': 'put the label at the end of the paragraph it '
+                                 'describes, or on the list item it belongs to'})
+        elif rec['gist'] is None:
             found.append({'rule': 'no-gist', 'severity': 'warn', 'id': ident,
                           'file': rec['file'], 'line': rec['line'],
                           'why': 'a labelled claim with nothing said about it'})
@@ -196,7 +212,12 @@ def accept(sources, root, only=None):
         raise KeyError(only)
     fresh, changed, restamped = dict(lock), [], []
     for ident, rec in present.items():
-        if rec['gist'] is None or (only is not None and ident != only):
+        # an empty claim is not stamped, ever: writing the empty hash into the
+        # lock is what made six accepted claims read as covered while their
+        # gate could not fire. `check` blocks on it; this refuses to record it
+        if rec['gist'] is None or not rec['text'].strip():
+            continue
+        if only is not None and ident != only:
             continue
         digest = fingerprint(rec['text'])
         moved = lock.get(ident, {}).get('hash') != digest

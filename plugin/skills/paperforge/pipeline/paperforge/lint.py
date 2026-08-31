@@ -9,6 +9,8 @@ embarrassing to ship, so the gate blocks rather than warns.
 import re
 from pathlib import Path
 
+from . import xref
+
 # (id, severity, pattern, why)
 #
 # Core rules apply to any research project: an unfinished marker or a raw
@@ -38,7 +40,7 @@ CORE = [
     # A claim is a node in the map, not a name to use in a sentence: `@sec-` and
     # `@fig-` resolve to something a reader can find on the page, and a claim has
     # no such form. Left unblocked it would print as its own source.
-    ('claim-reference', 'block', r'(?<![\w@])@claim-[\w-]+\b',
+    ('claim-reference', 'block', xref.NOT_BEFORE + r'@claim-[\w-]+',
      'a claim cannot be referred to in prose; refer to its section instead'),
 ]
 

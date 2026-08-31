@@ -366,6 +366,28 @@ def main():
     check('a document with too few distinctive words declines, with a reason',
           not short['usable'] and 'too few' in (short['why'] or ''))
 
+    print('a reference in a language that writes no spaces')
+    # `\w` is Unicode-aware, so the lookbehind guarding `name@fig-x` counted 见
+    # as a word character. Chinese, Japanese and Korean put no space before a
+    # reference, so the natural form was the one form the pattern refused: the
+    # reader got `@fig-shengchan` on the page, `dangling` saw no reference to
+    # report, and the orphan check blamed the author for the figure
+    table = {'fig-x': {'label': 'Figure 1'}, 'fig-x-2': {'label': 'Figure 2'},
+             'fig-a': {'label': '图 2'}}
+    check('a reference straight after a CJK character resolves',
+          xref.substitute('见@fig-a。', table) == '见图 2。')
+    check('and one the sentence runs straight into',
+          xref.substitute('见@fig-a的数据', table) == '见图 2的数据')
+    check('an id is trimmed to the longest declared label, not the first',
+          xref.substitute('@fig-x-2 too', table) == 'Figure 2 too')
+    check('a reference after a Latin word is still not one',
+          xref.substitute('mail me@fig-x', table) == 'mail me@fig-x')
+    check('an unknown id is still left alone and reported',
+          xref.substitute('@fig-nope here', table) == '@fig-nope here')
+    check('and dangling sees it through the same trimming',
+          [i for _, i in xref.dangling(['见@fig-a的数据', '@fig-nope'], table)]
+          == ['fig-nope'])
+
     print('a contents entry and the heading it names, in every script')
     # `markdown._norm` was a second copy of the normaliser, and it was the
     # ASCII-only one - `[^a-z0-9\\s.:]` erased Arabic and Chinese completely, so

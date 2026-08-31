@@ -94,6 +94,22 @@ a number, because a reader counts what is on the page. Numbering counts
 2, and `@fig-` resolves to that. Tables and equations are numbered by their
 captions, because nothing prints a number for an unlabelled one.
 
+### A reference in a language that writes no spaces
+
+`见@fig-shengchan。` is how a Chinese author writes a cross-reference, and for
+a long time it was the one form that did not work: the guard against
+`name@fig-x` used `\w`, which is Unicode-aware and counts 见 as a word
+character. The reference printed raw, nothing reported an unresolved reference
+— there was no reference as far as the pipeline was concerned — and the orphan
+check blamed the author for declaring a figure they had just referred to.
+
+It resolves now, and so does `@fig-shengchan的三个环节`, where the sentence runs
+straight on into the id. An id may contain any word character, because a
+Chinese heading slugifies to a Chinese id, so the match is trimmed back to the
+**longest declared label** — longest first, so `fig-x-2` wins over `fig-x`
+where both exist. Nothing is guessed: if no prefix is a declared label, the
+whole match is unresolved and reported exactly as before.
+
 A heading worded the same as another — a report section and an annex section,
 most often — cannot be told apart by a contents entry naming it, so its page
 number is refused rather than guessed and `verify` says which entries that

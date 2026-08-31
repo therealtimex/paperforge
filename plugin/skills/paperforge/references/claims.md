@@ -119,6 +119,41 @@ than letting either fail quietly:
 
 Neither says anything in the output, which is why both block.
 
+## When not to use one
+
+A gist is a standing commitment: one sentence to write, and a re-accept every
+time that paragraph materially changes. That cost is worth paying for the
+claims an argument rests on and nothing else.
+
+**Label the load-bearing claims, not the paragraphs.** In a six-domain report in
+four-part shape that is roughly one per part per domain — around two dozen, not
+sixty. Applied to everything, the gate becomes noise and the map becomes
+something nobody reads.
+
+**Take the cheap wins first.** `{#sec-}` ids on headings and labels on the
+floats the prose points at cost nothing ongoing, need no discipline, and give
+`paperforge map` real structure. Do those before deciding about gists — they
+are not the same commitment and suggesting them together makes the cheap one
+look as expensive as the dear one.
+
+**Adopt when the prose stops moving.** The value of the gate is proportional to
+how much the document changes *after* a claim was written, which is exactly why
+adopting mid-rewrite is a week of re-accepting. The moment is when the draft
+settles and before `publish` is flipped.
+
+**The gate is only as good as the rereading.** `--accept` re-stamps; it cannot
+know whether anybody read anything. A gist accepted without being reread is a
+trusted summary that is wrong, and nothing downstream can tell — which is worse
+than never having written one. `--accept CLAIM` exists for this reason: it
+stamps that one claim and prints the paragraph beside its gist, so a build
+blocked on one paragraph is not cleared by an action that touches every other.
+Bare `--accept` still re-stamps all of them. The discipline is yours either way
+and no design replaces it.
+
+**A gist nobody reads is overhead.** If no reviewer opens the map and nothing
+is handed the document, the sentences are a cost with no reader.
+
 ## Related
 
-`cross-references.md` · `figures.md` · `lint.md` · `commands.md`
+`cross-references.md` · `figures.md` · `lint.md` · `commands.md` ·
+`papermap.md`

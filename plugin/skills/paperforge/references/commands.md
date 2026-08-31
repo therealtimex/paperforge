@@ -5,6 +5,7 @@ paperforge doctor      # external tools, and whether this project's guidance is 
 paperforge status      # what is built, linked and published
 paperforge figures     # documents must agree on the project's canonical values
 paperforge claims      # a gist still says what its paragraph says — see claims.md
+paperforge claims --accept [claim-x]   # re-stamp one gist, or all of them
 paperforge lint        # refuse documents still carrying internal machinery
 paperforge build       # markdown -> self-contained HTML (+ PDF where declared)
 paperforge verify      # structural, layout, print and cross-edition checks

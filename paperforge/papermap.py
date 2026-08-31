@@ -104,6 +104,16 @@ def build(document, prof=None):
         if entry['id'] not in referenced:
             notes.append({'rule': 'never-referred-to', 'id': entry['id'],
                           'why': 'declared and printed, mentioned in no prose'})
+    # Every note above is per claim or per float, so a document with neither
+    # produced none - and a map of a 95-page dossier printed 163 lines of
+    # headings and said nothing about every one of them being a heading. It is
+    # not a finding: labelling is optional and stays optional. It is the
+    # difference between a map with nothing on it and a map that did not run.
+    if not claims and not any(s['id'] for s in sections) and not floats:
+        notes.append({'rule': 'nothing-declared', 'id': '',
+                      'why': 'this map is the headings: the document declares no '
+                             'sections, claims or floats to draw. See claims.md '
+                             'and cross-references.md'})
 
     return {'document': Path(document['source_path']).name,
             'sections': sections, 'floats': floats,
@@ -143,7 +153,10 @@ def render(maps):
         if m['citations']:
             out.append('cites: %s' % ', '.join(m['citations']))
         for note in m['notes']:
-            out.append('note: %-20s %s  (%s)' % (note['rule'], note['id'], note['why']))
+            out.append('note: %-20s %s  (%s)'
+                       % (note['rule'], note['id'], note['why'])
+                       if note['id'] else
+                       'note: %-20s (%s)' % (note['rule'], note['why']))
         out.append('')
     return '\n'.join(out).rstrip() + '\n'
 
@@ -154,7 +167,13 @@ def as_json(maps):
 
 def _link(ident):
     """An edge as something a reader can follow. A citation key has no anchor
-    on this page - there is no entry here to jump to - so it stays plain."""
+    on this page - there is no entry here to jump to - so it stays plain.
+
+    Nor does a note about the document as a whole, which names no id: linking
+    one produced `<a href="#"></a>`, an empty anchor that jumps to the top.
+    """
+    if not ident:
+        return ''
     if ident.startswith('@'):
         return '<span class="cite">%s</span>' % ihtml.escape(ident)
     return '<a class="ref" href="#%s">%s</a>' % (ihtml.escape(ident), ihtml.escape(ident))

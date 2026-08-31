@@ -487,8 +487,17 @@ def measured():
     lede = re.search(r'\.cover-lede\s+p\s*\{([^}]*)\}', css)
     check('the lede is set as prose, not as a caption',
           bool(lede) and 'justify' in lede.group(1))
+    # the property name is not the setting: `hyphens:none` is in this same
+    # stylesheet, and would have passed a check that only looked for the word
     check('and justified text is hyphenated, as the body is',
-          bool(lede) and 'hyphens' in lede.group(1))
+          bool(lede) and re.search(r'hyphens\s*:\s*auto', lede.group(1)))
+    # justification is worst on the narrowest measure, which is why the body
+    # gives it up there; the lede has to give it up with the body
+    narrow = re.search(r'@media\s*\(max-width:900px\)\s*\{(.*?)\n\}', css, re.S)
+    check('and both give it up on a narrow measure',
+          bool(narrow) and re.search(r'\.cover-lede\s+p[^{]*\{[^}]*left|'
+                                     r'main p[^{]*\.cover-lede p\s*\{[^}]*left',
+                                     narrow.group(1)))
 
     return 1 if failures else 0
 

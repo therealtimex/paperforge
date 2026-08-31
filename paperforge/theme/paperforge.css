@@ -286,7 +286,10 @@ footer { text-align:center; padding:30px 20px 46px; color:var(--muted); font-siz
   main { padding:30px 22px 44px; }
   main h2.part { font-size:1.2rem; padding:13px 16px; }
   body { font-size:16px; }
-  main p, main li { text-align:left; }
+  /* the lede goes with the body: justification is worst on the narrowest
+     measure, and leaving it behind here made the cover the one justified
+     block on a phone - the inconsistency this rule exists to prevent */
+  main p, main li, .cover-lede p { text-align:left; }
   .scroll-hint { display:block; }
 }
 

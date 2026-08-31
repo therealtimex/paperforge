@@ -38,6 +38,9 @@ A lede is whatever prose stands in the document head between the metadata block
 and the contents. It is set **justified and hyphenated**, the same as the body,
 because that is what the reader's eye meets next.
 
+Below 900px it goes flush left, with the body — justification is worst on the
+narrowest measure, which is why the body gives it up there too.
+
 It was centred until a real one arrived: 389 words, twenty lines, and no
 consistent left edge to return to. Centred is right for the sentence or two a
 lede is usually written as and hostile at that length — and nothing in the

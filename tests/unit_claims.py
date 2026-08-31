@@ -200,6 +200,51 @@ def main():
         check('and both block rather than warn',
               all(f['severity'] == 'block' for f in found))
 
+    print('accepting one claim, and being shown it')
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as _d:
+        root = Path(_d)
+        src = root / 'doc.md'
+        src.write_text(
+            'Yields fell 18%. {#claim-a gist="Salinity costs yield."}\n\n'
+            'Timing beats breeding. {#claim-b gist="Timing beats breeding."}\n',
+            encoding='utf-8')
+        claims.accept([str(src)], root)
+        # BOTH paragraphs move. With only one of them accepted, the other must
+        # still be stale afterwards - which is the whole point, and what a
+        # check on `changed` alone does not test: an untouched claim is absent
+        # from `changed` whether it was filtered out or simply had not moved
+        src.write_text(
+            'Yields fell 31%. {#claim-a gist="Salinity costs yield."}\n\n'
+            'Timing loses to breeding. {#claim-b gist="Timing beats breeding."}\n',
+            encoding='utf-8')
+        one = claims.accept([str(src)], root, 'claim-a')
+        check('accepting one re-stamps only that one', one['changed'] == ['claim-a'])
+        stale = {f['id'] for f in claims.check([str(src)], root)
+                 if f['severity'] == 'block'}
+        check('and the paragraph nobody accepted is still stale',
+              stale == {'claim-b'})
+        check('the others keep their record', 'claim-b' in one['accepted'])
+        check('the paragraph comes back with the gist, not a tally',
+              bool(one['restamped']) and '31%' in one['restamped'][0]['text']
+              and one['restamped'][0]['gist'] == 'Salinity costs yield.')
+
+        # re-stamping every claim because one id was mistyped is exactly what
+        # naming a claim is meant to remove
+        try:
+            claims.accept([str(src)], root, 'claim-typo')
+            check('a claim that does not exist is refused', False)
+        except KeyError:
+            check('a claim that does not exist is refused', True)
+
+        src.write_text('Only one now. {#claim-a gist="Salinity costs yield."}\n',
+                       encoding='utf-8')
+        kept = claims.accept([str(src)], root, 'claim-a')
+        check('accepting one says nothing about a claim that is gone',
+              'claim-b' in kept['accepted'])
+        swept = claims.accept([str(src)], root)
+        check('a full pass is what drops it', 'claim-b' in swept['dropped'])
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

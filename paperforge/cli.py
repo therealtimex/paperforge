@@ -271,13 +271,28 @@ def _claim_sources(docs):
     return roots
 
 
-def do_claims(docs, accept=False, quiet=False):
+def do_claims(docs, accept=False, quiet=False, only=None):
     """Gists are written by hand. This only ever checks them, except for
     --accept, which is somebody saying they have reread the paragraph."""
     blocking = 0
     for root, sources in sorted(_claim_sources(docs).items()):
         if accept:
-            done = claims.accept(sorted(sources), root)
+            try:
+                done = claims.accept(sorted(sources), root, only)
+            except KeyError:
+                # naming a claim that is not there is a typo, and re-stamping
+                # everything because one id was mistyped is the behaviour this
+                # option exists to remove
+                raise SystemExit('no claim %r in this project; `paperforge claims` '
+                                 'lists what is there' % only)
+            # the paragraph, not a tally. Showing it is not proof anybody read
+            # it - nothing is - but a count is proof they were not shown it
+            for item in done['restamped'] if not quiet else []:
+                print('  %s' % item['id'])
+                if item['was'] and item['was'] != item['gist']:
+                    print('      was:  %s' % item['was'])
+                print('      gist: %s' % item['gist'])
+                print('      says: %s' % _one_line(item['text'], 300))
             print('  %-38s %d accepted, %d restamped, %d dropped'
                   % (claims.LOCK, len(done['accepted']), len(done['changed']),
                      len(done['dropped'])))
@@ -339,6 +354,13 @@ def do_figures(docs, quiet=False):
         for ident in unused:
             print('      %-8s %-16s %s' % ('warn', ident, 'declared, stated in no document'))
     return total
+
+
+def _one_line(text, width):
+    """A paragraph as one line, so a gist and its prose can sit next to each
+    other. Truncated with a marker: a silent cut reads as the whole thing."""
+    flat = ' '.join(text.split())
+    return flat if len(flat) <= width else flat[:width - 1] + '…'
 
 
 def active_rules(cfg):
@@ -947,8 +969,12 @@ def main(argv=None):
                                      'brief', 'claims', 'map', 'doctor'])
     ap.add_argument('--json', action='store_true',
                     help='map: emit the map as JSON rather than for a reader')
-    ap.add_argument('--accept', action='store_true',
-                    help='claims: re-stamp every gist against its paragraph')
+    # optional value: `--accept` is every claim, `--accept claim-x` is one.
+    # A build blocked on one paragraph used to be cleared by an action that
+    # touched all of them
+    ap.add_argument('--accept', nargs='?', const=True, metavar='CLAIM',
+                    help='claims: re-stamp a gist against its paragraph, '
+                         'or every gist if no claim is named')
     ap.add_argument('--only', help='limit to one document or collection')
     ap.add_argument('--expires-at', help='ISO timestamp for artifact expiry')
     ap.add_argument('--no-measure', action='store_true', help='skip printed page numbering')
@@ -1151,7 +1177,8 @@ def main(argv=None):
 
     if a.command in ('claims', 'all'):
         print('claims:')
-        stale = do_claims(docs, a.accept, a.quiet)
+        stale = do_claims(docs, bool(a.accept), a.quiet,
+                          a.accept if isinstance(a.accept, str) else None)
         stages['claims'] = 'stale' if stale else 'ok'
         if a.command == 'claims':
             return 1 if stale else 0

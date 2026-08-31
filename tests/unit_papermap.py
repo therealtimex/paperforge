@@ -171,6 +171,28 @@ def main():
         check('and an edge crosses from the annex into the body',
               [c for c in m2['claims'] if c['id'] == 'claim-b'][0]['used_by'] == ['claim-a'])
 
+    print('a map with nothing on it says so')
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as _d:
+        bare = Path(_d) / 'bare.md'
+        bare.write_text('## A heading\n\nProse with no labels at all.\n\n'
+                        '## Another heading\n\nMore prose.\n', encoding='utf-8')
+        m = papermap.build({'source_path': str(bare), 'include_paths': (),
+                            'annex_path': None})
+        # every other note here is per claim or per float, so a document with
+        # neither produced none - and a 95-page dossier mapped to 163 lines of
+        # headings with nothing said about that
+        check('an undeclared document is noted, once',
+              [n['rule'] for n in m['notes']] == ['nothing-declared'])
+
+        some = Path(_d) / 'some.md'
+        some.write_text('## A heading {#sec-a}\n\nProse pointing at @sec-a.\n',
+                        encoding='utf-8')
+        m = papermap.build({'source_path': str(some), 'include_paths': (),
+                            'annex_path': None})
+        check('a document with labels and no claims is partial, not empty',
+              'nothing-declared' not in [n['rule'] for n in m['notes']])
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

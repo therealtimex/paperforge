@@ -178,17 +178,39 @@ def check(sources, root):
     return found
 
 
-def accept(sources, root):
-    """Re-stamp every claim that has a gist. Returns what changed."""
+def accept(sources, root, only=None):
+    """Re-stamp claims. `only` names one; without it, all of them.
+
+    Accepting is somebody saying they reread the paragraph, and it is the one
+    act here the pipeline cannot verify. It could at least stop making the
+    unread version the easiest: this used to re-stamp every claim in the
+    project whatever had gone stale, so a build blocked on one paragraph was
+    cleared by an action that touched all of them and reported a tally.
+
+    `restamped` carries the prose as well as the gist, so the caller can put
+    the two in front of whoever is accepting. Showing the text is not proof it
+    was read - nothing is - but a count of two is proof it was not shown.
+    """
     present, lock = collect(sources), load(root)
-    fresh, changed = {}, []
+    if only is not None and only not in present:
+        raise KeyError(only)
+    fresh, changed, restamped = dict(lock), [], []
     for ident, rec in present.items():
-        if rec['gist'] is None:
+        if rec['gist'] is None or (only is not None and ident != only):
             continue
         digest = fingerprint(rec['text'])
         if lock.get(ident, {}).get('hash') != digest:
             changed.append(ident)
+            restamped.append({'id': ident, 'gist': rec['gist'], 'text': rec['text'],
+                              'was': lock.get(ident, {}).get('gist')})
         fresh[ident] = {'hash': digest, 'gist': rec['gist']}
+    if only is None:
+        # a claim deleted from the source leaves the lock only on a full pass;
+        # accepting one says nothing about the others
+        gists = {i for i, r in present.items() if r['gist'] is not None}
+        for ident in set(fresh) - gists:
+            del fresh[ident]
     dropped = sorted(set(lock) - set(fresh))
     save(root, fresh)
-    return {'accepted': sorted(fresh), 'changed': sorted(changed), 'dropped': dropped}
+    return {'accepted': sorted(fresh), 'changed': sorted(changed),
+            'dropped': dropped, 'restamped': restamped}

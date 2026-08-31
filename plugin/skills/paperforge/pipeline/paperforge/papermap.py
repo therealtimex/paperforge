@@ -104,6 +104,16 @@ def build(document, prof=None):
         if entry['id'] not in referenced:
             notes.append({'rule': 'never-referred-to', 'id': entry['id'],
                           'why': 'declared and printed, mentioned in no prose'})
+    # Every note above is per claim or per float, so a document with neither
+    # produced none - and a map of a 95-page dossier printed 163 lines of
+    # headings and said nothing about every one of them being a heading. It is
+    # not a finding: labelling is optional and stays optional. It is the
+    # difference between a map with nothing on it and a map that did not run.
+    if not claims and not any(s['id'] for s in sections) and not floats:
+        notes.append({'rule': 'nothing-declared', 'id': '',
+                      'why': 'this map is the headings: the document declares no '
+                             'sections, claims or floats to draw. See claims.md '
+                             'and cross-references.md'})
 
     return {'document': Path(document['source_path']).name,
             'sections': sections, 'floats': floats,

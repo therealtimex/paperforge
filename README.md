@@ -98,6 +98,29 @@ visible failure rather than a silent one.
 realtimex-pp-cli install-plugin --path "$PWD/plugin" --agent
 ```
 
+## Installing
+
+```bash
+pip install -e .        # then `paperforge` is on PATH
+```
+
+Three invocations, all the same pipeline:
+
+```bash
+paperforge all              # installed
+python3 -m paperforge all   # from a checkout, no install
+bin/paperforge all          # by path, which is what `init` writes into a project
+```
+
+The last two need no installation, and the scaffolded `AGENTS.md` names the
+third with an absolute path. Installing exists so a project does not have to
+know where Paperforge lives — one real project's publish script spent forty
+lines hunting for an interpreter and resolving `PYTHONPATH`, and a reviewer
+auditing that project met `ModuleNotFoundError` on their first command.
+
+`paperforge doctor` reports the Python libraries the pipeline imports as well as
+the external programs it runs.
+
 ## Requirements
 
 `python3`, headless Chrome (diagrams, page measurement, layout checks),

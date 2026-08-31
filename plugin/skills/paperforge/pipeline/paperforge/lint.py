@@ -264,7 +264,7 @@ def check_orphans(document, prof=None):
     referenced = set()
     for lines in (body, annex_lines):
         for line in lines:
-            referenced.update(m.group(1) for m in xref.REF_RE.finditer(line))
+            referenced |= xref.referenced([line], table)
 
     findings = []
     for ident, entry in sorted(table.items()):

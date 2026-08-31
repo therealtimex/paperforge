@@ -99,7 +99,7 @@ def find(lines):
     return found
 
 
-def edges(rec):
+def edges(rec, table=None):
     """What a claim draws on: what it says, plus what it was told.
 
     The references and citations inside the paragraph are *in the paragraph* -
@@ -108,7 +108,7 @@ def edges(rec):
     `@claim-x` is blocked in prose and there is nothing on the page to resolve.
     """
     from . import citations as cite_mod
-    drawn = {m.group(1) for m in xref.REF_RE.finditer(rec['text'])}
+    drawn = xref.referenced([rec['text']], table)
     drawn |= {'@' + key for key in cite_mod.find(rec['text'])}
     return sorted(drawn | set(rec.get('uses') or []))
 

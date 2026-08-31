@@ -11,7 +11,7 @@ from . import (assemble, brief, claims, deck, diagrams, editions, figures, lint,
                require,
                markdown, papermap,
                pages, palette, profile, publish as pub, runs, scaffold, typst,
-               verify)
+               verify, xref)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -691,7 +691,13 @@ def do_verify(docs, cache, quiet=False):
     for d in docs:
         if not d['output_path'].exists():
             print('  %-38s NOT BUILT' % d['output']); failed += 1; continue
-        r = verify.check(d['output_path'], *assemble.sources(d))
+        # the label table, so a reference that runs into the sentence after it
+        # is stripped back to the id it names rather than taking the prose
+        body = assemble.read(d['source_path'], d.get('include_paths')).split('\n')
+        annex = (Path(d['annex_path']).read_text(encoding='utf-8').split('\n')
+                 if d.get('annex_path') else [])
+        r = verify.check(d['output_path'], *assemble.sources(d),
+                         table=xref.resolve(d['prof'], body, annex))
         if d.get('format') == 'map':
             # a map is not the document's prose, so the coverage check does not
             # apply: every line would read as missing. What must hold is that it

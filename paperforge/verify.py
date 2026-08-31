@@ -52,8 +52,13 @@ def _visible(html, keep_code=True):
     return re.sub(r'\s+', ' ', ihtml.unescape(re.sub(r'<[^>]+>', ' ', text)))
 
 
-def coverage(html, *sources):
-    """Every substantive markdown line must survive into the rendered document."""
+def coverage(html, *sources, table=None):
+    """Every substantive markdown line must survive into the rendered document.
+
+    `table` is the label table, when the caller has one. Without it a reference
+    is stripped whole, which is what this did before ids could hold a word
+    character from a language that writes no spaces.
+    """
     visible, missing = _visible(html), []
     for path in sources:
         if not path:
@@ -104,7 +109,10 @@ def coverage(html, *sources):
             t = maths_mod.DISPLAY_RE.sub(' ', t)     # renders as an SVG image
             t = maths_mod.INLINE_RE.sub(' ', t)
             t = cite_mod.CITE_RE.sub(' ', t)         # renders as a formatted marker
-            t = xref.REF_RE.sub(' ', t)              # renders as "Figure 3"
+            # only the declared id goes: the match runs on into the
+            # sentence where a language writes no spaces, and taking
+            # that with it shrinks what this check reads
+            t = xref.strip_refs(t, table)            # renders as "Figure 3"
             t = re.sub(r'<br\s*/?>', ' ', t)
             t = t.replace('**', '').replace('*', '').replace('`', '').replace('|', ' ')
             t = re.sub(r'\s+', ' ', ihtml.unescape(t)).strip()
@@ -143,14 +151,14 @@ ASSET_RE = re.compile(r'<(?:img|script|iframe|source|video|audio|embed)\b[^>]*?'
 LINK_RE = re.compile(r'<a\b[^>]*?\bhref="(https?://[^"]+)"', re.I)
 
 
-def check(html_path, *sources):
+def check(html_path, *sources, table=None):
     html = Path(html_path).read_text(encoding='utf-8')
     b = _Balance(); b.feed(html)
     ids = set(re.findall(r'id="([^"]+)"', html))
     links = re.findall(r'href="#([^"]+)"', html)
     return {
         'unclosed': b.stack, 'markup_errors': b.errors,
-        'missing_content': coverage(html, *sources),
+        'missing_content': coverage(html, *sources, table=table),
         'broken_anchors': [l for l in links if l not in ids],
         'anchors': len(links),
         'external_assets': sorted(set(a or b for a, b in ASSET_RE.findall(html))),

@@ -235,6 +235,38 @@ def resolve_ref(ident, table):
     return None, ''
 
 
+def referenced(lines, table=None):
+    """Every label the prose points at, as declared rather than as matched.
+
+    A reference has no closing delimiter and an id may hold any word character,
+    so in a language that writes no spaces the match runs on into the sentence:
+    `@fig-a的数据` matches `fig-a的数据`. Rendering trims that back to the label
+    it names; every other reader of REF_RE was still recording the untrimmed
+    string, so the orphan check and the map would report a figure as never
+    referred to on the strength of the reference to it.
+    """
+    out = set()
+    for line in lines:
+        for m in REF_RE.finditer(line):
+            found = resolve_ref(m.group(1), table)[0] if table else None
+            out.add(found or m.group(1))
+    return out
+
+
+def strip_refs(text, table=None):
+    """The line with its references removed, for a check that reads the output.
+
+    Only the declared id goes. The greedy match takes the prose after it in a
+    language that writes no spaces, and removing that from a coverage probe
+    quietly shrinks what is checked - 24 characters of a 48-character line, in
+    the fixture that found it.
+    """
+    def one(m):
+        found, tail = resolve_ref(m.group(1), table) if table else (None, '')
+        return ' ' + tail if found else ' '
+    return REF_RE.sub(one, text)
+
+
 def substitute(text, table, missing=None):
     """Replace @fig-x with its resolved label. Unknown ids are left alone and
     collected, so a reference to nothing is reported rather than silently

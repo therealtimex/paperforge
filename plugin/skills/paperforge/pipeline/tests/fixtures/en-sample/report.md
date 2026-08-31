@@ -8,6 +8,14 @@
 
 ---
 
+Refining capacity, not extraction, is the binding constraint on critical mineral
+supply. This fixture carries a lede because nothing else in the corpus did, and
+the block was set centred for years on the strength of never having held more
+than a sentence — a reader meeting twenty lines of it had no left edge to return
+to. It runs long enough here to be set as prose rather than as a caption.
+
+---
+
 ## CONTENTS
 
 1. **EXECUTIVE SUMMARY**

@@ -32,6 +32,22 @@ measured edge fade and a swipe hint appear only where content really is cut off.
 Cells tighten below 600px, which cuts the worst table overflow from 2.4× to 1.9×
 of screen width.
 
+## The cover lede is prose
+
+A lede is whatever prose stands in the document head between the metadata block
+and the contents. It is set **justified and hyphenated**, the same as the body,
+because that is what the reader's eye meets next.
+
+It was centred until a real one arrived: 389 words, twenty lines, and no
+consistent left edge to return to. Centred is right for the sentence or two a
+lede is usually written as and hostile at that length — and nothing in the
+corpus had a lede at all, so the setting had never been seen with prose in it.
+`en-sample` carries one now.
+
+A lede that runs to a full executive summary will push the metadata below the
+first screen. That is an editorial decision about what a reader should meet
+first, and the theme does not try to solve it.
+
 ## Self-containment
 
 No CDN, no runtime library, no external image. Diagrams are inline SVG, maths is

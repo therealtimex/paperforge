@@ -481,6 +481,14 @@ def measured():
     # hand-maintained stylesheet fires on reformatting that changes nothing
     check('and the cover restates what a bare element rule would take',
           bool(re.search(r'\.cover\s+strong\s*\{[^}]*color\s*:\s*inherit', css)))
+    # justification without hyphenation opens rivers on a wide measure, which
+    # is why `main p` carries both. A lede set centred read badly at the twenty
+    # lines a real one runs to, and the block had no fixture to be seen in
+    lede = re.search(r'\.cover-lede\s+p\s*\{([^}]*)\}', css)
+    check('the lede is set as prose, not as a caption',
+          bool(lede) and 'justify' in lede.group(1))
+    check('and justified text is hyphenated, as the body is',
+          bool(lede) and 'hyphens' in lede.group(1))
 
     return 1 if failures else 0
 

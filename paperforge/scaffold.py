@@ -144,6 +144,12 @@ once as `paperforge`:
   document, the file is carried inside every edition, and a path with no file
   blocks the build - it is the one thing here that can be true when written and
   false when built.
+- If you work around the pipeline, **say so**. Moving text to dodge a defect,
+  scripting the markup because it is tedious, wrapping the command because it
+  will not run - all of those are the right call under a deadline, and each one
+  removes the only trace that anything was wrong. `{invocation} report "what
+  happened"` writes a note carrying the version, the tools and the last run;
+  commit it and mention it in your handoff. Solve it *and* report it.
 - A missing tool is not yours to install. `{invocation} doctor` says what is
   absent and what it was for; say so and ask. Installing software changes
   somebody's machine, which is not a build step.

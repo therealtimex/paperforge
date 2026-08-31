@@ -2,6 +2,8 @@
 
 ```bash
 paperforge doctor      # tools, libraries, and whether this project's guidance is current
+paperforge report      # a note about something the pipeline made you work around
+
 paperforge status      # what is built, linked and published
 paperforge figures     # documents must agree on the project's canonical values
 paperforge claims      # a gist still says what its paragraph says — see claims.md

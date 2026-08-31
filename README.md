@@ -115,6 +115,7 @@ pip install pdfplumber python-docx
 
 ```bash
 bin/paperforge selftest         # builds the English fixture end to end
+python3 -m paperforge selftest  # the same, without the entry script
 bin/paperforge plugin --check   # bundle drift, reference links, one version
 node scripts/check-plugin-manifest.mjs   # the RealtimeX manifest contract
 ```

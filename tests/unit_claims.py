@@ -283,6 +283,48 @@ def main():
     check('an id behind another attribute is still a leak',
           [f['kind'] for f in verify.leaks('a heading {.part #sec-x} leaked')] == ['label'])
 
+    print('a claim attached to nothing')
+    import tempfile as _t2
+    with _t2.TemporaryDirectory() as _d2:
+        root = Path(_d2)
+        src = root / 'doc.md'
+        # the shape a policy document produces: the load-bearing statement is a
+        # list, so the label goes after it on a line of its own
+        src.write_text('- item one\n- item two\n\n{#claim-a gist="a summary"}\n\n'
+                       'A real statement.\n{#claim-b gist="another"}\n',
+                       encoding='utf-8')
+        by_id = {f['id']: f for f in claims.check([str(src)], root)}
+        check('an empty claim blocks rather than reading as covered',
+              by_id['claim-a']['rule'] == 'empty-claim'
+              and by_id['claim-a']['severity'] == 'block')
+        check('and the finding says what to write instead',
+              'end of the paragraph' in by_id['claim-a'].get('fix', ''))
+        check('the claim beside it is judged on its own merits',
+              by_id['claim-b']['rule'] == 'unaccepted')
+
+        check('its text really is empty',
+              claims.find(src.read_text().split('\n'))['claim-a']['text'] == '')
+
+        done = claims.accept([str(src)], root)
+        check('and accepting never records it',
+              done['accepted'] == ['claim-b'])
+
+        # the forms that do work, which the refusal points at
+        forms = {
+            'on the last list item': ['- one', '- two {#claim-c gist="g"}'],
+            'after a paragraph': ['A statement.', '{#claim-d gist="g"}'],
+            'ending a line': ['A statement. {#claim-e gist="g"}'],
+        }
+        for name, lines in forms.items():
+            found = claims.find(lines)
+            check('%s attaches to something' % name,
+                  all(r['text'].strip() for r in found.values()))
+
+    print('the invocation somebody auditing a project reaches for')
+    import importlib.util
+    check('python3 -m paperforge has an entry point',
+          importlib.util.find_spec('paperforge.__main__') is not None)
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

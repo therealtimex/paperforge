@@ -140,6 +140,40 @@ without ending the paragraph was registered by the claims layer and printed to
 the reader by every emitter, on the cover of a 95-page dossier, with `lint`
 reporting the document clean.
 
+## A label has to be attached to something
+
+`empty-claim` **blocks**. It fires when a label is written where the run of
+lines above it is empty, which is what happens when it stands alone after a
+list:
+
+```markdown
+- the first commitment
+- the second commitment
+
+{#claim-programme gist="Two commitments, both statutory"}   <- attached to nothing
+```
+
+The gist is then hashed against empty text — `e3b0c442…`, the SHA-256 of the
+empty string — and **the gate can never fire**: there is no prose under the
+hash for an edit to move. A peer reviewer found six of seven accepted claims in
+a real dossier in that state, by opening the lock file and recognising the
+prefix. Everything reported them current.
+
+Where the label goes instead:
+
+| Written | The claim covers |
+|---|---|
+| after a list, on its own line | **nothing — refused** |
+| on the last list item | that item |
+| after a paragraph, on its own line | the paragraph |
+| at the end of a paragraph's last line | the paragraph |
+| after a list, then prose, then the label | the prose |
+
+A claim's text stops at a list item on purpose, so the hash covers what a
+reader sees as one block. That is why a label after a list has nothing above it
+to collect, and why the answer is to attach the label to the statement rather
+than to loosen the boundary.
+
 ## When not to use one
 
 A gist is a standing commitment: one sentence to write, and a re-accept every

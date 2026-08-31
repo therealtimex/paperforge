@@ -372,10 +372,12 @@ def unnumbered(block, fold=True):
     confirmed nor wrong nor untestable, so a contents where five of six entries
     are blank reported "1 confirmed, 0 untestable, 0 wrong" and read as clean.
 
-    The usual cause is two headings answering to the same words - `xref` and
-    `number_contents` refuse to guess which one an entry means, correctly,
-    because a wrong page number in a contents is worse than none. Refusing
-    quietly is the part that was wrong.
+    Two causes, and this cannot tell them apart - which is why the report names
+    neither. Either two headings answer to the same words, or the heading was
+    never located in the printed pages: both are decided in `measure` and
+    `number_contents`, before anything is written, and both end in a blank
+    entry because a wrong page number in a contents is worse than none.
+    Refusing quietly is the part that was wrong.
     """
     out = []
     for m in re.finditer(r'<li>((?:(?!<[uo]l>|</li>).)*?)(?:</li>|<[uo]l>)',

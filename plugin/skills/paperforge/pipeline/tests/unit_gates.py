@@ -643,9 +643,22 @@ def main():
     empty = pages.audit(__file__, __file__, 'nothing-here', '', '', '')
     check('an entry that cannot be tested is a list of reasons, not a tally',
           empty['untestable'] == [] and isinstance(empty['untestable'], list))
-    # three return paths, and a caller that reads the key on one of them
+    # audit() has three ways out and a caller that now reads the new key on
+    # each; the one below returns before the PDF is opened, which is the path a
+    # contents where *nothing* was numbered takes - the worst case, and the one
+    # that used to report `entries: 0` and say nothing at all
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as _d:
+        page = Path(_d) / 'doc.html'
+        page.write_text('<h2 id="c">Contents</h2><ol>'
+                        '<li><strong>A part nobody numbered</strong></li>'
+                        '</ol><h2 id="after">After</h2>', encoding='utf-8')
+        none = pages.audit(str(page), str(page), 'c', '', '', '')
     check('every way out of audit() answers the same questions',
-          set(empty) == {'entries', 'confirmed', 'untestable', 'wrong', 'unnumbered'})
+          set(empty) == set(none)
+          == {'entries', 'confirmed', 'untestable', 'wrong', 'unnumbered'})
+    check('a contents where nothing was numbered still names its entries',
+          none['entries'] == 0 and len(none['unnumbered']) == 1)
 
     # A check with no denominator: everything else in audit() validates the
     # numbers that are present, so five blank entries out of six read as

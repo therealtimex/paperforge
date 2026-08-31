@@ -94,10 +94,16 @@ none:
   section worded alike; case and punctuation are normalised away, so
   `## Domain 1. Downstream industrial cluster` and
   `### Domain 1: Downstream Industrial Cluster` are the same identity.
-- **The heading does not open its own page.** A part or annex section is
-  required to start a page, which is what stops a number being aimed at a
-  summary list of the same words. An annex section sharing a page with the
-  annex title cannot pass that test — `en-sample` has one.
+- **The heading was not located in the printed pages.** A part or annex
+  section is required to *open* a page, which is what stops a number being
+  aimed at a summary list of the same words. An annex section sharing a page
+  with the annex title cannot pass that test, so the measurement never places
+  it and the entry has no page to carry. `en-sample` has one: page 10 opens
+  with the annex title and *Section 1. Source appraisal* sits below it.
+
+Both are decided while the page numbers are being **measured**, before anything
+is written into the contents. The check that reads the built document afterwards
+sees only a blank entry, and reports it without claiming which cause it was.
 
 Refusing quietly was the defect. Everything else in this check validates the
 numbers that are present, which has no denominator, so a 49-page report with
@@ -106,8 +112,7 @@ five of its six entries blank reported `1 confirmed, 0 untestable, 0 wrong`.
 
 ```
 page numbers: 1 confirmed, 0 untestable, 0 wrong
-warn  5 contents entries could not be numbered - no unambiguous heading
-      in the printed pages; see print.md
+warn  5 contents entries could not be numbered - no unambiguous heading in the printed pages; see print.md
     warn  domain 1. downstream industrial and chemical cluster
 ```
 

@@ -477,8 +477,10 @@ def measured():
           worst < FLOOR)
     css = (Path(__file__).resolve().parents[1]
            / 'paperforge' / 'theme' / 'paperforge.css').read_text(encoding='utf-8')
+    # what the rule does, not how it is typed: an exact-string match on a
+    # hand-maintained stylesheet fires on reformatting that changes nothing
     check('and the cover restates what a bare element rule would take',
-          '.cover strong { color:inherit; }' in css)
+          bool(re.search(r'\.cover\s+strong\s*\{[^}]*color\s*:\s*inherit', css)))
 
     return 1 if failures else 0
 

@@ -124,6 +124,9 @@ def take_claim(text):
 # a newline and Typst and Word join them with a space, so a rule keyed to the
 # end of a line would have fixed one edition and left two.
 CLAIM_LABEL_RE = re.compile(r'[ \t]*\{[^{}]*#claim-[\w-]+[^{}]*\}[ \t]*')
+CODE_SPAN_RE = re.compile(r'`[^`\n]+`')
+# punctuation that belongs to the words before the label, not after it
+CLING = ',.;:!?)]}»、。，；：！？'
 
 
 def strip_claims(text):
@@ -138,8 +141,27 @@ def strip_claims(text):
     """
     def gap(m):
         after = text[m.end():m.end() + 1]
-        return '' if after in ('', '\n') else ' '
-    return CLAIM_LABEL_RE.sub(gap, text)
+        # nothing before a line end, a string end, or punctuation that belongs
+        # to the sentence in front of the label: `First {#claim-a}, next` read
+        # as `First , next`
+        return '' if after in ('', '\n') or after in CLING else ' '
+
+    # A code span is syntax being shown, not a label being used: a report that
+    # explains `{#claim-x gist="..."}` had its own example deleted before the
+    # emitter could set it as code. Stashed, not skipped, so what is inside is
+    # returned untouched - and `verify.leaks` already excludes code from the
+    # artifact scan, which makes backticks the way to write one deliberately.
+    kept = []
+
+    def stash(m):
+        kept.append(m.group(0))
+        return '\x00k%d\x00' % (len(kept) - 1)
+
+    text = CODE_SPAN_RE.sub(stash, text)
+    text = CLAIM_LABEL_RE.sub(gap, text)
+    for i, s in enumerate(kept):
+        text = text.replace('\x00k%d\x00' % i, s)
+    return text
 
 
 def scan(lines, annex=False):

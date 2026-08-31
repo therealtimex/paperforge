@@ -303,7 +303,7 @@ LEAKS = (
     # ended a line without ending its paragraph reached the cover of a 95-page
     # dossier while `lint` reported the document clean. Measured against the
     # artifact, so it holds however the strippers change.
-    ('label', re.compile(r'\{#(?:claim|sec|fig|tbl|eq)-[\w-]+[^{}]*\}')),
+    ('label', re.compile(r'\{[^{}]*#(?:claim|sec|fig|tbl|eq)-[\w-]+[^{}]*\}')),
 )
 
 

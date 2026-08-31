@@ -262,6 +262,14 @@ def main():
           xref.strip_claims('the set {a, b}') == 'the set {a, b}')
     check('and an attribute that is not a claim is left alone',
           xref.strip_claims('A heading {.part}') == 'A heading {.part}')
+    # a report that explains the syntax had its own example deleted before the
+    # emitter could set it as code; `verify.leaks` already excludes code from
+    # the artifact scan, so backticks are how one is written deliberately
+    shown = 'Write `{#claim-x gist="y"}` to label a paragraph.'
+    check('syntax shown in a code span is not a label being used',
+          xref.strip_claims(shown) == shown)
+    check('punctuation belonging to the sentence keeps its place',
+          xref.strip_claims('First {#claim-a gist="x"}, next') == 'First, next')
 
     print('every edition strips it, and the artifact is checked for one')
     from paperforge import verify
@@ -270,6 +278,10 @@ def main():
           [f['kind'] for f in found] == ['label'])
     check('and ordinary prose with braces is not',
           verify.leaks('an ordinary sentence about {a, b} sets') == [])
+    # an id may sit behind other attributes, as every attribute parser here
+    # allows, so a pattern that demanded `{#` would have missed `{.part #sec-x}`
+    check('an id behind another attribute is still a leak',
+          [f['kind'] for f in verify.leaks('a heading {.part #sec-x} leaked')] == ['label'])
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

@@ -11,7 +11,7 @@ from . import (assemble, brief, claims, deck, diagrams, editions, figures, lint,
                require,
                markdown, papermap,
                pages, palette, profile, publish as pub, runs, scaffold, typst,
-               verify, xref)
+               friction, verify, xref)
 
 def find_config(explicit=None):
     """Locate the manifest: an explicit path, $PAPERFORGE_CONFIG, or the
@@ -995,7 +995,12 @@ def main(argv=None):
                     help='runs --diff: show what changed in the sources, not only which')
     ap.add_argument('command', choices=['build', 'lint', 'verify', 'publish', 'all',
                                         'status', 'selftest', 'plugin', 'figures', 'init', 'runs',
-                                     'brief', 'claims', 'map', 'doctor'])
+                                     'brief', 'claims', 'map', 'doctor', 'report'])
+    # one argument, not a list: `report --issue "..."` and `report "..." --issue`
+    # both have to work, and a greedy positional makes the first of those an
+    # unrecognised-argument error, which is a trap rather than a message
+    ap.add_argument('rest', nargs='?', metavar='WHAT',
+                    help='report: what happened, in a sentence')
     ap.add_argument('--json', action='store_true',
                     help='map: emit the map as JSON rather than for a reader')
     # optional value: `--accept` is every claim, `--accept claim-x` is one.
@@ -1019,6 +1024,8 @@ def main(argv=None):
     ap.add_argument('--publisher', help='init: full publisher line')
     ap.add_argument('--workspace', help='init: RealTimeX workspace for publishing')
     ap.add_argument('--no-git', action='store_true', help='init: skip git init')
+    ap.add_argument('--issue', action='store_true',
+                    help='report: print the latest note as an issue body')
     ap.add_argument('--check', action='store_true', help='report drift instead of syncing')
     ap.add_argument('--package', metavar='DIR',
                     help='plugin: write the installable zip into DIR')
@@ -1078,6 +1085,43 @@ def main(argv=None):
         for path in package_plugin.sync():
             print('  synced %s' % path)
         return 1 if broken else 0
+
+    if a.command == 'report':
+        # solve and report, not solve or report. An author with a deadline
+        # should work around a blocked pipeline; what was missing every time is
+        # the trace, and four workarounds in one project were found by a person
+        # scanning it weeks later rather than by anything here
+        try:
+            config = find_config(a.config)
+            root = config.parent.parent if config.parent.name == 'tools' else config.parent
+        except SystemExit:
+            config, root = None, Path.cwd()
+        # Two modes rather than a flag on a sentence: argparse cannot fill two
+        # positionals around an option, so `report --issue "..."` was an
+        # unrecognised-argument error while `report "..." --issue` worked -
+        # a trap rather than a message. Writing and rendering are separate acts
+        # anyway: the note is written, a person adds what they did instead, and
+        # `--issue` renders whatever it then says.
+        if a.issue:
+            latest = friction.latest(root)
+            if not latest:
+                raise SystemExit('no friction note here yet; write one with '
+                                 '`paperforge report "what happened"`')
+            # printed, never filed: an agent's reading of a symptom is usually
+            # right and its reading of a cause often is not
+            print(friction.issue_body(latest.read_text(encoding='utf-8'),
+                                      friction.facts(root, config)))
+            return 0
+        what = (a.rest or '').strip()
+        if not what:
+            raise SystemExit('say what happened: paperforge report "the lede '
+                             'never reached the PDF, so I moved it into the body"')
+        path = friction.write(root, what, friction.facts(root, config))
+        print('  %s' % path.relative_to(root))
+        print('  commit it, and say in the handoff that the pipeline was worked '
+              'around - the workaround is the part a later reader would '
+              'otherwise mistake for a choice')
+        return 0
 
     if a.command == 'doctor':
         # the tools are documented in SKILL.md and were never checked against

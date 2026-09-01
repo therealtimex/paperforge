@@ -100,3 +100,30 @@ an act of discipline, and a commit is an act.
 ## Related
 
 `commands.md` · `manifest.md` · `verify.md` · `publishing.md`
+
+## Friction: what the pipeline made somebody do instead
+
+`paperforge report "what happened"` writes a note under `.paperforge/friction/`,
+beside the run records and for the same reason: it is a by-product of working,
+not an act of discipline somebody has to remember.
+
+```
+paperforge report "the lede never reached the printed PDF, so I moved it into the body"
+paperforge report --issue      # the latest note, as something to paste into a tracker
+```
+
+The note carries what an author cannot be expected to assemble — the pipeline
+version, whether the project's guidance is current, what is missing from the
+machine, and which run was the last one. *"Paperforge didn't work"* is not
+diagnosable; those four things with a sentence are.
+
+**Solve it and report it.** Working around a blocked pipeline is the right call
+under a deadline. Four workarounds in one project — a document restructured to
+dodge a defect, a script to generate claim markup, forty lines of interpreter
+archaeology, a reviewer's own checking code — were each reasonable, and each
+removed the only trace that anything was wrong. All four were found weeks later
+by a person asking *"what did they have to write around us?"*, not by any gate.
+
+`--issue` **prints**; it never files. An agent's reading of a symptom is usually
+right and its reading of a cause often is not, and a tracker of plausible
+misattributions is one nobody reads.

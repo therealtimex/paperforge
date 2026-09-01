@@ -149,6 +149,12 @@ jobs:
       - name: Scaffold stamp unit checks
         run: python3 -m coverage run tests/unit_scaffold.py
 
+      # the note somebody leaves when the pipeline made them do something else:
+      # four workarounds in one project were found by a person scanning it
+      # weeks later, and each had removed the only trace anything was wrong
+      - name: Friction note unit checks
+        run: python3 -m coverage run tests/unit_friction.py
+
       # manuscript front matter: parsed, validated, and refusing to guess
       - name: Front matter unit checks
         run: python3 -m coverage run tests/unit_front.py

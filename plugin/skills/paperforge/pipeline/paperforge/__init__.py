@@ -9,4 +9,4 @@
 # Three copies of one number is two chances to drift, which is why
 # `package_plugin.version_problems` holds all three to the same value and the
 # release refuses a tag that disagrees.
-__version__ = '3.8.0'
+__version__ = '4.0.0'

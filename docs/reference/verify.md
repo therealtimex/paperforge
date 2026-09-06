@@ -10,7 +10,9 @@ after a real defect got past everything else.
 - **Anchors** — every internal `href="#…"` resolves.
 - **Self-containment** — no `http(s)://` reference in the built file.
 - **Layout** — no horizontal overflow at 1440 / 1024 / 768 / 390px, nothing
-  clipped in print.
+  clipped in print. A manifest can set `narrow_layout = false` for a document
+  or its type to omit widths below 768px; the document line then reports
+  `layout: wide only`, while every other verification check still runs.
 - **Raw markup leaks** — HTML tags, real HTML entities, `**`, or Typst escapes
   that reached the rendered page in *either* edition.
 - **External assets** — a remote `src`, or a stylesheet `href`. These are
@@ -63,6 +65,13 @@ A clean run states what it confirmed, not just that it passed:
       editions: 18 page-opening headings agree, 10 figures in both
       page numbers: 46 confirmed, 1 untestable, 0 wrong
   report.html                            ok
+```
+
+When a manifest deliberately scopes the browser probe, that scope is visible
+on the document line rather than looking like the default full-width pass:
+
+```
+  process-record.html                    layout: wide only
 ```
 
 "untestable" is not "passed": it means the check declined, with a reason. See

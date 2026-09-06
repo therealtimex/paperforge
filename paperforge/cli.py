@@ -144,6 +144,15 @@ def columns_of(d):
     return n
 
 
+def narrow_layout_of(d):
+    """Whether verification includes widths below 768px; true by default."""
+    value = d.get('narrow_layout', True)
+    if not isinstance(value, bool):
+        raise SystemExit('document %r sets narrow_layout = %r; use true or false'
+                         % (d.get('source', d.get('id', '?')), value))
+    return value
+
+
 def binding_of(d):
     """Whether the print edition is set for binding, refusing what cannot be.
 
@@ -206,7 +215,14 @@ def load(config=None):
                 raise SystemExit('document %r declares unknown type %r; declare it under '
                                  '[types.%s] or use one of: %s'
                                  % (d.get('id', '?'), kind, kind, ', '.join(sorted(types))))
-            shared.update(types.get(kind, {}))
+            type_settings = types.get(kind, {})
+            # Types provide the normal setting, but this key is deliberately
+            # per-document too: an internal process record can carry exact,
+            # unbreakable source text without weakening its sibling documents.
+            local_narrow_layout = shared.get('narrow_layout')
+            shared.update(type_settings)
+            if local_narrow_layout is not None:
+                shared['narrow_layout'] = local_narrow_layout
             # flat form: the document is its own single edition
             entries = editions or {col_profile: {k: shared.pop(k) for k in
                                                  ('source', 'output', 'annex', 'publish')
@@ -241,6 +257,7 @@ def load(config=None):
                 if doc.get('page_numbers') and not doc.get('contents_heading') and prof:
                     doc['contents_heading'] = prof['structure'].get('contents_heading')
                 doc.setdefault('publish', False)
+                doc['narrow_layout'] = narrow_layout_of(doc)
                 # checked here rather than where it is used: a deck returns
                 # from the build before opts() is reached, so a refusal that
                 # lived there could never have fired for the one document type
@@ -794,8 +811,11 @@ def do_verify(docs, cache, quiet=False):
                 print('      editions: %d page-opening headings agree, %d figures in both'
                       % (ed['expected_openers'], ed['figures_html']))
 
+        narrow_layout = narrow_layout_of(d)
+        widths = (verify.LAYOUT_WIDTHS if narrow_layout else
+                  tuple(width for width in verify.LAYOUT_WIDTHS if width >= 768))
         try:
-            lay = verify.layout(d['output_path'])
+            lay = verify.layout(d['output_path'], widths=widths)
         except RuntimeError as err:
             # the layout probe renders the page at four widths; if the browser
             # will not come back, that check has no answer. Untestable is never
@@ -896,7 +916,9 @@ def do_verify(docs, cache, quiet=False):
                              'y' if len(a['unnumbered']) == 1 else 'ies'))
                     for label in a['unnumbered'][:4]:
                         print('          warn  %s' % label)
-        print('  %-38s %s' % (d['output'], 'ok' if not problems else 'FAIL: ' + '; '.join(problems)))
+        verdict = ('FAIL: ' + '; '.join(problems) if problems else
+                   'ok' if narrow_layout else 'layout: wide only')
+        print('  %-38s %s' % (d['output'], verdict))
         failed += bool(problems)
     return failed
 

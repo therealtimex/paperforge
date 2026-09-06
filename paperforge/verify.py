@@ -198,7 +198,10 @@ document.querySelectorAll('.table-frame,figure.diagram').forEach(function(f){
 document.getElementById('pf').textContent=JSON.stringify(R);});</script></body>"""
 
 
-def layout(html_path, widths=(1440, 1024, 768, 390)):
+LAYOUT_WIDTHS = (1440, 1024, 768, 390)
+
+
+def layout(html_path, widths=LAYOUT_WIDTHS):
     """No document should overflow horizontally at any supported width."""
     html = Path(html_path).read_text(encoding='utf-8')
     probe = Path(html_path).with_suffix('.probe.html')

@@ -7,6 +7,8 @@ rather than silence", "the nearest documents.toml above the working directory",
 because CI always passes an explicit --config and never mistypes a type name.
 A documented promise nothing exercises is exactly what this repo gates against.
 """
+import contextlib
+import io
 import os
 import sys
 import tempfile
@@ -164,6 +166,62 @@ def main():
               any(d['source'] == 'note.md' for d in docs))
         check('a document defaults to not publishable', not any(d['publish'] for d in docs))
 
+        scoped_manifest = MANIFEST.replace(
+            'page_numbers = true', 'page_numbers = true\nnarrow_layout = false')
+        scoped_path = root / 'scoped.toml'
+        scoped_path.write_text(scoped_manifest, encoding='utf-8')
+        _, scoped_docs = cli.load(str(scoped_path))
+        scoped_reports = [d for d in scoped_docs if d['source'].startswith('report')]
+        check('a type can scope verification to wide layouts',
+              all(d.get('narrow_layout') is False for d in scoped_reports))
+        check('the narrow layout probe defaults on',
+              next(d for d in scoped_docs if d['source'] == 'note.md').get('narrow_layout') is True)
+
+        override_path = root / 'scoped-override.toml'
+        override_path.write_text(
+            scoped_manifest.replace('  type = "case-study"',
+                                    '  type = "case-study"\n  narrow_layout = true'),
+            encoding='utf-8')
+        _, override_docs = cli.load(str(override_path))
+        check('a document can override its type narrow-layout setting',
+              all(d.get('narrow_layout') is True for d in override_docs
+                  if d['source'].startswith('report')))
+        invalid_scope = root / 'invalid-scope.toml'
+        invalid_scope.write_text(
+            scoped_manifest.replace('narrow_layout = false',
+                                    'narrow_layout = "sometimes"'),
+            encoding='utf-8')
+        raises('a narrow-layout setting must be boolean',
+               lambda: cli.load(str(invalid_scope)))
+
+        # Simulate the measured defect: one document is sound at 768px and
+        # wider, but an unbreakable process-record string overflows at 390px.
+        # This has to exercise do_verify, not only layout(), so the manifest
+        # setting and its visible run-record verdict are both covered.
+        wide = scoped_reports[0]
+        cli.markdown.build(wide['source_path'], wide['output_path'], **cli.opts(wide))
+        real_layout = cli.verify.layout
+        def phone_overflow(_path, widths=(1440, 1024, 768, 390)):
+            return {width: {'over': int(width == 390), 'clip': 0}
+                    for width in widths}
+        cli.verify.layout = phone_overflow
+        try:
+            scoped_out = io.StringIO()
+            with contextlib.redirect_stdout(scoped_out):
+                scoped_result = cli.do_verify([wide], root / '.cache')
+            default_out = io.StringIO()
+            with contextlib.redirect_stdout(default_out):
+                default_result = cli.do_verify([{**wide, 'narrow_layout': True}],
+                                               root / '.cache')
+        finally:
+            cli.verify.layout = real_layout
+        check('a 390px-only overflow verifies when narrow layout is off',
+              scoped_result == 0 and 'layout: wide only' in scoped_out.getvalue()
+              and 'skip  layout:' not in scoped_out.getvalue())
+        check('the same overflow fails when the default probe is used',
+              default_result == 1 and 'horizontal overflow at [390]'
+              in default_out.getvalue())
+
         bad = root / 'bad.toml'
         bad.write_text(MANIFEST.replace('type = "case-study"', 'type = "case-stdy"'),
                        encoding='utf-8')
@@ -211,7 +269,6 @@ def main():
                                  '--config', str(root / 'documents.toml')]))
         # a check that cannot fail reads as coverage: assert argparse actually
         # knows the flag rather than that a docstring mentions it
-        import contextlib, io
         with contextlib.redirect_stdout(io.StringIO()):
             knows = cli.main(['doctor', '--draft']) == 0
         check('and argparse knows the flag, so the refusal is reachable', knows)

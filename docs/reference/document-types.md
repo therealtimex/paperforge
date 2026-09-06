@@ -45,6 +45,25 @@ trim = "a4"          # a thesis is bound, and bound A4
 keys override. An **undeclared type is an error**, not silence — a mistyped
 `case-stdy` used to render quietly as a report.
 
+## Scoping the narrow layout probe
+
+Verification normally probes 1440, 1024, 768 and 390 px. A type for an
+internal document that must preserve unbreakable source text can set
+`narrow_layout = false`; verify still checks 768 px and wider, and its document
+line reads `layout: wide only` rather than `ok`. The default is `true`.
+
+```toml
+[types.process-record]
+extends = "report"
+narrow_layout = false
+publish = false
+```
+
+The key can also be written on one `[[collection.document]]`, where it
+overrides the type setting for that document. This scopes only the narrow
+browser widths. Markup, coverage, anchors, external assets, print, and
+cross-edition verification are unchanged.
+
 ## Related
 
 `manifest.md` · `books.md` · `decks.md` · `layout.md` · `print.md`

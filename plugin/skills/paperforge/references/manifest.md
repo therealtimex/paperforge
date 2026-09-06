@@ -76,6 +76,7 @@ writes `50.000` where English writes `50,000`. See `figures.md`.
 | `docx = true` | Word edition — a working document the reader can edit; see `docx.md` |
 | `review = true` | A blind review copy: line-numbered, anonymised, double-spaced; see `review-copy.md` |
 | `columns = 2` | A two-column manuscript, in the print editions only; see `columns.md` |
+| `narrow_layout` | Whether verify probes widths below 768 px; defaults to `true`. Set `false` only for a document whose declared type permits a wide-only reading layout. |
 | `binding`, `trim` | Set by `type = "book"`, not written here; see `books.md` |
 | `bibliography`, `citation_style` | See `citations.md` |
 | `publish` | The allowlist flag |

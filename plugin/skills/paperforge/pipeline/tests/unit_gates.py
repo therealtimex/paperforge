@@ -860,12 +860,17 @@ def main():
         # code span are literal text. Stripping both made coverage search for
         # `materials.obtainable[].horizon` while the correctly rendered page
         # contained `materials.obtainable[*].horizon`.
+        # The shape is the real one: a list item of several code spans holding
+        # colons and empty quotes, which is what the probe splits on. A shorter
+        # fixture passed on the broken code through the word-quorum fallback.
         cov.write_text(
-            '**Input fields** include `a[*].b` and remain strictly empty '
-            'in this rendered process record.\n', encoding='utf-8')
-        rendered = ('<html><body><main><p><strong>Input fields</strong> '
-                    'include <code>a[*].b</code> and remain strictly empty '
-                    'in this rendered process record.</p></main></body></html>')
+            '- `owner: ""`, `reviewers: []`, `materials.obtainable[*].horizon: ""`, '
+            '`handoff.first_check: ""` remain strictly empty.\n', encoding='utf-8')
+        rendered = ('<html><body><main><ul><li><code>owner: &quot;&quot;</code>, '
+                    '<code>reviewers: []</code>, '
+                    '<code>materials.obtainable[*].horizon: &quot;&quot;</code>, '
+                    '<code>handoff.first_check: &quot;&quot;</code> remain strictly empty.'
+                    '</li></ul></main></body></html>')
         check('coverage strips emphasis outside code but keeps code literal',
               verify.coverage(rendered, cov) == [])
 

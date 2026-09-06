@@ -856,6 +856,19 @@ def main():
         check('and ordinary prose that did not render still is',
               any('absent' in g for g in gone))
 
+        # Emphasis markers are source syntax, but the same characters inside a
+        # code span are literal text. Stripping both made coverage search for
+        # `materials.obtainable[].horizon` while the correctly rendered page
+        # contained `materials.obtainable[*].horizon`.
+        cov.write_text(
+            '**Input fields** include `a[*].b` and remain strictly empty '
+            'in this rendered process record.\n', encoding='utf-8')
+        rendered = ('<html><body><main><p><strong>Input fields</strong> '
+                    'include <code>a[*].b</code> and remain strictly empty '
+                    'in this rendered process record.</p></main></body></html>')
+        check('coverage strips emphasis outside code but keeps code literal',
+              verify.coverage(rendered, cov) == [])
+
     print('structural checks on a document built to be broken')
     with tempfile.TemporaryDirectory() as tmp:
         src = Path(tmp) / 'report.md'

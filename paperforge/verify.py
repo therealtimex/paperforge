@@ -52,6 +52,23 @@ def _visible(html, keep_code=True):
     return re.sub(r'\s+', ' ', ihtml.unescape(re.sub(r'<[^>]+>', ' ', text)))
 
 
+CODE_SPAN_RE = re.compile(
+    r'(?<!`)(?P<ticks>`+)(?!`)(?P<code>.*?)(?<!`)(?P=ticks)(?!`)')
+
+
+def _coverage_text(text):
+    """Remove inline Markdown syntax without changing literal code text."""
+    def prose(value):
+        return value.replace('*', '').replace('`', '').replace('|', ' ')
+
+    out, end = [], 0
+    for match in CODE_SPAN_RE.finditer(text):
+        out.extend((prose(text[end:match.start()]), match.group('code')))
+        end = match.end()
+    out.append(prose(text[end:]))
+    return ''.join(out)
+
+
 def coverage(html, *sources, table=None):
     """Every substantive markdown line must survive into the rendered document.
 
@@ -114,7 +131,11 @@ def coverage(html, *sources, table=None):
             # that with it shrinks what this check reads
             t = xref.strip_refs(t, table)            # renders as "Figure 3"
             t = re.sub(r'<br\s*/?>', ' ', t)
-            t = t.replace('**', '').replace('*', '').replace('`', '').replace('|', ' ')
+            # Emphasis and table markers are source syntax in prose, but the
+            # same characters inside a code span are literal text. Stripping
+            # both made coverage search for `a[].b` when a correctly rendered
+            # page contained `a[*].b`, falsely reporting the line as missing.
+            t = _coverage_text(t)
             t = re.sub(r'\s+', ' ', ihtml.unescape(t)).strip()
             if len(t) < 12:
                 continue

@@ -219,6 +219,14 @@ pre code { background:none; border:0; color:inherit; padding:0; }
 [role="doc-bibliography"] li, [role="doc-bibliography"] a {
   overflow-wrap:anywhere; word-break:break-word; }
 
+/* Q-008 put a 52-character plain-text URL in a list item: its 508px token
+   widened a 500px viewport because only bibliography links and table cells
+   could break long tokens. Prose carries locators too, so every prose
+   container gets the same last-resort break without changing ordinary text. */
+main p, main li, main dd, main dt, main blockquote, main figcaption,
+.cover-lede p {
+  overflow-wrap:anywhere; word-break:break-word; }
+
 .maths svg { display:inline; }
 .maths-display { display:block; text-align:center; margin:14px 0 18px; }
 .maths-display svg { max-width:100%; height:auto; }

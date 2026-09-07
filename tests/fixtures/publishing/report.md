@@ -46,6 +46,10 @@ A bulleted list with a nested level:
   - no network at view time
 - Print edition
   - Typst, footnotes at the foot of the page
+- Long-token locator: https://abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr.example
+
+A prose locator carries the same long token:
+https://abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqr.example
 
 > [!NOTE]
 > A callout must not split across a page, and must render in both editions.

@@ -173,6 +173,24 @@ def main():
         check('an unusable override names the missing dependency clearly',
               missing.returncode != 0 and 'pdfplumber' in missing.stderr)
 
+        liar = Path(tmp) / 'lying-python'
+        liar.write_text(
+            '#!/bin/sh\n'
+            'if [ "$1" = "-c" ]; then exit 0; fi\n'
+            'PYTHONPATH= exec %s -S "$@"\n' % shlex.quote(capable or sys.executable),
+            encoding='utf-8')
+        liar.chmod(0o755)
+        try:
+            one_hop = subprocess.run(
+                [str(launcher), '--help'],
+                env=dict(os.environ, PAPERFORGE_PYTHON=str(liar)),
+                capture_output=True, text=True, timeout=5)
+        except subprocess.TimeoutExpired:
+            one_hop = None
+        check('a lying capability probe stops after one re-exec',
+              one_hop is not None and one_hop.returncode != 0
+              and 'pdfplumber' in one_hop.stderr)
+
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))
         return 1

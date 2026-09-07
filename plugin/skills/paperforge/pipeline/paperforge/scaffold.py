@@ -111,7 +111,8 @@ def invocation_drift(root, current=None):
         found = None
     recorded = found.get('invocation') if isinstance(found, dict) else None
     if not recorded:
-        return {'state': 'unknown', 'why': 'this scaffold predates recorded invocations'}
+        return {'state': 'unknown', 'why': 'this scaffold predates recorded invocations; '
+                'run `init --refresh` to record one'}
     recorded = str(Path(recorded).resolve())
     running = str(Path(current or entry_point()).resolve())
     if recorded != running:
@@ -224,8 +225,23 @@ def _claude_pointer(root):
         return str(exc)
 
 
+def _claude_pointer_is_owned(link):
+    """Whether refresh may replace this path without destroying user work."""
+    link = Path(link)
+    if link.is_symlink() or not link.exists():
+        return True
+    if not link.is_file():
+        return False
+    try:
+        return link.read_text(encoding='utf-8') == CLAUDE_IMPORT
+    except (OSError, UnicodeError):
+        # An unreadable or non-text file cannot prove it is the fallback that
+        # init wrote. Refresh promises to leave every other source alone.
+        return False
+
+
 def _title_from_manifest(root):
-    """Recover the title written into a scaffolded manifest's first line."""
+    """Recover the title without discarding an existing guidance heading."""
     import re
     path = Path(root) / 'documents.toml'
     if not path.is_file():
@@ -233,8 +249,13 @@ def _title_from_manifest(root):
                          % Path(root))
     first = path.read_text(encoding='utf-8').splitlines()[:1]
     match = re.match(r'^# Publication manifest for (.+)\.$', first[0]) if first else None
-    # Older hand-built manifests have no structured project title. Their
-    # directory name is the same fallback `init` uses when --title is omitted.
+    if match:
+        return match.group(1)
+    agents = Path(root) / 'AGENTS.md'
+    first = agents.read_text(encoding='utf-8').splitlines()[:1] if agents.is_file() else []
+    match = re.match(r'^# (.+)$', first[0]) if first else None
+    # Older hand-built manifests have no structured project title. Prefer the
+    # heading refresh is about to replace, then use init's directory fallback.
     return match.group(1) if match else Path(root).name.replace('-', ' ').title()
 
 
@@ -260,13 +281,16 @@ def refresh(directory):
         AGENTS.format(title=_title_from_manifest(root), invocation=invocation,
                       chain=' -> '.join(STAGES)),
         encoding='utf-8')
-    refused = _claude_pointer(root)
+    link = root / 'CLAUDE.md'
+    if _claude_pointer_is_owned(link):
+        refused = _claude_pointer(root)
+        claude = ('CLAUDE.md -> AGENTS.md' if refused is None else
+                  'CLAUDE.md (an @AGENTS.md import: this filesystem refused a link)')
+    else:
+        claude = "CLAUDE.md (left alone: not Paperforge's pointer)"
     stamp(root, invocation=invocation, created=previous.get('created'),
           refreshed=datetime.now(timezone.utc).isoformat(timespec='seconds'))
-    return ['AGENTS.md',
-            'CLAUDE.md -> AGENTS.md' if refused is None else
-            'CLAUDE.md (an @AGENTS.md import: this filesystem refused a link)',
-            STAMP]
+    return ['AGENTS.md', claude, STAMP]
 
 
 def _meta_block(prof, publisher, when):

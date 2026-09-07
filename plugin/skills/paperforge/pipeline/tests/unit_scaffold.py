@@ -143,21 +143,46 @@ def main():
         check('and reports itself current',
               scaffold.drift(root)['state'] == 'current')
 
-        before = (root / 'documents.toml').read_bytes()
+        manifest = root / 'documents.toml'
+        manifest.write_text(
+            '# QSPEC: this hand-built comment predates the manifest body\n'
+            + manifest.read_text(encoding='utf-8').split('\n', 1)[1],
+            encoding='utf-8')
+        agents = root / 'AGENTS.md'
+        agents.write_text(
+            '# Writer-owned heading\n'
+            + agents.read_text(encoding='utf-8').split('\n', 1)[1],
+            encoding='utf-8')
+        claude = root / 'CLAUDE.md'
+        claude.unlink()
+        own_claude = b'# My own Claude notes\n\nKeep this byte-for-byte.\n'
+        claude.write_bytes(own_claude)
+
+        before = manifest.read_bytes()
         old = json.loads((root / scaffold.STAMP).read_text(encoding='utf-8'))
+        output = io.StringIO()
         try:
-            with contextlib.redirect_stdout(io.StringIO()):
+            with contextlib.redirect_stdout(output):
                 refreshed = cli.main(['init', '--refresh', '--into', str(root)]) == 0
         except SystemExit:
             refreshed = False
         after = json.loads((root / scaffold.STAMP).read_text(encoding='utf-8'))
         check('refresh leaves the manifest byte-identical',
-              refreshed and (root / 'documents.toml').read_bytes() == before)
+              refreshed and manifest.read_bytes() == before)
         check('refresh preserves created and records when it ran',
               after['created'] == old['created'] and bool(after.get('refreshed')))
         check('refresh rewrites the guidance with the current invocation',
               after.get('invocation', '<not recorded>')
-              in (root / 'AGENTS.md').read_text(encoding='utf-8'))
+              in agents.read_text(encoding='utf-8'))
+        check('refresh preserves the existing guidance heading',
+              agents.read_text(encoding='utf-8').splitlines()[0]
+              == '# Writer-owned heading')
+        check('refresh leaves a customised CLAUDE.md byte-identical',
+              claude.is_file() and not claude.is_symlink()
+              and claude.read_bytes() == own_claude)
+        check('and reports that the customised pointer was left alone',
+              "CLAUDE.md (left alone: not Paperforge's pointer)"
+              in output.getvalue())
 
         after['invocation'] = str(root / 'a-launcher-that-moved')
         (root / scaffold.STAMP).write_text(json.dumps(after), encoding='utf-8')
@@ -169,6 +194,18 @@ def main():
             cli._doctor_project(str(root / 'documents.toml'))
         check('doctor calls a different recorded invocation moved',
               'invocation' in out.getvalue() and 'moved' in out.getvalue())
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        scaffold.stamp(root)
+        path = root / scaffold.STAMP
+        legacy = json.loads(path.read_text(encoding='utf-8'))
+        legacy.pop('invocation')
+        path.write_text(json.dumps(legacy), encoding='utf-8')
+        unknown = scaffold.invocation_drift(root)
+        check('an unknown invocation names refresh as the remedy',
+              unknown['state'] == 'unknown'
+              and 'init --refresh' in unknown['why'])
 
     with tempfile.TemporaryDirectory() as tmp:
         try:

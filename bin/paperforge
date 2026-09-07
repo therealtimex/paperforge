@@ -49,14 +49,23 @@ def _ensure_runtime():
     current = _executable(sys.executable) or sys.executable
     override = os.environ.get('PAPERFORGE_PYTHON')
     reexecuted = os.environ.pop('PAPERFORGE_LAUNCHER_REEXEC', None)
+    if reexecuted:
+        # A subprocess probe runs from its caller's cwd, while this launcher
+        # runs with its own directory on sys.path. If those disagree about an
+        # import, a second hop repeats forever. One re-exec is the hard limit.
+        try:
+            import pdfplumber  # noqa: F401 - prove the selected runtime landed
+            return
+        except ImportError:
+            tried = [str(Path(reexecuted).resolve())]
+            if not any(_same_executable(current, seen) for seen in tried):
+                tried.append(current)
+            raise SystemExit(
+                'paperforge needs a Python interpreter that can import pdfplumber; '
+                'tried %s. Set PAPERFORGE_PYTHON to one that can.'
+                % ', '.join(tried))
     if override:
         chosen = _executable(override)
-        if chosen and reexecuted == chosen:
-            try:
-                import pdfplumber  # noqa: F401 - prove the wrapper landed correctly
-                return
-            except ImportError:
-                pass
         if chosen and _can_import(chosen):
             if not _same_executable(chosen, current):
                 _reexec(chosen)

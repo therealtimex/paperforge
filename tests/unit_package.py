@@ -192,13 +192,14 @@ def main():
               and 'pdfplumber' in one_hop.stderr)
 
         # Run the real launcher under an isolated stdlib-only interpreter. The
-        # installed-app candidate is suppressed so this remains a check of the
-        # launcher's fallback on developer machines that happen to have it.
+        # installed-app and stock system candidates are suppressed so this
+        # remains a hermetic fallback check even when either has pdfplumber.
         isolated = (
             'import pathlib, runpy, sys; '
             'real_is_file = pathlib.Path.is_file; '
             'pathlib.Path.is_file = lambda p: False if '
-            'str(p).startswith("/Applications/RealTimeX.AI.app/") '
+            '(str(p).startswith("/Applications/RealTimeX.AI.app/") or '
+            'str(p) == "/usr/bin/python3") '
             'else real_is_file(p); '
             'runpy.run_path(sys.argv.pop(1), run_name="__main__")'
         )
@@ -219,8 +220,32 @@ def main():
               fallback.returncode == 0 and len(warning) == 1
               and 'pdfplumber' in warning[0] and 'tried' in warning[0])
 
+        pdf_project = Path(tmp) / 'needs-pdf'
+        pdf_project.mkdir()
+        (pdf_project / 'documents.toml').write_text(
+            '[defaults]\n'
+            'profile = "en"\n\n'
+            '[[collection]]\n'
+            'slug = "needs-pdf"\n'
+            'root = "."\n\n'
+            '  [[collection.document]]\n'
+            '  source = "report.md"\n'
+            '  output = "report.html"\n',
+            encoding='utf-8')
+        (pdf_project / 'report.md').write_text(
+            '# DOCUMENT\n## Launcher dependency check\n\nRendered body text.\n',
+            encoding='utf-8')
+        (pdf_project / 'report.html').write_text(
+            '<!doctype html><html><body><main><h1>DOCUMENT</h1>'
+            '<h2>Launcher dependency check</h2><p>Rendered body text.</p>'
+            '</main></body></html>\n',
+            encoding='utf-8')
+        # print_leaks imports pdfplumber before opening the file. A placeholder
+        # is enough to prove the command, rather than the launcher, owns the
+        # missing-dependency error; no ignored fixture output is involved.
+        (pdf_project / 'report.pdf').write_bytes(b'%PDF-placeholder\n')
         needs_pdf = without_pdfplumber(
-            'verify', '--config', str(root / 'tests/fixtures/publishing/documents.toml'))
+            'verify', '--config', str(pdf_project / 'documents.toml'))
         check('a PDF command reaches its own missing-dependency error',
               needs_pdf.returncode != 0
               and "No module named 'pdfplumber'" in needs_pdf.stderr

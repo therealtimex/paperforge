@@ -6,7 +6,10 @@ code, a dead documentation pointer or a version that disagrees with its tag.
 Every one of those has happened here. CI runs the command against a tree that
 is correct, which proves it does not false-alarm; this proves it fires.
 """
+import os
+import shlex
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -139,6 +142,36 @@ def main():
           require.imported('definitely_not_installed') is False)
     check('every library says where it comes from',
           all(src.startswith('pip install') for _, _, _, src in require.libraries()))
+
+    print('the deployed launcher finds the pipeline runtime')
+    launcher = root / 'bin/paperforge'
+    with tempfile.TemporaryDirectory() as tmp:
+        candidates = [sys.executable,
+                      '/Applications/RealTimeX.AI.app/Contents/Resources/app/src/'
+                      'electron/features/pty/compat/macos/python3']
+        capable = next((p for p in candidates if Path(p).is_file() and
+                        subprocess.run([p, '-c', 'import pdfplumber'],
+                                       capture_output=True).returncode == 0), None)
+        marker = Path(tmp) / 'chosen'
+        chooser = Path(tmp) / 'paperforge-python'
+        chooser.write_text(
+            '#!/bin/sh\n'
+            'printf chosen > %s\n'
+            'exec %s "$@"\n' % (shlex.quote(str(marker)), shlex.quote(capable or 'missing')),
+            encoding='utf-8')
+        chooser.chmod(0o755)
+        env = dict(os.environ, PAPERFORGE_PYTHON=str(chooser))
+        selected = subprocess.run([str(launcher), '--help'], env=env,
+                                  capture_output=True, text=True)
+        check('PAPERFORGE_PYTHON selects the interpreter explicitly',
+              selected.returncode == 0 and marker.is_file())
+
+        missing = subprocess.run(
+            [str(launcher), '--help'],
+            env=dict(os.environ, PAPERFORGE_PYTHON=str(Path(tmp) / 'missing-python')),
+            capture_output=True, text=True)
+        check('an unusable override names the missing dependency clearly',
+              missing.returncode != 0 and 'pdfplumber' in missing.stderr)
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

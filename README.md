@@ -113,10 +113,12 @@ bin/paperforge all          # by path, which is what `init` writes into a projec
 ```
 
 The last two need no installation, and the scaffolded `AGENTS.md` names the
-third with an absolute path. Installing exists so a project does not have to
-know where Paperforge lives — one real project's publish script spent forty
-lines hunting for an interpreter and resolving `PYTHONPATH`, and a reviewer
-auditing that project met `ModuleNotFoundError` on their first command.
+third with an absolute path. The launcher selects an interpreter that can
+import the pipeline dependencies, including RealtimeX's bundled Python, or
+honours `PAPERFORGE_PYTHON` as an explicit override. A project therefore records
+one pasteable launcher path rather than a Python command plus `PYTHONPATH` — one
+real project's publish script spent forty lines reconstructing those pieces,
+and a reviewer auditing it met `ModuleNotFoundError` on their first command.
 
 `paperforge doctor` reports the Python libraries the pipeline imports as well as
 the external programs it runs.

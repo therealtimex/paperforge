@@ -11,7 +11,7 @@ The interview belongs to the agent, not here: this writes what it is told, so
 the result is deterministic and reviewable.
 """
 import subprocess
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from . import require
@@ -39,7 +39,13 @@ def fingerprint():
     return hashlib.sha256(material.encode('utf-8')).hexdigest()[:16]
 
 
-def stamp(root):
+def entry_point():
+    """The one-token launcher path written into a project's guidance."""
+    import sys
+    return str(Path(sys.argv[0]).resolve()) if sys.argv and sys.argv[0] else 'paperforge'
+
+
+def stamp(root, invocation=None, created=None, refreshed=None):
     """Record what wrote this project.
 
     Without it a project's AGENTS.md is a copy of guidance that keeps changing
@@ -48,15 +54,18 @@ def stamp(root):
     same check for the copy that leaves the repository.
     """
     import json
-    from datetime import datetime, timezone
     from . import __version__
     path = Path(root) / STAMP
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps({
+    record = {
         'version': __version__,
         'agents': fingerprint(),
-        'created': datetime.now(timezone.utc).isoformat(timespec='seconds'),
-    }, indent=2) + '\n', encoding='utf-8')
+        'created': created or datetime.now(timezone.utc).isoformat(timespec='seconds'),
+        'invocation': str(Path(invocation or entry_point()).resolve()),
+    }
+    if refreshed:
+        record['refreshed'] = refreshed
+    path.write_text(json.dumps(record, indent=2) + '\n', encoding='utf-8')
     return path
 
 
@@ -90,6 +99,29 @@ def drift(root):
     return {'state': 'stale', 'version': was,
             'why': 'AGENTS.md is not what `init` would write now; written by '
                    '%s, this pipeline is %s' % (was or 'an unknown version', __version__)}
+
+
+def invocation_drift(root, current=None):
+    """Whether the project points at the launcher running this diagnostic."""
+    import json
+    path = Path(root) / STAMP
+    try:
+        found = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        found = None
+    recorded = found.get('invocation') if isinstance(found, dict) else None
+    if not recorded:
+        return {'state': 'unknown', 'why': 'this scaffold predates recorded invocations'}
+    recorded = str(Path(recorded).resolve())
+    running = str(Path(current or entry_point()).resolve())
+    if recorded != running:
+        suffix = '; the recorded path no longer exists' if not Path(recorded).exists() else ''
+        return {'state': 'moved', 'why': 'recorded %s, running %s%s; run `init --refresh`'
+                % (recorded, running, suffix)}
+    if not Path(recorded).exists():
+        return {'state': 'missing', 'why': '%s no longer exists; run `init --refresh`'
+                % recorded}
+    return {'state': 'ok', 'why': recorded}
 
 
 GITIGNORE = """# built artefacts are reproducible from the sources
@@ -190,6 +222,51 @@ def _claude_pointer(root):
     except (OSError, NotImplementedError) as exc:
         link.write_text(CLAUDE_IMPORT, encoding='utf-8')
         return str(exc)
+
+
+def _title_from_manifest(root):
+    """Recover the title written into a scaffolded manifest's first line."""
+    import re
+    path = Path(root) / 'documents.toml'
+    if not path.is_file():
+        raise SystemExit('%s has no documents.toml; run `init` without `--refresh`'
+                         % Path(root))
+    first = path.read_text(encoding='utf-8').splitlines()[:1]
+    match = re.match(r'^# Publication manifest for (.+)\.$', first[0]) if first else None
+    # Older hand-built manifests have no structured project title. Their
+    # directory name is the same fallback `init` uses when --title is omitted.
+    return match.group(1) if match else Path(root).name.replace('-', ' ').title()
+
+
+def refresh(directory):
+    """Rewrite only the guidance and stamp owned by ``init``."""
+    import json
+    root = Path(directory).resolve()
+    path = root / STAMP
+    if not path.is_file():
+        raise SystemExit('%s is not a Paperforge project (%s missing); run `init` '
+                         'without `--refresh`' % (root, STAMP))
+    try:
+        previous = json.loads(path.read_text(encoding='utf-8'))
+    except ValueError:
+        previous = None
+    if not isinstance(previous, dict):
+        raise SystemExit('%s does not hold a scaffold record; run `init` without '
+                         '`--refresh`' % STAMP)
+
+    invocation = entry_point()
+    from .cli import STAGES
+    (root / 'AGENTS.md').write_text(
+        AGENTS.format(title=_title_from_manifest(root), invocation=invocation,
+                      chain=' -> '.join(STAGES)),
+        encoding='utf-8')
+    refused = _claude_pointer(root)
+    stamp(root, invocation=invocation, created=previous.get('created'),
+          refreshed=datetime.now(timezone.utc).isoformat(timespec='seconds'))
+    return ['AGENTS.md',
+            'CLAUDE.md -> AGENTS.md' if refused is None else
+            'CLAUDE.md (an @AGENTS.md import: this filesystem refused a link)',
+            STAMP]
 
 
 def _meta_block(prof, publisher, when):
@@ -414,16 +491,15 @@ def create(directory, slug, title, languages, profiles, publications,
     (root / '.gitignore').write_text(GITIGNORE, encoding='utf-8')
     # the real entry point, not a placeholder: a scaffolded project that
     # tells you to run `<paperforge>/bin/paperforge` tells you nothing
-    import sys
     # absolute: a relative entry point is only valid from wherever the
     # scaffolding happened to be run, which is not where the project lives
-    invocation = str(Path(sys.argv[0]).resolve()) if sys.argv and sys.argv[0] else 'paperforge'
+    invocation = entry_point()
     from .cli import STAGES
     (root / 'AGENTS.md').write_text(
         AGENTS.format(title=title, invocation=invocation,
                       chain=' -> '.join(STAGES)),
                                     encoding='utf-8')
-    stamp(root)
+    stamp(root, invocation=invocation)
     refused = _claude_pointer(root)
     written += ['figures.toml', '.gitignore', 'AGENTS.md', STAMP,
                 'CLAUDE.md -> AGENTS.md' if refused is None else

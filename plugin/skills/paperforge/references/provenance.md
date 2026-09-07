@@ -25,7 +25,7 @@ rather than an act of discipline.**
 
 ```
 .paperforge/runs/20260824T010923Z-run-1-baseline/
-  record.json      label, timestamp, manifest hash, stage verdicts, per-document hashes
+  record.json      label, timestamp, manifest hash, stage verdicts, per-document hashes and layout probe
   sources/         the markdown itself, as it stood
 ```
 
@@ -57,6 +57,12 @@ look identical afterwards.
 | `unchanged` | byte-identical source and reading edition |
 | `added` / `removed` | the manifest gained or lost a document |
 | `repaginated` | only the print edition differs — see below |
+| `probe` | the document changed between full and wide-only layout verification |
+
+Each document entry records `layout_probe` as `full` or `wide only`. That makes
+the scope visible after the console is gone, especially for internal records
+that deliberately skip phone-width layout checks. `runs --diff` prints a
+`probe` line when that scope changes.
 
 ## One thing it does not claim
 

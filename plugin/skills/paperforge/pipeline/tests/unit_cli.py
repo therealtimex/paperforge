@@ -9,13 +9,14 @@ A documented promise nothing exercises is exactly what this repo gates against.
 """
 import contextlib
 import io
+import json
 import os
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from paperforge import cli
+from paperforge import cli, runs
 
 failures = []
 
@@ -166,6 +167,18 @@ def main():
               any(d['source'] == 'note.md' for d in docs))
         check('a document defaults to not publishable', not any(d['publish'] for d in docs))
 
+        note = next(d for d in docs if d['source'] == 'note.md')
+        note['output_path'].write_text('<html>built</html>', encoding='utf-8')
+        status_out = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(status_out):
+                status_code = cli.main(['status', '--config', str(root / 'documents.toml')])
+        except KeyError:
+            status_code = 1
+        check('status calls a built document with no workspace unlinked',
+              status_code == 0 and 'note.html' in status_out.getvalue()
+              and 'unlinked' in status_out.getvalue())
+
         scoped_manifest = MANIFEST.replace(
             'page_numbers = true', 'page_numbers = true\nnarrow_layout = false')
         scoped_path = root / 'scoped.toml'
@@ -218,6 +231,10 @@ def main():
         check('a 390px-only overflow verifies when narrow layout is off',
               scoped_result == 0 and 'layout: wide only' in scoped_out.getvalue()
               and 'skip  layout:' not in scoped_out.getvalue())
+        recorded = runs.write(cfg, [wide], {'verify': 'ok'}, root=root)
+        record = json.loads((recorded / 'record.json').read_text(encoding='utf-8'))
+        check('a scoped verification records its wide-only layout probe',
+              record['documents'][0].get('layout_probe') == 'wide only')
         check('the same overflow fails when the default probe is used',
               default_result == 1 and 'horizontal overflow at [390]'
               in default_out.getvalue())

@@ -53,6 +53,8 @@ def main():
         check('a failed stage is recorded, not suppressed', rec['stages']['verify'] == 'failed')
         check('the manifest is fingerprinted', len(rec['manifest_sha256']) == 64)
         check('the source is fingerprinted', len(rec['documents'][0]['source_sha256']) == 64)
+        check('the default layout probe is recorded per document',
+              rec['documents'][0].get('layout_probe') == 'full')
         check('the annex is fingerprinted too', 'annex_sha256' in rec['documents'][0])
         check('the source itself is kept, not only its hash',
               (out / 'sources' / 'report.md').read_text(encoding='utf-8') == 'First draft.\n')
@@ -124,6 +126,12 @@ def main():
         d = runs.diff(a2, b)
         check('a print edition that merely repaginated is held apart from a rewrite',
               d['pdf_only'] == ['report.md'] and d['rewritten'] == [])
+
+        scoped = json.loads(json.dumps(a))
+        scoped['documents'][0]['layout_probe'] = 'wide only'
+        d = runs.diff(a, scoped)
+        check('a changed layout scope is reported as a probe change',
+              d.get('probe', {}).get('report.md') == ('full', 'wide only'))
 
         print('the request travels with the run')
         req = root / 'request.md'

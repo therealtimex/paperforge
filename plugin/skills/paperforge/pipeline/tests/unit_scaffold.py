@@ -14,13 +14,15 @@ existed has no record of what wrote it, and reporting nothing would read as
 current. Untestable is never passed.
 """
 import json
+import io
+import contextlib
 import sys
 import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import paperforge
-from paperforge import package_plugin, scaffold
+from paperforge import cli, package_plugin, scaffold
 
 failures = []
 
@@ -63,6 +65,8 @@ def main():
         check('two projects scaffolded now agree', one['agents'] == two['agents'])
         check('and the stamp records the version that wrote them',
               one['version'] == paperforge.__version__)
+        check('and records the one-token invocation that wrote them',
+              one.get('invocation') == str(Path(sys.argv[0]).resolve()))
 
     print('everything init fills in is in the fingerprint')
     from paperforge.cli import STAGES
@@ -138,6 +142,41 @@ def main():
               (root / scaffold.STAMP).is_file())
         check('and reports itself current',
               scaffold.drift(root)['state'] == 'current')
+
+        before = (root / 'documents.toml').read_bytes()
+        old = json.loads((root / scaffold.STAMP).read_text(encoding='utf-8'))
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                refreshed = cli.main(['init', '--refresh', '--into', str(root)]) == 0
+        except SystemExit:
+            refreshed = False
+        after = json.loads((root / scaffold.STAMP).read_text(encoding='utf-8'))
+        check('refresh leaves the manifest byte-identical',
+              refreshed and (root / 'documents.toml').read_bytes() == before)
+        check('refresh preserves created and records when it ran',
+              after['created'] == old['created'] and bool(after.get('refreshed')))
+        check('refresh rewrites the guidance with the current invocation',
+              after.get('invocation', '<not recorded>')
+              in (root / 'AGENTS.md').read_text(encoding='utf-8'))
+
+        after['invocation'] = str(root / 'a-launcher-that-moved')
+        (root / scaffold.STAMP).write_text(json.dumps(after), encoding='utf-8')
+        check('a recorded invocation that itself vanished is missing',
+              scaffold.invocation_drift(
+                  root, current=after['invocation'])['state'] == 'missing')
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            cli._doctor_project(str(root / 'documents.toml'))
+        check('doctor calls a different recorded invocation moved',
+              'invocation' in out.getvalue() and 'moved' in out.getvalue())
+
+    with tempfile.TemporaryDirectory() as tmp:
+        try:
+            cli.main(['init', '--refresh', '--into', tmp])
+            check('refresh refuses a directory init did not stamp', False)
+        except SystemExit as err:
+            check('refresh refuses a directory init did not stamp',
+                  'without `--refresh`' in str(err))
 
     print()
     if failures:

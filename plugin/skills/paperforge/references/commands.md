@@ -23,6 +23,12 @@ The entry point is `bin/paperforge` in a Paperforge checkout, and
 that *uses* Paperforge carries no pipeline of its own — only its sources, its
 `documents.toml` and its `figures.toml`.
 
+The launcher finds a Python that can import Paperforge's dependencies. It first
+honours `PAPERFORGE_PYTHON`, then checks the current interpreter and a short
+candidate list that includes RealtimeX's bundled compatibility Python. If none
+can import `pdfplumber`, it names every interpreter it tried. Invoke the
+launcher path alone; no `python ...` prefix or `PYTHONPATH` wrapper is needed.
+
 ## Drafting
 
 Every gate here fires at the end, which is the worst moment to learn something.
@@ -105,6 +111,7 @@ rebuilt and republished a different, already-approved corpus.
 
 ```bash
 paperforge init      # scaffold a new project — see starting-a-project.md
+paperforge init --refresh --into <project>  # refresh guidance, never the manifest
 paperforge selftest  # build the bundled English fixture end to end
 paperforge plugin    # re-sync the plugin bundle from the repo
 paperforge plugin --check   # fail if the bundle has drifted

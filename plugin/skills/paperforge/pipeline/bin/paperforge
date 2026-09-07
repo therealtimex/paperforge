@@ -4,8 +4,95 @@
 Named in full rather than abbreviated: `pf` is the BSD/macOS packet filter, and
 a two-letter command that might reach PATH should not collide with a firewall.
 """
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
+
+
+def _executable(candidate):
+    """Resolve either an absolute override or a command already on PATH."""
+    if not candidate:
+        return None
+    found = shutil.which(candidate)
+    return str(Path(found or candidate).resolve()) if Path(found or candidate).is_file() else None
+
+
+def _can_import(executable):
+    try:
+        return subprocess.run(
+            [executable, '-c', 'import pdfplumber'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            timeout=15).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def _same_executable(left, right):
+    try:
+        return os.path.samefile(left, right)
+    except OSError:
+        return str(Path(left).resolve()) == str(Path(right).resolve())
+
+
+def _reexec(executable):
+    # A configured executable may itself be a wrapper. Inside it,
+    # ``sys.executable`` names the underlying binary rather than the configured
+    # path, so path comparison alone would re-exec forever.
+    os.environ['PAPERFORGE_LAUNCHER_REEXEC'] = executable
+    os.execv(executable, [executable, str(Path(__file__).resolve()), *sys.argv[1:]])
+
+
+def _ensure_runtime():
+    """Run under a Python that carries the pipeline's import dependencies."""
+    current = _executable(sys.executable) or sys.executable
+    override = os.environ.get('PAPERFORGE_PYTHON')
+    reexecuted = os.environ.pop('PAPERFORGE_LAUNCHER_REEXEC', None)
+    if override:
+        chosen = _executable(override)
+        if chosen and reexecuted == chosen:
+            try:
+                import pdfplumber  # noqa: F401 - prove the wrapper landed correctly
+                return
+            except ImportError:
+                pass
+        if chosen and _can_import(chosen):
+            if not _same_executable(chosen, current):
+                _reexec(chosen)
+            return
+        raise SystemExit('PAPERFORGE_PYTHON=%s cannot import pdfplumber; set it to '
+                         'a Python interpreter with Paperforge dependencies' % override)
+
+    try:
+        import pdfplumber  # noqa: F401 - this is the runtime capability probe
+        return
+    except ImportError:
+        pass
+
+    # RealtimeX packages the Python used by its terminal compatibility layer.
+    # Keep this list deliberately short: each candidate is executed to prove
+    # the import rather than guessed from its location or version.
+    candidates = [
+        '/Applications/RealTimeX.AI.app/Contents/Resources/app/src/electron/'
+        'features/pty/compat/macos/python3',
+        shutil.which('python3'),
+        '/usr/bin/python3',
+    ]
+    tried = [current]
+    for candidate in candidates:
+        chosen = _executable(candidate)
+        if not chosen or any(_same_executable(chosen, seen) for seen in tried):
+            continue
+        tried.append(chosen)
+        if _can_import(chosen):
+            _reexec(chosen)
+    raise SystemExit('paperforge needs a Python interpreter that can import pdfplumber; '
+                     'tried %s. Set PAPERFORGE_PYTHON to one that can.'
+                     % ', '.join(tried))
+
+
+_ensure_runtime()
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from paperforge.cli import main
 sys.exit(main())

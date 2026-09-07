@@ -59,7 +59,10 @@ def write(cfg, docs, stages, label=None, root=None):
         entry = {'collection': d['collection'], 'language': d.get('language'),
                  'source': d['source'], 'source_sha256': _sha(d['source_path']),
                  'output': d['output'], 'output_sha256': _sha(d['output_path']),
-                 'publish': bool(d.get('publish'))}
+                 'publish': bool(d.get('publish')),
+                 'layout_probe': d.get('layout_probe',
+                                       'full' if d.get('narrow_layout', True)
+                                       else 'wide only')}
         pdf = d['output_path'].with_suffix('.pdf')
         if pdf.exists():
             # observed, not a reproducibility claim - see the module docstring
@@ -168,9 +171,12 @@ def diff(before, after):
     b_docs = {d['source']: d for d in after['documents']}
     out = {'added': sorted(set(b_docs) - set(a_docs)),
            'removed': sorted(set(a_docs) - set(b_docs)),
-           'rewritten': [], 'unchanged': [], 'pdf_only': [], 'stages': {}}
+           'rewritten': [], 'unchanged': [], 'pdf_only': [], 'stages': {},
+           'probe': {}}
     for name in sorted(set(a_docs) & set(b_docs)):
         x, y = a_docs[name], b_docs[name]
+        if x.get('layout_probe') != y.get('layout_probe'):
+            out['probe'][name] = (x.get('layout_probe'), y.get('layout_probe'))
         if x['source_sha256'] != y['source_sha256'] or x.get('annex_sha256') != y.get('annex_sha256'):
             out['rewritten'].append(name)
         elif x.get('output_sha256') != y.get('output_sha256'):

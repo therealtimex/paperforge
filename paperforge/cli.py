@@ -57,7 +57,9 @@ def _doctor_project(explicit=None):
     if found['state'] == 'stale':
         print('  %-18s %-9s %s' % ('', '', 'compare it against a fresh `init`, and '
                                    'copy across what is missing'))
-    return found['state'] == 'stale'
+    invoked = scaffold.invocation_drift(root)
+    print('  %-18s %-9s %s' % ('invocation', invoked['state'], invoked['why']))
+    return found['state'] == 'stale' or invoked['state'] != 'ok'
 
 
 # A document type implies how it is rendered, so the manifest names the type
@@ -467,6 +469,8 @@ def do_runs(cfg, pair, only, sources=False):
         print('%s -> %s' % (an, bn))
         for stage, (was, now) in d['stages'].items():
             print('  %-10s %s -> %s' % (stage, was or '-', now or '-'))
+        for source, (was, now) in d['probe'].items():
+            print('  %-10s %s: %s -> %s' % ('probe', source, was or '-', now or '-'))
         for kind in ('added', 'removed', 'rewritten', 'unchanged'):
             if d[kind]:
                 print('  %-10s %s' % (kind, ', '.join(d[kind])))
@@ -812,6 +816,9 @@ def do_verify(docs, cache, quiet=False):
                       % (ed['expected_openers'], ed['figures_html']))
 
         narrow_layout = narrow_layout_of(d)
+        # Kept on the document so the run record carries the actual scope of
+        # this verification, not only the console's "layout: wide only" line.
+        d['layout_probe'] = 'full' if narrow_layout else 'wide only'
         widths = (verify.LAYOUT_WIDTHS if narrow_layout else
                   tuple(width for width in verify.LAYOUT_WIDTHS if width >= 768))
         try:
@@ -1036,6 +1043,8 @@ def main(argv=None):
     ap.add_argument('--no-measure', action='store_true', help='skip printed page numbering')
     ap.add_argument('--config', help='path to documents.toml')
     ap.add_argument('--into', help='init: directory to prepare')
+    ap.add_argument('--refresh', action='store_true',
+                    help='init: rewrite only guidance and its stamp in an existing project')
     ap.add_argument('--title', help='init: project title')
     ap.add_argument('--slug', help='init: short project name used for filenames')
     ap.add_argument('--profile', help='init: language profile (vi, en, zh, ar, ...)')
@@ -1058,6 +1067,13 @@ def main(argv=None):
         if not a.into:
             sys.exit('init needs --into <directory>')
         target = Path(a.into).resolve()
+        if a.refresh:
+            written = scaffold.refresh(target)
+            print('refreshed %s' % target)
+            for w in written:
+                print('  %s' % w)
+            print('\nnext: paperforge all --config %s/documents.toml' % target)
+            return 0
         slug = a.slug or target.name
         title = a.title or slug.replace('-', ' ').title()
         languages = [x.strip() for x in (a.languages or a.profile or 'en').split(',') if x.strip()]
@@ -1223,9 +1239,11 @@ def main(argv=None):
             for artefact in [d['output_path'], d['output_path'].with_suffix('.pdf')]:
                 if artefact.suffix == '.pdf' and not artefact.exists():
                     continue
-                state = 'not built' if not artefact.exists() else (
-                    'stale link' if pub.stale(artefact, d['workspace']) else 'linked')
-                art = pub.find(d['workspace'], artefact.name) if d['publish'] else None
+                workspace = d.get('workspace')
+                state = ('not built' if not artefact.exists() else
+                         'unlinked' if not workspace else
+                         'stale link' if pub.stale(artefact, workspace) else 'linked')
+                art = pub.find(workspace, artefact.name) if d['publish'] and workspace else None
                 print('  %-38s %-11s %s' % (artefact.name, state, art['publicUrl'] if art else '-'))
         return 0
 

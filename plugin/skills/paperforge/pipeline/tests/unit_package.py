@@ -187,9 +187,58 @@ def main():
                 capture_output=True, text=True, timeout=5)
         except subprocess.TimeoutExpired:
             one_hop = None
-        check('a lying capability probe stops after one re-exec',
+        check('a lying explicit capability probe stops after one re-exec',
               one_hop is not None and one_hop.returncode != 0
               and 'pdfplumber' in one_hop.stderr)
+
+        # Run the real launcher under an isolated stdlib-only interpreter. The
+        # installed-app candidate is suppressed so this remains a check of the
+        # launcher's fallback on developer machines that happen to have it.
+        isolated = (
+            'import pathlib, runpy, sys; '
+            'real_is_file = pathlib.Path.is_file; '
+            'pathlib.Path.is_file = lambda p: False if '
+            'str(p).startswith("/Applications/RealTimeX.AI.app/") '
+            'else real_is_file(p); '
+            'runpy.run_path(sys.argv.pop(1), run_name="__main__")'
+        )
+
+        def without_pdfplumber(*args, extra_env=None):
+            clean = dict(os.environ, PATH='/usr/bin:/bin')
+            for name in ('PAPERFORGE_PYTHON', 'PAPERFORGE_LAUNCHER_REEXEC',
+                         'REALTIMEX_MANAGED_PYTHON_BIN'):
+                clean.pop(name, None)
+            clean.update(extra_env or {})
+            return subprocess.run(
+                [sys.executable, '-S', '-c', isolated, str(launcher), *args],
+                cwd=root, env=clean, capture_output=True, text=True)
+
+        fallback = without_pdfplumber('plugin', '--check')
+        warning = [line for line in fallback.stderr.splitlines() if line.strip()]
+        check('a non-PDF command runs when no candidate has pdfplumber',
+              fallback.returncode == 0 and len(warning) == 1
+              and 'pdfplumber' in warning[0] and 'tried' in warning[0])
+
+        needs_pdf = without_pdfplumber(
+            'verify', '--config', str(root / 'tests/fixtures/publishing/documents.toml'))
+        check('a PDF command reaches its own missing-dependency error',
+              needs_pdf.returncode != 0
+              and "No module named 'pdfplumber'" in needs_pdf.stderr
+              and 'paperforge needs a Python interpreter' not in needs_pdf.stderr)
+
+        managed_marker = Path(tmp) / 'managed'
+        managed = Path(tmp) / 'managed-python'
+        managed.write_text(
+            '#!/bin/sh\n'
+            'printf managed > %s\n'
+            'exec %s "$@"\n'
+            % (shlex.quote(str(managed_marker)), shlex.quote(capable or 'missing')),
+            encoding='utf-8')
+        managed.chmod(0o755)
+        selected = without_pdfplumber(
+            '--help', extra_env={'REALTIMEX_MANAGED_PYTHON_BIN': str(managed)})
+        check('the managed RealtimeX Python is an automatic candidate',
+              selected.returncode == 0 and managed_marker.is_file())
 
     if failures:
         print('\n%d check(s) failed: %s' % (len(failures), '; '.join(failures)))

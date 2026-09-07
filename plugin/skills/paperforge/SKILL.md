@@ -4,7 +4,7 @@ description: Prepare, render, check and publish research documents — reports, 
 allowed-tools: Read, Write, Edit, Bash
 license: UNLICENSED
 metadata:
-  version: "4.0.3"
+  version: "4.0.4"
 ---
 
 # Paperforge documents
@@ -62,9 +62,11 @@ rendered file needs to change, change the markdown and rebuild. If the
 
 **The command is not on `PATH`.** It ships at `pipeline/bin/paperforge`, and a
 Paperforge checkout has it at `bin/paperforge`. The launcher selects a Python
-that can import the bundled pipeline dependencies, including RealtimeX's
-compatibility Python when present; set `PAPERFORGE_PYTHON` only to override
-that choice. Invoke the launcher itself as one token with `--config
+that can import the bundled pipeline dependencies, including the managed or
+bundled RealtimeX Python when present. Without one, non-PDF commands continue
+under the current Python and PDF commands name the missing dependency; set
+`PAPERFORGE_PYTHON` only to require a specific interpreter. Invoke the launcher
+itself as one token with `--config
 <project>/documents.toml`, or ask the user to alias it. It is deliberately not
 abbreviated to `pf`, which is the BSD/macOS packet filter.
 

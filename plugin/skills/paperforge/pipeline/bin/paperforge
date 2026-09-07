@@ -44,6 +44,13 @@ def _reexec(executable):
     os.execv(executable, [executable, str(Path(__file__).resolve()), *sys.argv[1:]])
 
 
+def _warn_fallback(current, tried):
+    """Say once why this process is continuing without the PDF dependency."""
+    print('paperforge: no Python interpreter tried by the launcher can import '
+          'pdfplumber; continuing with %s; tried %s'
+          % (current, ', '.join(tried)), file=sys.stderr)
+
+
 def _ensure_runtime():
     """Run under a Python that carries the pipeline's import dependencies."""
     current = _executable(sys.executable) or sys.executable
@@ -60,10 +67,13 @@ def _ensure_runtime():
             tried = [str(Path(reexecuted).resolve())]
             if not any(_same_executable(current, seen) for seen in tried):
                 tried.append(current)
-            raise SystemExit(
-                'paperforge needs a Python interpreter that can import pdfplumber; '
-                'tried %s. Set PAPERFORGE_PYTHON to one that can.'
-                % ', '.join(tried))
+            if override:
+                raise SystemExit(
+                    'paperforge needs a Python interpreter that can import pdfplumber; '
+                    'tried %s. Set PAPERFORGE_PYTHON to one that can.'
+                    % ', '.join(tried))
+            _warn_fallback(current, tried)
+            return
     if override:
         chosen = _executable(override)
         if chosen and _can_import(chosen):
@@ -83,6 +93,7 @@ def _ensure_runtime():
     # Keep this list deliberately short: each candidate is executed to prove
     # the import rather than guessed from its location or version.
     candidates = [
+        os.environ.get('REALTIMEX_MANAGED_PYTHON_BIN'),
         '/Applications/RealTimeX.AI.app/Contents/Resources/app/src/electron/'
         'features/pty/compat/macos/python3',
         shutil.which('python3'),
@@ -96,9 +107,7 @@ def _ensure_runtime():
         tried.append(chosen)
         if _can_import(chosen):
             _reexec(chosen)
-    raise SystemExit('paperforge needs a Python interpreter that can import pdfplumber; '
-                     'tried %s. Set PAPERFORGE_PYTHON to one that can.'
-                     % ', '.join(tried))
+    _warn_fallback(current, tried)
 
 
 _ensure_runtime()

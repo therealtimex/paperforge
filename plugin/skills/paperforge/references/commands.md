@@ -25,9 +25,13 @@ that *uses* Paperforge carries no pipeline of its own — only its sources, its
 
 The launcher finds a Python that can import Paperforge's dependencies. It first
 honours `PAPERFORGE_PYTHON`, then checks the current interpreter and a short
-candidate list that includes RealtimeX's bundled compatibility Python. If none
-can import `pdfplumber`, it names every interpreter it tried. Invoke the
-launcher path alone; no `python ...` prefix or `PYTHONPATH` wrapper is needed.
+candidate list that includes `$REALTIMEX_MANAGED_PYTHON_BIN` and RealtimeX's
+bundled compatibility Python. If none can import `pdfplumber`, it names every
+interpreter it tried and continues under the current one: commands that do not
+read PDFs still work, while a PDF command reports the missing library itself.
+An explicit `PAPERFORGE_PYTHON` without `pdfplumber` remains an error. Invoke
+the launcher path alone; no `python ...` prefix or `PYTHONPATH` wrapper is
+needed.
 
 ## Drafting
 
